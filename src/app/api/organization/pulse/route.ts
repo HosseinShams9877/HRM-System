@@ -1,0 +1,1 @@
+export { GET } from "@/modules/organization/api/pulse/route"

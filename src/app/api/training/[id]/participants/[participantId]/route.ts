@@ -1,0 +1,1 @@
+export { PUT } from "@/modules/training/api/[id]/participants/[participantId]/route"

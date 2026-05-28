@@ -1,0 +1,1 @@
+export { GET, POST , DELETE } from '@/modules/employees/api/[id]/documents/route'

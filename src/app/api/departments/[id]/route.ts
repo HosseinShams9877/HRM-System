@@ -1,0 +1,1 @@
+export { GET , PUT , DELETE } from '@/modules/organization/api/departments/[id]/route'

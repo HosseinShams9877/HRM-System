@@ -1,0 +1,1 @@
+export { PUT , DELETE } from "@/modules/attendance/api/missions/[id]/route"

@@ -1,0 +1,1 @@
+export  { GET , PUT , DELETE } from "@/modules/welfare/api/loans/[id]/route"

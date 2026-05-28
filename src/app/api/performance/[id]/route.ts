@@ -1,0 +1,1 @@
+export { GET ,PUT , PATCH , DELETE } from "@/modules/performance/api/[id]/route"

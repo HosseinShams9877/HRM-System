@@ -1,0 +1,1 @@
+export { GET , PUT , DELETE} from "@/modules/payroll/api/formulas/[id]/route"

@@ -1,0 +1,1 @@
+export { PUT , DELETE } from "@/shared/api/holidays/[id]/route"

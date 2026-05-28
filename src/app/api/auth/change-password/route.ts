@@ -1,0 +1,1 @@
+export { POST } from "@/core/api/auth/change-password/route"

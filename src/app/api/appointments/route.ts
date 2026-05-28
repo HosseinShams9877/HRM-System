@@ -1,0 +1,1 @@
+export {GET , POST} from '@/modules/appointments/api/route'

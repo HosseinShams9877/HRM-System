@@ -1,0 +1,1 @@
+export { GET , POST } from "@/modules/onboarding/api/route"

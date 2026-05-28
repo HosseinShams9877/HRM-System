@@ -1,0 +1,1 @@
+export { PUT , DELETE } from '@/modules/contracts/api/[id]/route'

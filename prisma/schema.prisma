@@ -1,0 +1,646 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// احراز هویت و حساب کاربری
+// ============================================
+
+model User {
+  id               String    @id @default(cuid())
+  email            String?   @unique               // فقط ادمین: admin@company.ir
+  mobile           String?   @unique               // شماره موبایل — نام کاربری کارمندان (مثلاً 09121234567)
+  password         String                          // هش شده — ادمین: رمز دلخواه | کارمندان: هش کد ملی
+  role             String    @default("employee") // admin, hr_manager, manager, employee
+  employeeId       String?   @unique               // اتصال به کارمند
+  employee         Employee? @relation(fields: [employeeId], references: [id])
+  isActive         Boolean   @default(true)
+  isFirstLogin     Boolean   @default(true)        // آیا اولین ورود است؟ (برای اجبار تغییر رمز)
+  passwordChangedAt DateTime?                      // تاریخ آخرین تغییر رمز عبور
+  lastLogin        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  passwordResets   PasswordReset[]
+}
+
+// کدهای بازیابی رمز عبور (SMS)
+model PasswordReset {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mobile      String                          // شماره موبایل مقصد
+  code        String                          // کد تأیید ۵ رقمی
+  isUsed      Boolean  @default(false)        // آیا استفاده شده؟
+  expiresAt   DateTime                        // زمان انقضا (۵ دقیقه)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============================================
+// کارکنان و ساختار سازمانی
+// ============================================
+
+model Employee {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  nationalCode  String   @unique
+  personnelCode String   @unique
+  email         String?
+  phone         String?
+  avatar        String?
+  birthDate     String?          // شمسی: 1370/05/12
+  birthPlace    String?          // محل تولد
+  gender        String?          // male, female
+  maritalStatus String?          // single, married
+  marriageDate  String?          // شمسی
+  childrenCount Int      @default(0)     // تعداد فرزندان
+  bloodType     String?          // A+, B+, O+, AB+
+  medicalInfo   String?          // بیماری خاص
+  address       String?          // آدرس منزل
+  homePhone     String?          // تلفن ثابت
+  education     String?          // دیپلم/کارشناسی/ارشد/دکتری
+  fieldOfStudy  String?          // رشته تحصیلی
+  university    String?          // نام دانشگاه
+  militaryStatus String?         // done, exempt, deferred
+  hireDate      String           // شمسی: 1400/01/01
+  status        String   @default("active") // active, inactive, suspended, probation
+  contractType  String?          // official, contractual, probation, temporary
+  probationEnd  String?          // پایان دوره آزمایشی شمسی
+  position      String?
+  department    String?
+  jobGrade      String?          // گروه شغلی: A1, A2, B1
+  workLocation  String?          // ساختمان/طبقه/اتاق
+  accessCardNo  String?          // شماره کارت تردد
+  managerId     String?
+  manager       Employee?  @relation("ManagerSubordinates", fields: [managerId], references: [id])
+  subordinates  Employee[] @relation("ManagerSubordinates")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User?
+  attendance    Attendance[]
+  leaves        Leave[]
+  missions      Mission[]
+  paySlips      PaySlip[]
+  contracts     Contract[]
+  performances  Performance[]
+  loanRequests  LoanRequest[]
+  trainings     TrainingParticipant[]
+  rewards       Reward[]
+  onboarding    Onboarding?
+  offboarding   Offboarding?
+  appointments  Appointment[]
+  documents     EmployeeDocument[]
+  shiftAssignments EmployeeShiftAssignment[]
+}
+
+model Department {
+  id          String @id @default(cuid())
+  name        String
+  code        String @unique
+  managerId   String?
+  parentId    String?
+  parent      Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DeptHierarchy")
+  positions   Position[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// پست سازمانی و انتصاب
+// ============================================
+
+model Position {
+  id           String   @id @default(cuid())
+  title        String                     // عنوان پست: مدیر فروش، کارشناس حقوق
+  code         String   @unique           // کد پست: POS-001
+  level        String?                    // سطح: ارشد، میانره، مبتدی
+  departmentId String?                    // دپارتمان مربوطه
+  department   Department? @relation(fields: [departmentId], references: [id])
+  jobGrade     String?                    // گروه شغلی: A1, A2, B1
+  minSalary    Float?                     // حداقل حقوق پست
+  maxSalary    Float?                     // حداکثر حقوق پست
+  description  String?                    // شرح شغل
+  requirements String?                    // الزامات (JSON)
+  headcount    Int      @default(1)       // تعداد نیروی مجاز
+  status       String   @default("active") // active, inactive
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  appointments Appointment[]
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  positionId  String
+  position    Position @relation(fields: [positionId], references: [id])
+  type        String               // اصلی، سرپرست، موقت، Acting
+  startDate   String               // شمسی: 1400/01/01
+  endDate     String?              // شمسی: null = فعلی
+  decreeNumber String?             // شماره حکم: H-1405/123
+  status      String   @default("active") // active, ended, cancelled
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// حضور و غیاب
+// ============================================
+
+// ============================================
+// شیفت کاری
+// ============================================
+
+model WorkShift {
+  id          String   @id @default(cuid())
+  name        String                     // شیفت صبح، شیفت عصر، شیفت شب، شیفت اداری، شیفت چرخشی
+  code        String   @unique           // SH-001
+  color       String   @default("#10b981") // رنگ نمایشی (هگز)
+  description String?                    // توضیحات
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schedules   ShiftSchedule[]
+  assignments EmployeeShiftAssignment[]
+  attendanceRecords Attendance[]
+}
+
+model ShiftSchedule {
+  id                  String   @id @default(cuid())
+  shiftId             String
+  shift               WorkShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  dayOfWeek           Int                      // 0=شنبه, 1=یکشنبه, ..., 6=جمعه
+  dayName             String                   // شنبه، یکشنبه، ...
+  isWorkingDay        Boolean  @default(true)  // روز کاری یا تعطیل
+  startTime           String   @default("08:00") // شروع شیفت
+  endTime             String   @default("17:00") // پایان شیفت
+  breakStart          String?                  // شروع استراحت: 12:00
+  breakEnd            String?                  // پایان استراحت: 13:00
+  lateThreshold       String?                  // سقف تاخیر مجاز: 08:15 → بعد از آن تاخیر
+  earlyLeaveThreshold String?                  // حد خروج زودتر: 16:45 → قبل از آن خروج زودرس
+  minWorkHours        Float    @default(8)     // حداقل ساعات کارکرد لازم
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([shiftId, dayOfWeek])
+}
+
+model EmployeeShiftAssignment {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  shiftId     String
+  shift       WorkShift @relation(fields: [shiftId], references: [id])
+  startDate   String               // شمسی: شروع اعتبار شیفت
+  endDate     String?              // شمسی: پایان (null = فعلی)
+  isDefault   Boolean  @default(false) // شیفت پیش‌فرض کارمند
+  status      String   @default("active") // active, ended
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, startDate, shiftId])
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  date       String              // شمسی: 1405/01/03
+  checkIn    String?             // ساعت ورود: 08:30
+  checkOut   String?             // ساعت خروج: 17:15
+  status     String   @default("present") // present, absent, late, mission, leave, early_leave
+  workHours  Float?              // ساعات کارکرد
+  overtime   Float?              // اضافه‌کاری
+  shiftId    String?             // شیفت مربوطه
+  shift      WorkShift? @relation(fields: [shiftId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, date])
+}
+
+model Leave {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  type        String   // استحقاقی، استعلاجی، بدون حقوق، ازدواج، فوت
+  startDate   String              // شمسی
+  endDate     String              // شمسی
+  totalDays   Int
+  reason      String?
+  status      String   @default("pending") // pending, approved, rejected
+  approverId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Mission {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  title       String
+  destination String?
+  startDate   String              // شمسی
+  endDate     String              // شمسی
+  totalDays   Int
+  status      String   @default("pending") // pending, approved, rejected
+  approverId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// تعطیلات
+// ============================================
+
+model Holiday {
+  id          String   @id @default(cuid())
+  title       String                     // عنوان: عید فطر، نوروز، تعطیلی توافقی
+  date        String                     // شمسی: 1405/01/01 یا 1405/01/01-1405/01/05
+  type        String                     // official, agreed, occasional
+  isRecurring Boolean  @default(false)   // تکرار هر سال
+  description String?                    // توضیحات
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// حقوق و دستمزد (کاملاً دینامیک)
+// ============================================
+
+// آیتم‌های حقوقی قابل تعریف (مزایا و کسورات)
+model PayrollItem {
+  id              String   @id @default(cuid())
+  title           String                     // عنوان: حق مسکن، بن خواربار، بیمه تأمین اجتماعی
+  code            String   @unique           // کد: HOUSING, FOOD, INSURANCE, TAX
+  category        String                     // allowance (مزایا), deduction (کسورات)
+  calculationType String                     // fixed (مبلغ ثابت), percentage (درصد), formula (فرمول)
+  value           Float                       // مبلغ ثابت (ریال) یا درصد (مثلاً ۷ برای ۷%)
+  formulaId       String?                    // اتصال به فرمول تعریف‌شده (روش اصلی)
+  formula         SalaryFormula? @relation(fields: [formulaId], references: [id])
+  isInsurable     Boolean  @default(true)    // مشمول بیمه هست؟ (حق اولاد و بن خواربار ≠ مشمول)
+  isTaxable       Boolean  @default(true)    // مشمول مالیات هست؟
+  isEditable      Boolean  @default(true)    // کاربر می‌تونه مبلغ رو ویرایش کنه؟
+  isSystem        Boolean  @default(false)   // آیتم سیستمی (بیمه/مالیات) — قابل حذف نیست
+  sortOrder       Int      @default(0)       // ترتیب نمایش
+  isActive        Boolean  @default(true)
+  year            Int                        // سال شمسی — هر سال قابل تنظیم مجدد
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  paySlipItems    PaySlipItem[]
+}
+
+// پله‌های مالیاتی (دینامیک)
+model TaxBracket {
+  id        String   @id @default(cuid())
+  year      Int                        // سال شمسی
+  orderNum  Int                        // شماره پله (۱, ۲, ۳, ...)
+  minAmount Float                      // حداقل بازه (تومان)
+  maxAmount Float                      // حداکثر بازه (تومان) — ۰ = بی‌نهایت
+  rate      Float                      // نرخ مالیات این پله (مثلاً ۱۰ = ۱۰%)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, orderNum])
+}
+
+// تنظیمات حقوقی سیستمی (دینامیک — کاملاً قابل تنظیم توسط کاربر)
+model PayrollSetting {
+  id          String   @id @default(cuid())
+  year        Int      @unique            // سال شمسی
+
+  // ─── بخش دستمزد ───
+  minDailyWage          Float               // حداقل دستمزد روزانه (ریال)
+  minMonthlyWage        Float   @default(0) // حداقل دستمزد ماهانه (ریال) = روزانه × روزهای ماه
+  baseSalaryDefault     Float   @default(0) // حقوق پایه پیش‌فرض (ریال) وقتی قرارداد مبلغ ندارد
+  workHoursPerDay       Float   @default(8) // ساعات کار در روز
+  workDaysPerMonth      Float   @default(30)// روزهای کار در ماه
+
+  // ─── بخش بیمه ───
+  insuranceRate                Float @default(7)   // نرخ بیمه سهم کارمند (مثلاً ۷ = ۷%)
+  employerInsRate              Float @default(23)  // نرخ بیمه سهم کارفرما (مثلاً ۲۳ = ۲۳%)
+  unemploymentInsRate          Float @default(1)   // نرخ بیمه بیکاری سهم کارمند (٪)
+  insuranceCeilingMultiplier   Float @default(7)   // ضریب سقف بیمه (برابر حداقل دستمزد)
+
+  // ─── ضرایب اضافه‌کار و شب‌کاری ───
+  overtimeMultiplier      Float @default(1.4)  // ضریب اضافه‌کاری
+  nightShiftMultiplier    Float @default(1.15) // ضریب شب‌کاری نوبتی
+  mixedNightMultiplier    Float @default(1.35) // ضریب شب‌کاری مختلط
+  fridayWorkMultiplier    Float @default(1.4)  // ضریب جمعه‌کاری
+  holidayWorkMultiplier   Float @default(1.4)  // ضریب تعطیل‌کاری
+
+  // ─── بخش عیدی و سنوات ───
+  eidiMinDays       Int      @default(60)      // حداقل روز عیدی
+  eidiMaxDays       Int      @default(90)      // حداکثر روز عیدی
+  sanavatRate       Float    @default(0)       // نرخ سنوات (مثلاً ۲.۵ = ۲.۵ حقوق پایه به ازای هر سال سابقه)
+  sanavatMaxYears   Float    @default(30)      // حداکثر سال سابقه مشمول سنوات
+
+  // ─── بخش مالیات ───
+  taxExemptAmount   Float                      // معافیت مالیاتی ماهانه (تومان)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// فیش حقوقی
+model PaySlip {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  year            Int                 // 1405
+  month           Int                 // 1-12
+  baseSalary      Float               // حقوق پایه (از قرارداد/انتصاب)
+  totalAllowances Float   @default(0) // جمع کل مزایا
+  totalDeductions Float   @default(0) // جمع کل کسورات
+  grossSalary     Float   @default(0) // حقوق ناخالص (پایه + مزایا)
+  netSalary       Float   @default(0) // خالص پرداختی
+  workDays        Float   @default(30)// روزهای کارکرد
+  overtimeHours   Float   @default(0) // ساعات اضافه‌کاری
+  status          String   @default("draft") // draft, confirmed, paid, closed
+  notes           String?              // توضیحات
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           PaySlipItem[]
+
+  @@unique([employeeId, year, month])
+}
+
+// آیتم‌های فیش حقوقی (دینامیک — هر فیش چندین آیتم دارد)
+model PaySlipItem {
+  id            String   @id @default(cuid())
+  paySlipId     String
+  paySlip       PaySlip  @relation(fields: [paySlipId], references: [id], onDelete: Cascade)
+  payrollItemId String?              // اتصال به آیتم حقوقی تعریف‌شده (null = آیتم دستی)
+  payrollItem   PayrollItem? @relation(fields: [payrollItemId], references: [id])
+  title         String               // عنوان (کپی از PayrollItem در زمان تولید)
+  category      String               // allowance / deduction
+  amount        Float   @default(0)  // مبلغ محاسبه‌شده (ریال)
+  sortOrder     Int      @default(0) // ترتیب نمایش
+  createdAt     DateTime @default(now())
+}
+
+// ============================================
+// فرمول‌های محاسباتی (دینامیک — قابل تعریف توسط مدیر)
+// ============================================
+
+// فرمول محاسباتی
+model SalaryFormula {
+  id          String   @id @default(cuid())
+  name        String                     // نام فرمول: محاسبه بیمه، مالیات تصاعدی، حق اولاد
+  code        String   @unique           // کد یکتا: insurance_employee, tax_progressive, family_per_child
+  description String?                    // توضیحات فرمول
+  expression  String                     // عبارت محاسباتی: {insuranceRate} * {insurableAmount} / 100
+  year        Int                        // سال شمسی
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variables   SalaryFormulaVariable[]
+  payrollItems PayrollItem[]
+}
+
+// متغیرهای فرمول (ارجاع به آیتم‌های حقوقی یا تنظیمات)
+model SalaryFormulaVariable {
+  id         String   @id @default(cuid())
+  formulaId  String
+  formula    SalaryFormula @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  varName    String                     // نام متغیر در عبارت: baseSalary, insuranceRate, childrenCount
+  sourceType String                     // item (آیتم حقوقی), setting (تنظیمات), employee_field (فیلد کارمند), constant (ثابت)
+  sourceId   String?                    // آیدی آیتم/تنظیمات مبدأ (null برای employee_field و constant)
+  label      String                     // عنوان نمایشی: نرخ بیمه، حقوق پایه، تعداد فرزندان
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([formulaId, varName])
+}
+
+// ============================================
+// قرارداد و احکام
+// ============================================
+
+model Contract {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  type            String   // قرارداد، حکم کارگزینی، حکم انتقال، حکم تغییر سمت، حکم تمدید
+  contractNumber  String?  // شماره قرارداد/حکم: C-1405/001
+  title           String
+  startDate       String              // شمسی
+  endDate         String?             // شمسی
+  amount          Float?              // مبلغ قرارداد (ریال)
+  department      String?             // دپارتمان مربوطه
+  notes           String?             // توضیحات
+  status          String   @default("active") // active, expired, terminated, draft
+  filePath        String?             // فایل ضمیمه
+  approvedById    String?             // تأییدکننده
+  approvedAt      String?             // تاریخ تأیید شمسی
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================
+// ارزیابی عملکرد
+// ============================================
+
+model Performance {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  period      String              // 1405/Q1
+  score       Float               // 0-5
+  target      Float   @default(3) // هدف
+  kpi1        Float?              // شاخص ۱
+  kpi2        Float?              // شاخص ۲
+  kpi3        Float?              // شاخص ۳
+  kpi4        Float?              // شاخص ۴
+  comments    String?
+  status      String   @default("pending") // pending, completed, reviewed
+  reviewerId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// درخواست وام و مساعده
+// ============================================
+
+model LoanRequest {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  type        String   // وام، مساعده
+  amount      Float
+  reason      String?
+  status      String   @default("pending") // pending, approved, rejected, paid
+  installments Int?    // تعداد اقساط
+  approverId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// آموزش
+// ============================================
+
+model Training {
+  id          String @id @default(cuid())
+  title       String
+  instructor  String?
+  startDate   String          // شمسی
+  endDate     String?         // شمسی
+  location    String?
+  status      String @default("planned") // planned, in_progress, completed
+  description String?         // توضیحات
+  capacity    Int?            // ظرفیت
+  category    String?         // دسته‌بندی: technical, management, soft, safety, other
+  duration    Int?            // مدت دوره به ساعت
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participants TrainingParticipant[]
+}
+
+model TrainingParticipant {
+  id          String   @id @default(cuid())
+  trainingId  String
+  training    Training @relation(fields: [trainingId], references: [id])
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  status      String   @default("registered") // registered, attending, completed, absent
+  score       Float?
+  createdAt   DateTime @default(now())
+
+  @@unique([trainingId, employeeId])
+}
+
+// ============================================
+// پاداش و تشویق
+// ============================================
+
+model Reward {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  type        String   // نقدی، غیرنقدی، تقدیر
+  title       String
+  amount      Float?
+  reason      String?
+  date        String              // شمسی
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// ورود و خروج از کار
+// ============================================
+
+model Onboarding {
+  id          String   @id @default(cuid())
+  employeeId  String   @unique
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  tasks       String?  // JSON array of tasks
+  progress    Int      @default(0) // 0-100
+  status      String   @default("in_progress") // in_progress, completed
+  startDate   String?             // شمسی
+  endDate     String?             // شمسی
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Offboarding {
+  id          String   @id @default(cuid())
+  employeeId  String   @unique
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  reason      String   // استعفا، اخراج، بازنشستگی، پایان قرارداد
+  tasks       String?  // JSON array of tasks
+  progress    Int      @default(0) // 0-100
+  status      String   @default("in_progress") // in_progress, completed
+  lastDate    String?             // شمسی
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// جذب و استخدام
+// ============================================
+
+model Recruitment {
+  id          String   @id @default(cuid())
+  title       String
+  department  String?
+  position    String?
+  status      String   @default("open") // open, interviewing, offered, hired, closed
+  applicants  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// پرونده الکترونیک
+// ============================================
+
+model EmployeeDocument {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  title       String                     // عنوان مدرک: کارت ملی، شناسنامه، مدرک تحصیلی
+  category    String                     // دسته‌بندی: هویتی، تحصیلی، پزشکی، قرارداد، سوابق، سایر
+  fileName    String                     // نام فایل آپلود شده
+  filePath    String                     // مسیر ذخیره فایل
+  fileType    String                     // pdf, jpg, png, doc
+  fileSize    Int                        // حجم به بایت
+  description String?                    // توضیحات
+  uploadedBy  String?                    // آپلود کننده
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// اطلاعیه‌ها و آیین‌نامه‌ها
+// ============================================
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String                     // متن اطلاعیه
+  priority    String   @default("normal") // urgent, high, normal, low
+  targetAudience String @default("all")   // all, managers, employees, department
+  department  String?                    // دپارتمان خاص
+  isActive    Boolean  @default(true)
+  publishDate String                     // شمسی
+  expiryDate  String?                    // شمسی
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Regulation {
+  id          String   @id @default(cuid())
+  title       String
+  content     String                     // متن آیین‌نامه
+  category    String                     // دسته‌بندی: استخدام، حقوق، حضورغیاب، آموزش، ایمنی
+  version     String   @default("1.0")   // نسخه
+  filePath    String?                    // فایل PDF
+  isActive    Boolean  @default(true)
+  publishDate String                     // شمسی
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

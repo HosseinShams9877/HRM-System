@@ -1,0 +1,1 @@
+export { GET , PUT , DELETE } from "@/core/api/positions/[id]/route"

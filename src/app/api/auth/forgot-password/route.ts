@@ -1,0 +1,1 @@
+export { POST , PUT } from "@/core/api/auth/forgot-password/route"

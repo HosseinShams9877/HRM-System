@@ -1,0 +1,1 @@
+export { GET , POST } from "@/modules/organization/api/departments/route"

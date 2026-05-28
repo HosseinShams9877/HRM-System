@@ -1,0 +1,1 @@
+export { GET } from '@/modules/attendance/api/stats/route'

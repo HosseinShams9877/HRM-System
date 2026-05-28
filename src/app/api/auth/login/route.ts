@@ -1,0 +1,1 @@
+export { POST } from "@/core/api/auth/login/route"

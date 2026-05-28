@@ -1,0 +1,1 @@
+export { GET } from '@/core/api/dashboard/route'

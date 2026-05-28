@@ -1,0 +1,1 @@
+export { POST } from "@/modules/payroll/api/generate/route"

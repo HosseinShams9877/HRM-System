@@ -1,0 +1,1 @@
+export { POST } from "@/modules/payroll/api/migrate-formula-links/route"

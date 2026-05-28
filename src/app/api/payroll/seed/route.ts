@@ -1,0 +1,1 @@
+export { POST , DELETE } from "@/modules/payroll/api/seed/route"

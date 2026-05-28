@@ -1,0 +1,1 @@
+export { GET , POST } from "@/core/api/auth/seed/route"
