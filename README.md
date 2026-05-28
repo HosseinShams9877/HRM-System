@@ -1,59 +1,58 @@
-# 🏢 HRM System - سیستم جامع مدیریت منابع انسانی
+# Enterprise HRM System - Comprehensive Human Resource Management Platform
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black)
 ![React](https://img.shields.io/badge/React-19.0.0-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Prisma](https://img.shields.io/badge/Prisma-6.11.1-green)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.0-cyan)
-![Node](https://img.shields.io/badge/Node-18+-green)
 
-سیستم مدیریت منابع انسانی کامل با قابلیت‌های حضور و غیاب، مدیریت حقوق و دستمزد، ارزیابی عملکرد، آموزش و استخدام.
+A complete Human Resource Management System with attendance tracking, payroll management, performance evaluation, training management, and recruitment features.
 
-## ✨ ویژگی‌های اصلی
+## ✨ Key Features
 
-- 📊 **داشبورد مدیریتی** - نمایش KPI و آمار لحظه‌ای با Recharts
-- 👥 **مدیریت کارکنان** - اطلاعات کامل پرسنلی و مدارک
-- 📅 **حضور و غیاب** - ثبت تردد، مرخصی، مأموریت
-- 💰 **حقوق و دستمزد** - محاسبه خودکار حقوق، بیمه، مالیات
-- 🎯 **ارزیابی عملکرد** - تعیین KPI و ارزیابی دوره‌ای
-- 📚 **آموزش** - مدیریت دوره‌های آموزشی
-- 🎓 **استخدام** - فرآیند جذب و استخدام
-- 📱 **پاسخگو** - طراحی ریسپانسیو برای موبایل و دسکتاپ
-- 🔐 **احراز هویت** - سیستم ورود با Next-Auth و سطح دسترسی نقش‌محور
-- 🎨 **UI زیبا** - کامپوننت‌های shadcn/ui + Framer Motion
+- 📊 **Admin Dashboard** - Real-time KPI monitoring and analytics with Recharts
+- 👥 **Employee Management** - Complete personnel information and document management
+- 📅 **Attendance System** - Check-in/out, leave requests, mission tracking
+- 💰 **Payroll Management** - Automated salary calculation, insurance, tax
+- 🎯 **Performance Evaluation** - KPI setting and periodic assessments
+- 📚 **Training Management** - Course and training program management
+- 🎓 **Recruitment** - Hiring and onboarding process
+- 📱 **Responsive Design** - Mobile and desktop friendly
+- 🔐 **Authentication** - Next-Auth with role-based access control
+- 🎨 **Beautiful UI** - shadcn/ui components + Framer Motion animations
 
-## 🛠️ تکنولوژی‌ها
+## 🛠️ Tech Stack
 
-| فناوری | نسخه | توضیح |
-|--------|------|-------|
-| **Next.js** | 16.1.1 | فریمورک React با App Router |
-| **React** | 19.0.0 | کتابخانه前端 |
-| **TypeScript** | 5.0 | زبان برنامه‌نویسی |
-| **Prisma** | 6.11.1 | ORM برای دیتابیس |
-| **Tailwind CSS** | 4.0 | فریمورک CSS |
-| **Next-Auth** | 4.24.11 | احراز هویت |
-| **Recharts** | 2.15.4 | نمودارهای تحلیلی |
-| **Framer Motion** | 12.23.2 | انیمیشن‌های پیشرفته |
-| **TanStack Query** | 5.100.14 | مدیریت state سمت سرور |
-| **Zod** | 4.0.2 | اعتبارسنجی داده‌ها |
-| **Zustand** | 5.0.13 | مدیریت state |
+| Technology | Version | Description |
+|------------|---------|-------------|
+| **Next.js** | 16.1.1 | React framework with App Router |
+| **React** | 19.0.0 | Frontend library |
+| **TypeScript** | 5.0 | Programming language |
+| **Prisma** | 6.11.1 | Database ORM |
+| **Tailwind CSS** | 4.0 | CSS framework |
+| **Next-Auth** | 4.24.11 | Authentication |
+| **Recharts** | 2.15.4 | Analytics charts |
+| **Framer Motion** | 12.23.2 | Advanced animations |
+| **TanStack Query** | 5.100.14 | Server state management |
+| **Zod** | 4.0.2 | Data validation |
+| **Zustand** | 5.0.13 | State management |
 
-## 📦 نصب و راه‌اندازی
+## 📦 Installation & Setup
 
 ```bash
-# clone کردن پروژه
+# Clone the repository
 git clone https://github.com/HosseinShams9877/HRM-System.git
 cd HRM-System
 
-# نصب وابستگی‌ها
+# Install dependencies
 npm install
 
-# کپی کردن فایل محیطی
+# Copy environment file
 cp .env.example .env
 
-# تنظیم دیتابیس
+# Setup database
 npm run db:generate
 npm run db:push
 
-# اجرای در حالت توسعه (پورت 4000)
+# Run development server (port 4000)
 npm run dev
