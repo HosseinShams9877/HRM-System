@@ -22,10 +22,22 @@ import {
   Phone, 
   Briefcase, 
   DollarSign,
+  FileText,
+  Upload,
+  Plus,
+  Trash2,
+  Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PersianDatePicker } from '@/core/components/ui/persian-date-picker'
 import { toShamsi } from '@/core/lib/utils-fa'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/core/components/ui/dialog'
 
 interface EmployeeProp {
   id?: string
@@ -53,17 +65,43 @@ interface EmployeeProp {
 }
 
 interface EmployeeWizardProps {
+  employeeId?: string
   onSuccess?: () => void
-  onClose?: () => void
-  employee?: EmployeeProp | null
+  onCancel?: () => void
+  startTab?: number
 }
+
+interface Document {
+  id: string
+  employeeId: string
+  title: string
+  category: string
+  fileName: string
+  fileUrl: string
+  fileSize: number
+  fileType: string
+  status: string
+  description?: string
+  uploadedAt: string
+}
+
+const CATEGORIES = [
+  { id: 'identification', label: 'مدارک شناسایی', icon: '🆔' },
+  { id: 'education', label: 'مدارک تحصیلی', icon: '🎓' },
+  { id: 'military', label: 'مدارک نظام وظیفه', icon: '🪖' },
+  { id: 'resume', label: 'رزومه', icon: '📄' },
+  { id: 'contract', label: 'قراردادها', icon: '📑' },
+  { id: 'certificate', label: 'گواهینامه‌ها', icon: '🏆' },
+  { id: 'other', label: 'سایر مدارک', icon: '📁' },
+]
 
 const STEPS = [
   { id: 1, title: 'اطلاعات هویتی', icon: User },
   { id: 2, title: 'اطلاعات تماس', icon: Phone },
   { id: 3, title: 'اطلاعات شغلی', icon: Briefcase },
   { id: 4, title: 'اطلاعات مالی', icon: DollarSign },
-  { id: 5, title: 'بررسی و ثبت', icon: Check },
+  { id: 5, title: 'مدارک پرسنلی', icon: FileText },
+  { id: 6, title: 'بررسی و ثبت', icon: Check },
 ]
 
 interface FormData {
@@ -146,13 +184,26 @@ const initialFormData: FormData = {
   laborCardNo: '',
 }
 
-export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1)
+export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }: EmployeeWizardProps) {
+  const [employee, setEmployee] = useState<EmployeeProp | null>(null)
+  const [loadingData, setLoadingData] = useState(false)
+  const [currentStep, setCurrentStep] = useState(startTab)
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [departments, setDepartments] = useState<{id: string, name: string}[]>([])
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docCategoryFilter, setDocCategoryFilter] = useState('all')
+  const [docFormData, setDocFormData] = useState({
+    title: '',
+    category: '',
+    description: '',
+  })
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
 
+  // Fetch departments
   useEffect(() => {
     fetch('/api/departments')
       .then(res => res.json())
@@ -160,35 +211,53 @@ export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardP
       .catch(console.error)
   }, [])
 
+  // Fetch employee data if editing
   useEffect(() => {
-    if (employee) {
-      setFormData({
-        ...initialFormData,
-        firstName: employee.firstName || '',
-        lastName: employee.lastName || '',
-        nationalId: employee.nationalCode || '',
-        employeeCode: employee.personnelCode || '',
-        email: employee.email || '',
-        phone: employee.phone || '',
-        birthDate: employee.birthDate ? new Date(employee.birthDate) : null,
-        birthPlace: employee.birthPlace || '',
-        gender: employee.gender || 'male',
-        maritalStatus: employee.maritalStatus || 'single',
-        childrenCount: String(employee.childrenCount || '0'),
-        address: employee.address || '',
-        landline: employee.homePhone || '',
-        educationLevel: employee.education || '',
-        educationField: employee.fieldOfStudy || '',
-        position: employee.position || '',
-        departmentId: employee.department || '',
-        contractType: employee.contractType || 'permanent',
-        hireDate: employee.hireDate ? new Date(employee.hireDate) : null,
-        baseSalary: '',
-      })
+    if (employeeId) {
+      setLoadingData(true)
+      fetch(`/api/employees/${employeeId}`)
+        .then(res => res.json())
+        .then(data => {
+          const emp = data.data || data
+          setEmployee(emp)
+          setFormData({
+            ...initialFormData,
+            firstName: emp.firstName || '',
+            lastName: emp.lastName || '',
+            fatherName: emp.fatherName || '',
+            nationalId: emp.nationalCode || '',
+            birthCertificateNo: emp.birthCertificateNo || '',
+            birthDate: emp.birthDate ? new Date(emp.birthDate) : null,
+            birthPlace: emp.birthPlace || '',
+            issuePlace: emp.issuePlace || '',
+            gender: emp.gender || 'male',
+            maritalStatus: emp.maritalStatus || 'single',
+            childrenCount: String(emp.childrenCount || '0'),
+            educationLevel: emp.education || '',
+            educationField: emp.fieldOfStudy || '',
+            phone: emp.phone || '',
+            secondaryPhone: emp.secondaryPhone || '',
+            landline: emp.homePhone || '',
+            address: emp.address || '',
+            postalCode: emp.postalCode || '',
+            email: emp.email || '',
+            employeeCode: emp.personnelCode || '',
+            departmentId: emp.department || '',
+            position: emp.position || '',
+            contractType: emp.contractType || 'permanent',
+            hireDate: emp.hireDate ? new Date(emp.hireDate) : null,
+            baseSalary: '',
+          })
+          // ✅ فقط اگر startTab به صورت خاصی نیامده باشد، currentStep را تغییر نده
+          // currentStep را همان startTab که از props آمده نگه دار
+          setLoadingData(false)
+        })
+        .catch(err => {
+          console.error('Error fetching employee:', err)
+          setLoadingData(false)
+        })
     }
-    setCurrentStep(1)
-    setErrors({})
-  }, [employee])
+  }, [employeeId, startTab])
 
   const progress = (currentStep / STEPS.length) * 100
 
@@ -236,7 +305,7 @@ export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardP
     setCurrentStep(prev => Math.max(prev - 1, 1))
   }
 
-  const handleFinalSubmit = async () => {
+  const handleUpdateEmployee = async () => {
     setLoading(true)
     try {
       const submitData = {
@@ -284,36 +353,58 @@ export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardP
         insuranceNo: formData.insuranceNo,
         laborCardNo: formData.laborCardNo,
         status: 'active',
-        createContract: true,
-        createUser: true
       }
 
-      console.log('📤 Submitting data:', submitData)  
-
-      const response = await fetch('/api/employees', {
-        method: 'POST',
+      const response = await fetch(`/api/employees/${employeeId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
       })
 
       if (response.ok) {
-        const result = await response.json()
-        toast.success('کارمند با موفقیت ثبت شد')
-        if (result.account) {
-          toast.info(`نام کاربری: ${result.account.email}`)  
-          toast.info(`رمز عبور موقت: ${result.account.temporaryPassword}`)
-          toast.warning('کارمند در اولین ورود رمز عبور را تغییر دهد')
-        
-        }
+        toast.success('اطلاعات کارمند با موفقیت بروزرسانی شد')
         onSuccess?.()
       } else {
         const error = await response.json()
-        toast.error(error.error || 'خطا در ثبت کارمند')
+        toast.error(error.error || 'خطا در بروزرسانی')
       }
     } catch (error) {
       toast.error('خطا در ارتباط با سرور')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUploadDocument = async () => {
+    if (!selectedFile || !docFormData.title || !docFormData.category) {
+      toast.error('لطفاً همه فیلدهای required را پر کنید')
+      return
+    }
+  
+    setUploadingDoc(true)
+    try {
+      setDocuments(prev => [...prev, {
+        id: Date.now().toString(),
+        employeeId: employeeId || 'temp',
+        title: docFormData.title,
+        category: docFormData.category,
+        fileName: selectedFile.name,
+        fileUrl: URL.createObjectURL(selectedFile),
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type,
+        status: 'pending',
+        description: docFormData.description,
+        uploadedAt: new Date().toISOString()
+      }])
+      
+      toast.success('مدرک اضافه شد')
+      setShowUploadDialog(false)
+      setSelectedFile(null)
+      setDocFormData({ title: '', category: '', description: '' })
+    } catch (error) {
+      toast.error('خطا در افزودن مدرک')
+    } finally {
+      setUploadingDoc(false)
     }
   }
 
@@ -376,6 +467,105 @@ export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardP
           </div>
         )
       case 5:
+        const filteredDocs = docCategoryFilter === 'all' 
+          ? documents 
+          : documents.filter(doc => doc.category === docCategoryFilter)
+        
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold">مدارک پرسنلی</h3>
+                <p className="text-sm text-gray-500">مدارک شناسایی، تحصیلی و شغلی کارمند</p>
+              </div>
+              <Button 
+                onClick={() => setShowUploadDialog(true)}
+                className="gap-2 bg-emerald-500 hover:bg-emerald-600"
+                size="sm"
+              >
+                <Upload className="w-4 h-4" />
+                افزودن مدرک
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setDocCategoryFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  docCategoryFilter === 'all'
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                همه
+              </button>
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setDocCategoryFilter(cat.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    docCategoryFilter === cat.id
+                      ? 'bg-emerald-500 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {cat.icon} {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {filteredDocs.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-xl">
+                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">هیچ مدرکی افزوده نشده است</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-3 gap-1"
+                  onClick={() => setShowUploadDialog(true)}
+                >
+                  <Plus className="w-3 h-3" />
+                  افزودن اولین مدرک
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredDocs.map((doc) => {
+                  const category = CATEGORIES.find(c => c.id === doc.category)
+                  return (
+                    <Card key={doc.id} className="border hover:shadow-md transition-all">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                              <FileText className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{doc.title}</p>
+                              <p className="text-[10px] text-gray-400">{category?.label}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-rose-500"
+                            onClick={() => setDocuments(prev => prev.filter(d => d.id !== doc.id))}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        {doc.description && (
+                          <p className="text-[10px] text-gray-500 mt-1 truncate">{doc.description}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      case 6:
         return (
           <div className="space-y-6">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
@@ -394,14 +584,22 @@ export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardP
     }
   }
 
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen" dir="rtl">
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-1 h-8 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full" />
-          <h1 className="text-2xl font-bold text-gray-800">ثبت کارمند جدید</h1>
+          <h1 className="text-2xl font-bold text-gray-800">{employeeId ? 'ویرایش کارمند' : 'ثبت کارمند جدید'}</h1>
         </div>
-        <p className="text-gray-500 mr-4">ایجاد پروفایل پرسنلی جدید در سازمان</p>
+        <p className="text-gray-500 mr-4">{employeeId ? 'ویرایش اطلاعات پرسنلی' : 'ایجاد پروفایل پرسنلی جدید در سازمان'}</p>
       </div>
       
       <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-white">
@@ -429,22 +627,113 @@ export function EmployeeWizard({ onSuccess, onClose, employee }: EmployeeWizardP
             <div className="min-h-[400px]">{renderStepContent()}</div>
 
             <div className="flex justify-between pt-4 border-t">
-              <Button variant="outline" onClick={handlePrev} disabled={currentStep === 1}>
-                <ChevronRight className="h-4 w-4 ml-1" />مرحله قبل
+              <Button variant="outline" onClick={onCancel}>
+                لغو
               </Button>
-              {currentStep < STEPS.length ? (
-                <Button onClick={handleNext} className="bg-emerald-600 hover:bg-emerald-700">
-                  مرحله بعد<ChevronLeft className="h-4 w-4 mr-1" />
-                </Button>
-              ) : (
-                <Button onClick={handleFinalSubmit} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
-                  {loading ? 'در حال ثبت...' : 'ثبت نهایی'}
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {currentStep > 1 && (
+                  <Button variant="outline" onClick={handlePrev}>
+                    <ChevronRight className="h-4 w-4 ml-1" />مرحله قبل
+                  </Button>
+                )}
+                {currentStep < STEPS.length ? (
+                  <Button onClick={handleNext} className="bg-emerald-600 hover:bg-emerald-700">
+                    مرحله بعد
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleUpdateEmployee} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'ذخیره تغییرات'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>افزودن مدرک جدید</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>فایل *</Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-emerald-400 transition-colors">
+                <input
+                  type="file"
+                  id="file-upload-doc"
+                  accept=".pdf,.doc,.docx,.jpg,.png"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                />
+                <label htmlFor="file-upload-doc" className="cursor-pointer block">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">
+                    {selectedFile ? selectedFile.name : 'برای انتخاب فایل کلیک کنید'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">PDF, DOC, JPG, PNG (حداکثر 5MB)</p>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>عنوان مدرک *</Label>
+              <Input
+                value={docFormData.title}
+                onChange={(e) => setDocFormData({ ...docFormData, title: e.target.value })}
+                placeholder="مثال: مدرک تحصیلی کارشناسی"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>دسته بندی *</Label>
+              <Select value={docFormData.category} onValueChange={(v) => setDocFormData({ ...docFormData, category: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب دسته بندی..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.icon} {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>توضیحات</Label>
+              <textarea
+                value={docFormData.description}
+                onChange={(e) => setDocFormData({ ...docFormData, description: e.target.value })}
+                className="w-full p-2 border rounded-lg min-h-[80px]"
+                placeholder="توضیحات اضافی..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowUploadDialog(false)
+              setSelectedFile(null)
+              setDocFormData({ title: '', category: '', description: '' })
+            }}>
+              انصراف
+            </Button>
+            <Button 
+              onClick={handleUploadDocument} 
+              disabled={uploadingDoc || !selectedFile || !docFormData.title || !docFormData.category}
+              className="bg-emerald-500 hover:bg-emerald-600 gap-2"
+            >
+              {uploadingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {uploadingDoc ? 'در حال افزودن...' : 'افزودن مدرک'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

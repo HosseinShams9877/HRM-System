@@ -1,18 +1,23 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Upload, File, FileText, Image, FileSpreadsheet, Trash2,
-  Download, Eye, Plus, X, Loader2, FolderOpen, Search
+  Download, Eye, Plus, X, Loader2, FolderOpen, Search, MoreHorizontal, Edit
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
+import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Input } from '@/core/components/ui/input'
 import { Label } from '@/core/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/core/components/ui/dialog'
-import { Separator } from '@/core/components/ui/separator'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/core/components/ui/dropdown-menu'
 import { useToast } from '@/core/hooks/use-toast'
 import { toPersianDigits, formatShamsi } from '@/core/lib/utils-fa'
 
@@ -34,8 +39,10 @@ interface Document {
 
 interface DocumentManagerProps {
   employeeId: string
-  documents: Document[]
-  onRefresh: () => void
+  documents?: Document[]
+  canEdit?: boolean
+  onRefresh?: () => void
+  onEditEmployee?: () => void
 }
 
 // ============================================
@@ -77,13 +84,15 @@ function formatFileSize(bytes: number): string {
 // Document Manager Component
 // ============================================
 
-export function DocumentManager({ employeeId, documents, onRefresh }: DocumentManagerProps) {
+export function DocumentManager({ employeeId, documents: propDocuments, onRefresh, onEditEmployee }: DocumentManagerProps) {
   const [showUpload, setShowUpload] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [searchDoc, setSearchDoc] = useState('')
   const [uploading, setUploading] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [documents, setDocuments] = useState<Document[]>(propDocuments || [])
+  const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -99,20 +108,38 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
+  // Fetch documents when component mounts
+  const fetchDocuments = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/employees/${employeeId}/documents`)
+      if (res.ok) {
+        const data = await res.json()
+        const docs = data.data || data.records || data
+        setDocuments(Array.isArray(docs) ? docs : [])
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load documents when employeeId changes OR when propDocuments is not provided
+  useEffect(() => {
+    if (propDocuments) {
+      setDocuments(propDocuments)
+    } else {
+      fetchDocuments()
+    }
+  }, [employeeId, propDocuments])
+
   // Filter documents
   const filteredDocs = documents.filter(d => {
     if (categoryFilter !== 'all' && d.category !== categoryFilter) return false
     if (searchDoc && !d.title.includes(searchDoc) && !d.fileName.includes(searchDoc)) return false
     return true
   })
-
-  // Group by category
-  const grouped = filteredDocs.reduce<Record<string, Document[]>>((acc, doc) => {
-    const cat = doc.category || 'other'
-    if (!acc[cat]) acc[cat] = []
-    acc[cat].push(doc)
-    return acc
-  }, {})
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,8 +167,6 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
 
     setUploading(true)
     try {
-      // In production, you'd upload to cloud storage (S3, etc.)
-      // For now, we save the metadata to the database
       const res = await fetch(`/api/employees/${employeeId}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,7 +178,8 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
         setShowUpload(false)
         setUploadForm({ title: '', category: '', description: '', fileName: '', filePath: '', fileType: '', fileSize: 0 })
         setSelectedFile(null)
-        onRefresh()
+        fetchDocuments()
+        onRefresh?.()
       } else {
         toast({ title: 'خطا در آپلود مدرک', variant: 'destructive' })
       }
@@ -174,7 +200,8 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
       })
       if (res.ok) {
         toast({ title: 'مدرک حذف شد' })
-        onRefresh()
+        fetchDocuments()
+        onRefresh?.()
       }
     } catch (err) {
       toast({ title: 'خطا در حذف مدرک', variant: 'destructive' })
@@ -191,6 +218,14 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
     return acc
   }, {})
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -204,10 +239,6 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
             {toPersianDigits(documents.length)} مدرک آپلود شده
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => setShowUpload(true)}>
-          <Upload className="w-3.5 h-3.5" />
-          آپلود مدرک
-        </Button>
       </div>
 
       {/* Category Filter & Search */}
@@ -248,68 +279,98 @@ export function DocumentManager({ employeeId, documents, onRefresh }: DocumentMa
         </div>
       </div>
 
-      {/* Documents Grid */}
+      {/* Documents Table - جدول مانند و تمام عرض */}
       {filteredDocs.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center">
             <FolderOpen className="w-10 h-10 mx-auto mb-2 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">مدرکی یافت نشد</p>
-            <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => setShowUpload(true)}>
-              <Upload className="w-3.5 h-3.5" />
-              آپلود اولین مدرک
-            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(grouped).map(([cat, docs]) => {
-            const catConfig = CATEGORIES[cat] || CATEGORIES.other
-            return (
-              <div key={cat}>
-                <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                  <catConfig.icon className="w-3.5 h-3.5" />
-                  {catConfig.label} ({toPersianDigits(docs.length)})
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {docs.map(doc => (
-                    <Card key={doc.id} className="border-0 shadow-sm group hover:shadow-md transition-all">
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-muted/50 shrink-0">
-                            <FileIcon type={doc.fileType} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h5 className="text-sm font-medium truncate">{doc.title}</h5>
-                            <p className="text-[10px] text-muted-foreground truncate">{doc.fileName}</p>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <Badge className={`text-[9px] ${catConfig.color}`}>{catConfig.label}</Badge>
-                              <span className="text-[10px] text-muted-foreground">{formatFileSize(doc.fileSize)}</span>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground mt-1">
-                              {formatShamsi(doc.createdAt.split('T')[0])}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                              <Download className="w-3.5 h-3.5" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50 dark:bg-gray-900">
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">نام مدرک</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">دسته بندی</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">تاریخ آپلود</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">حجم</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">عملیات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocs.map((doc) => {
+                const category = CATEGORIES[doc.category] || CATEGORIES.other
+                return (
+                  <tr key={doc.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-lg bg-muted/50 shrink-0">
+                          <FileIcon type={doc.fileType} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800 dark:text-gray-200">{doc.title}</p>
+                          {doc.description && (
+                            <p className="text-xs text-gray-400 mt-0.5">{doc.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                    <Badge className={`text-xs ${category.color}`}>
+  <category.icon className="w-3 h-3 inline ml-1" />
+  {category.label}
+</Badge>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      {formatShamsi(doc.createdAt.split('T')[0])}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      {formatFileSize(doc.fileSize)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          onClick={() => window.open(doc.filePath, '_blank')}
+                          title="دانلود"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              className="text-amber-600 gap-2 cursor-pointer"
+                              onClick={() => onEditEmployee?.()}
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              ویرایش
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-rose-600 gap-2 cursor-pointer"
                               onClick={() => setDeleteId(doc.id)}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

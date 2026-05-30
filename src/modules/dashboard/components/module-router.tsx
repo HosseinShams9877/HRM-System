@@ -138,8 +138,9 @@ export function ModuleRouter({
   }
   if (activeModule === 'payslips') return <PayrollModule />
   if (activeModule === 'org-pulse') return <OrgPulseModule />
-  if (activeModule === 'org-employee') return <EmployeeProfilePage />
-  if (activeModule === 'org-chart' || activeModule === 'org-departments' || activeModule === 'org-positions' || activeModule === 'organization') {
+  if (activeModule === 'org-employee') {
+    return <EmployeeProfilePage onNavigate={onNavigate} />
+  }  if (activeModule === 'org-chart' || activeModule === 'org-departments' || activeModule === 'org-positions' || activeModule === 'organization') {
     return <OrganizationModule initialTab={activeModule === 'org-departments' ? 'org-departments' : activeModule === 'org-positions' ? 'org-positions' : 'org-chart'} />
   }
   if (activeModule === 'announcements-regulations' || activeModule === 'announcements') {
@@ -147,6 +148,24 @@ export function ModuleRouter({
   }
   if (activeModule === 'regulations') {
     return <AnnouncementsRegulationsModule initialTab="regulations" />
+  }
+  if (activeModule.startsWith('employee-edit/')) {
+    const employeeId = activeModule.split('/')[1]
+    return <EmployeeWizard 
+      employeeId={employeeId}
+      startTab={1}  // ← از تب اول شروع کن
+      onSuccess={() => onNavigate('org-employee')}
+      onCancel={() => onNavigate('org-employee')}
+    />
+  }
+  if (activeModule.startsWith('employee-edit-documents/')) {
+    const employeeId = activeModule.split('/')[1]
+    return <EmployeeWizard 
+      employeeId={employeeId}
+      startTab={5}  // ← از تب مدارک شروع کن
+      onSuccess={() => onNavigate('org-employee')}
+      onCancel={() => onNavigate('org-employee')}
+    />
   }
   if (activeModule === 'employee-create') {
     return <EmployeeWizard onSuccess={() => onNavigate('employees')} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   User, Briefcase, FileText, Clock, DollarSign,
   BarChart3, Award, GraduationCap, History, Shield, Mail,
@@ -14,7 +14,6 @@ import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/core/components/ui/tabs'
 import { Separator } from '@/core/components/ui/separator'
-import { Progress } from '@/core/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/core/components/ui/avatar'
 import {
   toPersianDigits, formatCurrency, formatShamsi,
@@ -79,6 +78,7 @@ interface EmployeeFull {
 interface EmployeeProfileProps {
   employee: EmployeeFull
   onRefresh: () => void
+  onNavigate?: (id: string) => void
 }
 
 // ============================================
@@ -96,18 +96,8 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge className={`text-xs ${c.className}`}>{c.label}</Badge>
 }
 
-function LeaveStatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; className: string }> = {
-    pending: { label: 'در انتظار', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-    approved: { label: 'تایید شده', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
-    rejected: { label: 'رد شده', className: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
-  }
-  const c = config[status] || config.pending
-  return <Badge className={`text-[10px] ${c.className}`}>{c.label}</Badge>
-}
-
 // ============================================
-// Info Row (RTL کامل - راست به چپ)
+// Info Row
 // ============================================
 
 function InfoRow({ icon: Icon, label, value, iconColor = "text-emerald-500" }: { icon: React.ElementType; label: string; value: string | number | null | undefined; iconColor?: string }) {
@@ -126,17 +116,48 @@ function InfoRow({ icon: Icon, label, value, iconColor = "text-emerald-500" }: {
 // Employee Profile Component
 // ============================================
 
-export function EmployeeProfile({ employee, onRefresh }: EmployeeProfileProps) {
-
-  console.log('employee data:', employee)
+function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfileProps) {
   const [activeTab, setActiveTab] = useState('personal')
+  const [documents, setDocuments] = useState(employee.documents || [])
+  const [loadingDocs, setLoadingDocs] = useState(false)
+
   const initials = employee?.firstName?.[0] + employee?.lastName?.[0] || '?'
 
   const genderLabel = employee.gender === 'male' ? 'مرد' : employee.gender === 'female' ? 'زن' : '—'
   const maritalLabel = employee.maritalStatus === 'single' ? 'مجرد' : employee.maritalStatus === 'married' ? 'متاهل' : '—'
   const militaryLabel = employee.militaryStatus === 'done' ? 'پایان خدمت' : employee.militaryStatus === 'exempt' ? 'معاف' : employee.militaryStatus === 'deferred' ? 'معاف تحصیلی' : '—'
-  const contractLabel = employee.contractType === 'official' ? 'رسمی' : employee.contractType === 'contractual' ? 'قراردادی' : employee.contractType === 'probation' ? 'آزمایشی' : employee.contractType === 'temporary' ? 'موقت' : '—'
   const roleLabel = employee.user?.role === 'admin' ? 'مدیر سیستم' : employee.user?.role === 'hr_manager' ? 'مدیر منابع انسانی' : employee.user?.role === 'manager' ? 'مدیر' : 'کارمند'
+
+  const fetchDocuments = useCallback(async () => {
+    if (!employee.id) return
+    setLoadingDocs(true)
+    try {
+      const res = await fetch(`/api/employees/${employee.id}/documents`)
+      if (res.ok) {
+        const data = await res.json()
+        const docs = data.data || data.records || data
+        setDocuments(Array.isArray(docs) ? docs : [])
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error)
+    } finally {
+      setLoadingDocs(false)
+    }
+  }, [employee.id])
+
+  useEffect(() => {
+    if (activeTab === 'documents') {
+      fetchDocuments()
+    }
+  }, [activeTab, fetchDocuments])
+
+  const handleRefresh = () => {
+    fetchDocuments()
+    onRefresh()
+  }
+  const handleEditFromDocuments = () => {
+    onNavigate?.(`employee-edit-documents/${employee.id}`)
+  }
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -171,10 +192,16 @@ export function EmployeeProfile({ employee, onRefresh }: EmployeeProfileProps) {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Edit className="w-3.5 h-3.5" />
-                ویرایش
-              </Button>
+              {/*ویرایش اصلی*/ }
+<Button 
+  variant="outline" 
+  size="sm" 
+  className="gap-1.5"
+  onClick={() => onNavigate?.(`employee-edit/${employee.id}`)}
+>
+  <Edit className="w-3.5 h-3.5" />
+  ویرایش
+</Button>
             </div>
           </div>
         </CardContent>
@@ -212,51 +239,53 @@ export function EmployeeProfile({ employee, onRefresh }: EmployeeProfileProps) {
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Personal Info */}
+        {/* Tab: Personal Info */}
         <TabsContent value="personal" className="mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Identity */}
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-3">
-               <CardTitle className="text-sm flex items-center gap-2 justify-end">
-                   اطلاعات هویتی
-                 <User className="w-4 h-4 text-emerald-600 order-2" />
-            </CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2 justify-end">
+                  اطلاعات هویتی
+                  <User className="w-4 h-4 text-emerald-600 order-2" />
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-0.5">
-  <InfoRow icon={User} iconColor="text-emerald-500" label="نام و نام خانوادگی" value={`${employee.firstName} ${employee.lastName}`} />
-  <InfoRow icon={CreditCard} iconColor="text-blue-500" label="کد ملی" value={toPersianDigits(employee.nationalCode)} />
-  <InfoRow icon={CreditCard} iconColor="text-blue-500" label="کد پرسنلی" value={toPersianDigits(employee.personnelCode)} />
-  <InfoRow icon={Calendar} iconColor="text-purple-500" label="تاریخ تولد" value={employee.birthDate ? formatShamsi(employee.birthDate) : null} />
-  <InfoRow icon={MapPin} iconColor="text-rose-500" label="محل تولد" value={employee.birthPlace} />
-  <InfoRow icon={Users} iconColor="text-teal-500" label="جنسیت" value={genderLabel} />
-  <InfoRow icon={Heart} iconColor="text-red-500" label="وضعیت تاهل" value={maritalLabel} />
-  {employee.maritalStatus === 'married' && (
-    <InfoRow icon={Calendar} iconColor="text-purple-500" label="تاریخ ازدواج" value={employee.marriageDate ? formatShamsi(employee.marriageDate) : null} />
-  )}
-  <InfoRow icon={Users} iconColor="text-teal-500" label="تعداد فرزندان" value={employee.childrenCount > 0 ? toPersianDigits(employee.childrenCount) : null} />
-  <InfoRow icon={Droplets} iconColor="text-sky-500" label="گروه خونی" value={employee.bloodType} />
-  {employee.medicalInfo && <InfoRow icon={AlertCircle} iconColor="text-amber-500" label="بیماری خاص" value={employee.medicalInfo} />}
-</CardContent>
+                <InfoRow icon={User} iconColor="text-emerald-500" label="نام و نام خانوادگی" value={`${employee.firstName} ${employee.lastName}`} />
+                <InfoRow icon={CreditCard} iconColor="text-blue-500" label="کد ملی" value={toPersianDigits(employee.nationalCode)} />
+                <InfoRow icon={CreditCard} iconColor="text-blue-500" label="کد پرسنلی" value={toPersianDigits(employee.personnelCode)} />
+                <InfoRow icon={Calendar} iconColor="text-purple-500" label="تاریخ تولد" value={employee.birthDate ? formatShamsi(employee.birthDate) : null} />
+                <InfoRow icon={MapPin} iconColor="text-rose-500" label="محل تولد" value={employee.birthPlace} />
+                <InfoRow icon={Users} iconColor="text-teal-500" label="جنسیت" value={genderLabel} />
+                <InfoRow icon={Heart} iconColor="text-red-500" label="وضعیت تاهل" value={maritalLabel} />
+                {employee.maritalStatus === 'married' && (
+                  <InfoRow icon={Calendar} iconColor="text-purple-500" label="تاریخ ازدواج" value={employee.marriageDate ? formatShamsi(employee.marriageDate) : null} />
+                )}
+                <InfoRow icon={Users} iconColor="text-teal-500" label="تعداد فرزندان" value={employee.childrenCount > 0 ? toPersianDigits(employee.childrenCount) : null} />
+                <InfoRow icon={Droplets} iconColor="text-sky-500" label="گروه خونی" value={employee.bloodType} />
+                {employee.medicalInfo && <InfoRow icon={AlertCircle} iconColor="text-amber-500" label="بیماری خاص" value={employee.medicalInfo} />}
+              </CardContent>
             </Card>
 
             {/* Contact & Education */}
             <Card className="border-0 shadow-sm">
-             <CardTitle className="text-sm flex items-center pr-5 gap-2 justify-end">
-                  تماس و تحصیلات 
-              <User className="w-4 h-4 text-emerald-600 order-2" />
-            </CardTitle>
-            <CardContent className="space-y-0.5">
-  <InfoRow icon={Mail} iconColor="text-emerald-500" label="ایمیل" value={employee.email} />
-  <InfoRow icon={Phone} iconColor="text-blue-500" label="تلفن همراه" value={employee.phone ? toPersianDigits(employee.phone) : null} />
-  <InfoRow icon={PhoneCall} iconColor="text-purple-500" label="تلفن ثابت" value={employee.homePhone ? toPersianDigits(employee.homePhone) : null} />
-  <InfoRow icon={MapPin} iconColor="text-rose-500" label="آدرس" value={employee.address} />
-  <Separator className="my-2" />
-  <InfoRow icon={BookOpen} iconColor="text-teal-500" label="مدرک تحصیلی" value={employee.education} />
-  <InfoRow icon={BookOpen} iconColor="text-teal-500" label="رشته تحصیلی" value={employee.fieldOfStudy} />
-  <InfoRow icon={Building2} iconColor="text-amber-500" label="دانشگاه" value={employee.university} />
-  <InfoRow icon={ShieldCheck} iconColor="text-sky-500" label="نظام وظیفه" value={militaryLabel} />
-</CardContent>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2 justify-end">
+                  تماس و تحصیلات
+                  <User className="w-4 h-4 text-emerald-600 order-2" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5">
+                <InfoRow icon={Mail} iconColor="text-emerald-500" label="ایمیل" value={employee.email} />
+                <InfoRow icon={Phone} iconColor="text-blue-500" label="تلفن همراه" value={employee.phone ? toPersianDigits(employee.phone) : null} />
+                <InfoRow icon={PhoneCall} iconColor="text-purple-500" label="تلفن ثابت" value={employee.homePhone ? toPersianDigits(employee.homePhone) : null} />
+                <InfoRow icon={MapPin} iconColor="text-rose-500" label="آدرس" value={employee.address} />
+                <Separator className="my-2" />
+                <InfoRow icon={BookOpen} iconColor="text-teal-500" label="مدرک تحصیلی" value={employee.education} />
+                <InfoRow icon={BookOpen} iconColor="text-teal-500" label="رشته تحصیلی" value={employee.fieldOfStudy} />
+                <InfoRow icon={Building2} iconColor="text-amber-500" label="دانشگاه" value={employee.university} />
+                <InfoRow icon={ShieldCheck} iconColor="text-sky-500" label="نظام وظیفه" value={militaryLabel} />
+              </CardContent>
             </Card>
 
             {/* Account Info */}
@@ -301,8 +330,49 @@ export function EmployeeProfile({ employee, onRefresh }: EmployeeProfileProps) {
           </div>
         </TabsContent>
 
-        {/* بقیه تب‌ها به همین روال قبلی خودشون */}
+        {/* Tab: Documents */}
+        <TabsContent value="documents" className="mt-4">
+        <DocumentManager 
+  employeeId={employee.id} 
+  documents={documents}
+  onRefresh={handleRefresh}
+  onEditEmployee={handleEditFromDocuments}  
+/>
+        </TabsContent>
+
+        {/* Placeholders for other tabs */}
+        <TabsContent value="training" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><GraduationCap className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">آموزش‌های کارمند</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="welfare" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><Award className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">رفاهی و پاداش‌ها</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><BarChart3 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">ارزیابی عملکرد</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="salary" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><DollarSign className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">سوابق حقوق و دستمزد</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">سوابق حضور و غیاب</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="contracts" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">قراردادهای کارمند</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="job" className="mt-4">
+          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">اطلاعات شغلی تکمیلی</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
+
+export const EmployeeProfile = React.memo(EmployeeProfileInner, (prevProps, nextProps) => {
+  return prevProps.employee?.id === nextProps.employee?.id
+})

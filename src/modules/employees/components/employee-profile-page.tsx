@@ -16,7 +16,11 @@ interface EmployeeBasic {
   position: string | null
 }
 
-export function EmployeeProfilePage() {
+interface EmployeeProfilePageProps {
+  onNavigate?: (id: string) => void
+}
+
+export function EmployeeProfilePage({ onNavigate }: EmployeeProfilePageProps) {
   const [employees, setEmployees] = useState<EmployeeBasic[]>([])
   const [filteredEmployees, setFilteredEmployees] = useState<EmployeeBasic[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -222,6 +226,7 @@ useEffect(() => {
     <EmployeeProfile 
       employee={employee}
       onRefresh={handleRefresh}
+      onNavigate={onNavigate}
     />
   </div>
 )}
