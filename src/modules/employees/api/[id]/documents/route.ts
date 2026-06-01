@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
+import { writeFile, mkdir, unlink } from 'fs/promises'
+import path from 'path'
 
 // GET /api/employees/[id]/documents — لیست مدارک کارمند
 export async function GET(
@@ -12,47 +14,111 @@ export async function GET(
       where: { employeeId: id },
       orderBy: { createdAt: 'desc' },
     })
-    return NextResponse.json(documents)
+    return NextResponse.json({ data: documents })
   } catch (error) {
     console.error('Get documents error:', error)
     return NextResponse.json({ error: 'خطا در دریافت مدارک' }, { status: 500 })
   }
 }
 
-// POST /api/employees/[id]/documents — آپلود مدرک جدید
+// POST /api/employees/[id]/documents — آپلود مدرک جدید (با FormData)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const body = await req.json()
+    const formData = await req.formData()
+    
+    const file = formData.get('file') as File
+    const title = formData.get('title') as string
+    const category = formData.get('category') as string
+    const description = formData.get('description') as string
 
-    if (!body.title || !body.category || !body.fileName || !body.filePath) {
+    // اعتبارسنجی
+    if (!file || !title || !category) {
       return NextResponse.json(
-        { error: 'عنوان، دسته‌بندی و فایل الزامی است' },
+        { error: 'فایل، عنوان و دسته‌بندی الزامی است' },
         { status: 400 }
       )
     }
 
+    // خواندن فایل
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    
+    // ایجاد پوشه آپلود
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', id)
+    await mkdir(uploadDir, { recursive: true })
+    
+    // ذخیره فایل با نام یکتا
+    const timestamp = Date.now()
+    const safeFileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+    const filePath = path.join(uploadDir, safeFileName)
+    await writeFile(filePath, buffer)
+
+    // ذخیره در دیتابیس
     const document = await db.employeeDocument.create({
       data: {
         employeeId: id,
-        title: body.title,
-        category: body.category,
-        fileName: body.fileName,
-        filePath: body.filePath,
-        fileType: body.fileType || 'pdf',
-        fileSize: body.fileSize || 0,
-        description: body.description || null,
-        uploadedBy: body.uploadedBy || null,
+        title,
+        category,
+        fileName: file.name,
+        filePath: `/uploads/${id}/${safeFileName}`,
+        fileType: file.name.split('.').pop()?.toLowerCase() || 'pdf',
+        fileSize: file.size,
+        description: description || null,
       },
     })
 
-    return NextResponse.json(document, { status: 201 })
+    return NextResponse.json({ data: document }, { status: 201 })
   } catch (error) {
     console.error('Upload document error:', error)
-    return NextResponse.json({ error: 'خطا در آپلود مدرک' }, { status: 500 })
+    return NextResponse.json({ error: 'خطا در آپلود مدرک: ' + String(error) }, { status: 500 })
+  }
+}
+
+
+
+// PUT /api/employees/[id]/documents — ویرایش مدرک
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  console.log('🔵 PUT request received!')
+  try {
+    const { id } = await params
+    const { searchParams } = new URL(req.url)
+    const docId = searchParams.get('docId')
+    const body = await req.json()
+
+    if (!docId) {
+      return NextResponse.json({ error: 'شناسه مدرک الزامی است' }, { status: 400 })
+    }
+
+    // بررسی وجود مدرک
+    const existingDoc = await db.employeeDocument.findFirst({
+      where: { id: docId, employeeId: id },
+    })
+
+    if (!existingDoc) {
+      return NextResponse.json({ error: 'مدرک یافت نشد' }, { status: 404 })
+    }
+
+    // بروزرسانی مدرک
+    const updatedDoc = await db.employeeDocument.update({
+      where: { id: docId },
+      data: {
+        title: body.title,
+        category: body.category,
+        description: body.description,
+      },
+    })
+
+    return NextResponse.json({ data: updatedDoc })
+  } catch (error) {
+    console.error('Update document error:', error)
+    return NextResponse.json({ error: 'خطا در ویرایش مدرک' }, { status: 500 })
   }
 }
 
@@ -70,8 +136,24 @@ export async function DELETE(
       return NextResponse.json({ error: 'شناسه مدرک الزامی است' }, { status: 400 })
     }
 
-    await db.employeeDocument.delete({
+    // اول مدرک را پیدا کن تا مسیر فایل را داشته باشیم
+    const doc = await db.employeeDocument.findFirst({
       where: { id: docId, employeeId: id },
+    })
+
+    if (doc) {
+      // حذف فایل از دیسک (اگر وجود داشته باشد)
+      try {
+        const filePath = path.join(process.cwd(), 'public', doc.filePath)
+        await unlink(filePath).catch(() => {})
+      } catch (e) {
+        // خطای حذف فایل را نادیده بگیر
+      }
+    }
+
+    // حذف از دیتابیس
+    await db.employeeDocument.delete({
+      where: { id: docId },
     })
 
     return NextResponse.json({ message: 'مدرک حذف شد' })

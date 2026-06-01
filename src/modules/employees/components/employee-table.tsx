@@ -70,7 +70,7 @@ function EmployeeCard({
             </Avatar>
             <div>
               <h3 className="text-sm font-bold">{employee.firstName} {employee.lastName}</h3>
-              <p className="text-[11px] text-muted-foreground">{employee.position || 'بدون پست'}</p>
+              <p className="text-[11px] text-muted-foreground">{employee.positionName|| employee.position || 'بدون پست'}</p>
             </div>
           </div>
           <DropdownMenu>
@@ -97,7 +97,7 @@ function EmployeeCard({
         <div className="space-y-1.5 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-2">
             <Briefcase className="w-3 h-3" />
-            <span>{employee.department || '—'}</span>
+            <span>{employee.departmentName || employee.department || '—'}</span>
           </div>
           <div className="flex items-center gap-2">
             <Briefcase className="w-3 h-3" />
@@ -187,8 +187,8 @@ function EmployeeRow({
         </div>
       </td>
       <td className="px-3 py-3 text-xs">{toPersianDigits(employee.personnelCode)}</td>
-      <td className="px-3 py-3 text-xs">{employee.position || '—'}</td>
-      <td className="px-3 py-3 text-xs">{employee.department || '—'}</td>
+      <td className="px-3 py-3 text-xs">{employee.positionName || employee.position || '—'}</td>
+      <td className="px-3 py-3 text-xs">{ employee.departmentName || employee.department || '—'}</td>
       <td className="px-3 py-3 text-xs">{getContractTypeLabel(employee.contractType)}</td>
       <td className="px-3 py-3 text-xs">{employee.hireDate || '—'}</td>
       <td className="px-3 py-3 text-xs">

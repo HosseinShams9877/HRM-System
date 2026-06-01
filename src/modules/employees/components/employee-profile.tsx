@@ -57,6 +57,7 @@ interface EmployeeFull {
   workLocation: string | null
   accessCardNo: string | null
   managerId: string | null
+  positionName :string
   createdAt: string
   updatedAt: string
   user: { id: string; email: string; role: string; isActive: boolean; lastLogin: string | null } | null
@@ -73,6 +74,7 @@ interface EmployeeFull {
   offboarding: { id: string; reason: string; progress: number; status: string; tasks: string | null } | null
   appointments: Array<{ id: string; type: string; startDate: string; endDate: string | null; decreeNumber: string | null; status: string; position: { title: string; code: string } }>
   documents: Array<{ id: string; title: string; category: string; fileName: string; filePath: string; fileType: string; fileSize: number; description: string | null; createdAt: string }>
+  departmentName?: string
 }
 
 interface EmployeeProfileProps {
@@ -120,6 +122,7 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
   const [activeTab, setActiveTab] = useState('personal')
   const [documents, setDocuments] = useState(employee.documents || [])
   const [loadingDocs, setLoadingDocs] = useState(false)
+  const [departmentName, setDepartmentName] = useState('')
 
   const initials = employee?.firstName?.[0] + employee?.lastName?.[0] || '?'
 
@@ -145,6 +148,15 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
     }
   }, [employee.id])
 
+  // دریافت نام دپارتمان
+  useEffect(() => {
+    if (employee.department && employee.department !== 'null' && !employee.department?.startsWith('cmp')) {
+      setDepartmentName(employee.departmentName)
+    } else {
+      setDepartmentName('')
+    }
+  }, [employee.department])
+
   useEffect(() => {
     if (activeTab === 'documents') {
       fetchDocuments()
@@ -155,9 +167,13 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
     fetchDocuments()
     onRefresh()
   }
+
   const handleEditFromDocuments = () => {
     onNavigate?.(`employee-edit-documents/${employee.id}`)
   }
+
+  // نمایش دپارتمان: فقط اگر نام واقعی داشته باشه و ID نباشه
+  const displayDepartment = departmentName && !departmentName.startsWith('cmp') && departmentName !== 'null' ? ` • ${departmentName}` : ''
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -177,7 +193,8 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
                 <StatusBadge status={employee.status} />
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {employee.position || 'بدون پست'} {employee.department ? `• ${employee.department}` : ''}
+                {employee.positionName || employee.position || 'بدون پست'}
+                {displayDepartment}
               </p>
               <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> کد پرسنلی: {toPersianDigits(employee.personnelCode)}</span>
@@ -192,16 +209,15 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {/*ویرایش اصلی*/ }
-<Button 
-  variant="outline" 
-  size="sm" 
-  className="gap-1.5"
-  onClick={() => onNavigate?.(`employee-edit/${employee.id}`)}
->
-  <Edit className="w-3.5 h-3.5" />
-  ویرایش
-</Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-1.5"
+                onClick={() => onNavigate?.(`employee-edit/${employee.id}`)}
+              >
+                <Edit className="w-3.5 h-3.5" />
+                ویرایش
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -332,12 +348,12 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
 
         {/* Tab: Documents */}
         <TabsContent value="documents" className="mt-4">
-        <DocumentManager 
-  employeeId={employee.id} 
-  documents={documents}
-  onRefresh={handleRefresh}
-  onEditEmployee={handleEditFromDocuments}  
-/>
+          <DocumentManager 
+            employeeId={employee.id} 
+            documents={documents}
+            onRefresh={handleRefresh}
+            onEditEmployee={handleEditFromDocuments}  
+          />
         </TabsContent>
 
         {/* Placeholders for other tabs */}

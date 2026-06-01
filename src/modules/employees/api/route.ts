@@ -21,7 +21,6 @@ function generatePassword(length = 10): string {
 export async function GET(req: NextRequest) {
   try {
     const sessionUser = await getSessionUser()
-    console.log("currentUser" , sessionUser)
     if (!sessionUser) {
       return NextResponse.json({ error: 'دسترسی غیرمجاز' }, { status: 401 })
     }
@@ -65,8 +64,41 @@ export async function GET(req: NextRequest) {
       db.employee.count({ where }),
     ])
 
+    // ✅ گرفتن اسامی دپارتمان‌ها
+    const departmentIds = [...new Set(employees.map(e => e.department).filter(Boolean))]
+    const departments = await db.department.findMany({
+      where: { id: { in: departmentIds } },
+      select: { id: true, name: true }
+    })
+    
+    const departmentMap = departments.reduce((acc, dept) => {
+      acc[dept.id] = dept.name
+      return acc
+    }, {} as Record<string, string>)
+
+    // ✅ گرفتن اسامی سمت‌ها (position)
+    const positionIds = [...new Set(employees.map(e => e.position).filter(Boolean))]
+    let positionMap: Record<string, string> = {}
+    
+    if (positionIds.length > 0) {
+      const positions = await db.position.findMany({
+        where: { id: { in: positionIds } },
+        select: { id: true, title: true }
+      })
+      positionMap = positions.reduce((acc, pos) => {
+        acc[pos.id] = pos.title
+        return acc
+      }, {} as Record<string, string>)
+    }
+
+    const formattedEmployees = employees.map(emp => ({
+      ...emp,
+      departmentName: departmentMap[emp.department] || null,
+      positionName: positionMap[emp.position] || emp.position || null,  // ✅ اضافه شد
+    }))
+
     return NextResponse.json({
-      data: employees,
+      data: formattedEmployees,
       pagination: createPaginationMeta(page, limit, total),
     })
   } catch (error) {
@@ -149,6 +181,7 @@ export async function POST(req: NextRequest) {
         university: data.university || null,
         militaryStatus: data.militaryStatus || null,
         hireDate: data.hireDate,
+        fatherName: body.fatherName,
         status: data.status || 'active',
         contractType: data.contractType || null,
         probationEnd: data.probationEnd || null,
@@ -158,6 +191,12 @@ export async function POST(req: NextRequest) {
         workLocation: data.workLocation || null,
         accessCardNo: data.accessCardNo || null,
         managerId: null,
+        birthCertificateNo: data.birthCertificateNo || null,   
+        issuePlace: data.issuePlace || null,                   
+        secondaryPhone: data.secondaryPhone || null,         
+        postalCode: data.postalCode || null,                  
+        contractMonths: data.contractMonths || null,          
+        contractEndDate: data.contractEndDate || null,
       },
     })
 

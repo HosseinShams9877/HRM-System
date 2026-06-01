@@ -92,6 +92,8 @@ const CATEGORIES = [
   { id: 'resume', label: 'رزومه', icon: '📄' },
   { id: 'contract', label: 'قراردادها', icon: '📑' },
   { id: 'certificate', label: 'گواهینامه‌ها', icon: '🏆' },
+  { id: 'medical', label: 'مدارک پزشکی', icon: '🏥' },        // ← اضافه کن
+  { id: 'insurance', label: 'بیمه', icon: '🛡️' },            // ← اضافه کن
   { id: 'other', label: 'سایر مدارک', icon: '📁' },
 ]
 
@@ -186,6 +188,8 @@ const initialFormData: FormData = {
 
 export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }: EmployeeWizardProps) {
   const [employee, setEmployee] = useState<EmployeeProp | null>(null)
+  const [dbDocuments, setDbDocuments] = useState<Document[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
   const [currentStep, setCurrentStep] = useState(startTab)
   const [formData, setFormData] = useState<FormData>(initialFormData)
@@ -201,7 +205,16 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
     category: '',
     description: '',
   })
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; title: string; category: string; description: string }[]>([])
   const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [positions, setPositions] = useState<{id: string, name: string, maxOccupancy: number | null, currentCount: number}[]>([])
+  const [positionName, setPositionName] = useState('')
+  const [departmentName, setDepartmentName] = useState('')
+  const [showAddPositionDialog, setShowAddPositionDialog] = useState(false)
+  const [newPositionName, setNewPositionName] = useState('')
+  const [addingPosition, setAddingPosition] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showPositionDropdown, setShowPositionDropdown] = useState(false)
 
   // Fetch departments
   useEffect(() => {
@@ -210,54 +223,126 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
       .then(data => setDepartments(Array.isArray(data) ? data : (data.data || [])))
       .catch(console.error)
   }, [])
+  const fetchPositions = async () => {
+    if (!formData.departmentId){
+    return}
+    try {
+      const response = await fetch(`/api/positions?departmentId=${formData.departmentId}`)
+      const data = await response.json()
+      const formattedPositions = (data.data || data).map((pos: any) => ({
+        id: pos.id,
+        name: pos.title,           
+        maxOccupancy: pos.headcount,
+        currentCount: pos.occupiedCount || pos.appointments?.length || 0
+      }))
+            setPositions(formattedPositions)
+    } catch (error) {
+      console.error('Error fetching positions:', error)
+    }
+  }
+
+  const fetchDocuments = async (empId: string) => {
+    setLoadingDocs(true)
+    try {
+      const response = await fetch(`/api/employees/${empId}/documents`)
+      const data = await response.json()
+      if (response.ok) {
+        const docs = data.data || data
+        setDbDocuments(docs)
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error)
+    } finally {
+      setLoadingDocs(false)
+    }
+  }
 
   // Fetch employee data if editing
-  useEffect(() => {
-    if (employeeId) {
-      setLoadingData(true)
-      fetch(`/api/employees/${employeeId}`)
-        .then(res => res.json())
-        .then(data => {
-          const emp = data.data || data
-          setEmployee(emp)
-          setFormData({
-            ...initialFormData,
-            firstName: emp.firstName || '',
-            lastName: emp.lastName || '',
-            fatherName: emp.fatherName || '',
-            nationalId: emp.nationalCode || '',
-            birthCertificateNo: emp.birthCertificateNo || '',
-            birthDate: emp.birthDate ? new Date(emp.birthDate) : null,
-            birthPlace: emp.birthPlace || '',
-            issuePlace: emp.issuePlace || '',
-            gender: emp.gender || 'male',
-            maritalStatus: emp.maritalStatus || 'single',
-            childrenCount: String(emp.childrenCount || '0'),
-            educationLevel: emp.education || '',
-            educationField: emp.fieldOfStudy || '',
-            phone: emp.phone || '',
-            secondaryPhone: emp.secondaryPhone || '',
-            landline: emp.homePhone || '',
-            address: emp.address || '',
-            postalCode: emp.postalCode || '',
-            email: emp.email || '',
-            employeeCode: emp.personnelCode || '',
-            departmentId: emp.department || '',
-            position: emp.position || '',
-            contractType: emp.contractType || 'permanent',
-            hireDate: emp.hireDate ? new Date(emp.hireDate) : null,
-            baseSalary: '',
-          })
-          // ✅ فقط اگر startTab به صورت خاصی نیامده باشد، currentStep را تغییر نده
-          // currentStep را همان startTab که از props آمده نگه دار
-          setLoadingData(false)
+useEffect(() => {
+  if (employeeId) {
+    setLoadingData(true)
+    Promise.all([
+      fetch(`/api/employees/${employeeId}`).then(res => res.json()),
+      fetch(`/api/employees/${employeeId}/financial`).then(res => res.json()).catch(() => ({}))
+    ])
+      .then(([empRes, financialRes]) => {
+        const emp = empRes.data || empRes
+        const financial = financialRes.data || financialRes
+        setEmployee(emp)
+        setFormData({
+          ...initialFormData,
+          firstName: emp.firstName || '',
+          lastName: emp.lastName || '',
+          fatherName: emp.fatherName || '',
+          nationalId: emp.nationalCode || '',
+          birthCertificateNo: emp.birthCertificateNo || '',
+          birthDate: emp.birthDate ? new Date(emp.birthDate) : null,
+          birthPlace: emp.birthPlace || '',
+          issuePlace: emp.issuePlace || '',
+          gender: emp.gender || 'male',
+          maritalStatus: emp.maritalStatus || 'single',
+          childrenCount: String(emp.childrenCount || '0'),
+          educationLevel: 
+          emp.education === 'دیپلم' ? 'diploma' :
+          emp.education === 'کاردانی' ? 'associate' :
+          emp.education === 'کارشناسی' ? 'bachelor' :
+          emp.education === 'کارشناسی ارشد' ? 'master' :
+          emp.education === 'دکتری' ? 'phd' : '',
+          educationField: emp.fieldOfStudy || '',
+          phone: emp.phone || '',
+          secondaryPhone: emp.secondaryPhone || '',
+          landline: emp.homePhone || '',
+          address: emp.address || '',
+          postalCode: emp.postalCode || '',
+          email: emp.email || '',
+          employeeCode: emp.personnelCode || '',
+          departmentId: emp.department || '',
+          position: emp.position || '',
+          contractType: emp.contractType || 'permanent',
+          hireDate: emp.hireDate ? new Date(emp.hireDate) : null,
+          contractMonths: String(emp.contractMonths || ''),
+          // اطلاعات مالی از financial
+          baseSalary: financial.baseSalary?.toString() || '',
+          housingAllowance: financial.housingAllowance?.toString() || '0',
+          workAllowance: financial.workAllowance?.toString() || '0',
+          spouseAllowance: financial.spouseAllowance?.toString() || '0',
+          childAllowance: financial.childAllowance?.toString() || '0',
+          yearsOfServiceBase: financial.yearsOfServiceBase?.toString() || '0',
+          responsibilityAllowance: financial.responsibilityAllowance?.toString() || '0',
+          otherAllowances: financial.otherAllowances?.toString() || '0',
+          bankAccountNo: financial.bankAccountNo || '',
+          insuranceNo: financial.insuranceNo || '',
+          laborCardNo: financial.laborCardNo || '',
         })
-        .catch(err => {
-          console.error('Error fetching employee:', err)
-          setLoadingData(false)
-        })
-    }
-  }, [employeeId, startTab])
+        fetchDocuments(employeeId)
+        setLoadingData(false)
+      })
+      .catch(err => {
+        console.error('Error fetching employee:', err)
+        setLoadingData(false)
+      })
+  }
+}, [employeeId, startTab])
+
+// هر وقت departmentId تغییر کرد، سموم رو بگیر و نام دپارتمان رو پیدا کن
+useEffect(() => {
+  if (formData.departmentId) {
+    fetchPositions()
+    const dept = departments.find(d => d.id === formData.departmentId)
+    setDepartmentName(dept?.name || '')
+  } else {
+    setPositions([])
+    setDepartmentName('')
+  }
+}, [formData.departmentId, departments])
+
+// برای تنظیم positionName در حالت ویرایش
+useEffect(() => {
+  if (formData.position && positions.length > 0) {
+    const pos = positions.find(p => p.id === formData.position)
+    if (pos) setPositionName(pos.name)
+  }
+}, [formData.position, positions])
 
   const progress = (currentStep / STEPS.length) * 100
 
@@ -305,106 +390,316 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
     setCurrentStep(prev => Math.max(prev - 1, 1))
   }
 
-  const handleUpdateEmployee = async () => {
+  // اضافه کن بعد از تابع handleUpdateEmployee
+  const handleFinalSubmit = async () => {
     setLoading(true)
+    const educationMap: Record<string, string> = {
+      'diploma': 'دیپلم',
+      'associate': 'کاردانی',
+      'bachelor': 'کارشناسی',
+      'master': 'کارشناسی ارشد',
+      'phd': 'دکتری',
+    }
+    
+    // تابع تبدیل تاریخ ساده
+    const dateToSimpleShamsi = (date: Date | null): string => {
+      if (!date) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}/${month}/${day}`
+    }
+  
     try {
-      const submitData = {
+      // 1. اطلاعات پایه کارمند (با تمام فیلدها)
+      const employeeData: Record<string, any> = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        fatherName: formData.fatherName,
+        fatherName: formData.fatherName || null,
         nationalCode: formData.nationalId,
-        birthCertificateNo: formData.birthCertificateNo,
-        birthDate: formData.birthDate ? toShamsi(formData.birthDate) : '',
-        birthPlace: formData.birthPlace,
-        issuePlace: formData.issuePlace,
-        gender: formData.gender,
-        maritalStatus: formData.maritalStatus,
+        birthCertificateNo: formData.birthCertificateNo || null,
+        birthDate: formData.birthDate ? dateToSimpleShamsi(formData.birthDate) : '',
+        birthPlace: formData.birthPlace || null,
+        issuePlace: formData.issuePlace || null,
+        gender: formData.gender || null,
+        maritalStatus: formData.maritalStatus || null,
         childrenCount: parseInt(formData.childrenCount) || 0,
-        education: formData.educationLevel === 'diploma' ? 'دیپلم' :
-             formData.educationLevel === 'associate' ? 'کاردانی' :
-             formData.educationLevel === 'bachelor' ? 'کارشناسی' :
-             formData.educationLevel === 'master' ? 'کارشناسی ارشد' :
-             formData.educationLevel === 'phd' ? 'دکتری' : '',
-        fieldOfStudy: formData.educationField,
-        phone: formData.phone,
-        secondaryPhone: formData.secondaryPhone,
-        homePhone: formData.landline,
-        address: formData.address,
-        postalCode: formData.postalCode,
-        email: formData.email,
+        fieldOfStudy: formData.educationField || null,
+        phone: formData.phone || null,
+        secondaryPhone: formData.secondaryPhone || null,
+        homePhone: formData.landline || null,
+        education: educationMap[formData.educationLevel] || '',
+        address: formData.address || null,
+        postalCode: formData.postalCode || null,
+        email: formData.email || null,
         personnelCode: formData.employeeCode,
-        department: formData.departmentId,
-        position: formData.position,
+        department: formData.departmentId || null,
+        position: formData.position || null,
         contractType: formData.contractType === 'permanent' ? 'official' : 
-        formData.contractType === 'temporary' ? 'temporary' :
-        formData.contractType === 'hourly' ? 'contractual' : 'official',
-        hireDate: formData.hireDate ? toShamsi(formData.hireDate) : '',  
-        contractEndDate: formData.contractEndDate ? toShamsi(formData.contractEndDate) : null, 
+          formData.contractType === 'temporary' ? 'temporary' :
+          formData.contractType === 'hourly' ? 'contractual' : 'official',
+        hireDate: formData.hireDate ? dateToSimpleShamsi(formData.hireDate) : '',
+        contractEndDate: formData.contractEndDate ? dateToSimpleShamsi(formData.contractEndDate) : null,
         contractMonths: parseInt(formData.contractMonths) || null,
-        baseSalary: parseFloat(formData.baseSalary) || 0,
-        housingAllowance: parseFloat(formData.housingAllowance) || 0,
-        workAllowance: parseFloat(formData.workAllowance) || 0,
-        spouseAllowance: parseFloat(formData.spouseAllowance) || 0,
-        childAllowance: parseFloat(formData.childAllowance) || 0,
-        yearsOfServiceBase: parseFloat(formData.yearsOfServiceBase) || 0,
-        responsibilityAllowance: parseFloat(formData.responsibilityAllowance) || 0,
-        otherAllowances: parseFloat(formData.otherAllowances) || 0,
-        bankAccountNo: formData.bankAccountNo,
-        insuranceNo: formData.insuranceNo,
-        laborCardNo: formData.laborCardNo,
         status: 'active',
+        createContract: true,
+        createUser: true,
       }
-
-      const response = await fetch(`/api/employees/${employeeId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData),
+  
+      // حذف فیلدهای خالی (undefined, null, '')
+      Object.keys(employeeData).forEach(key => {
+        const value = employeeData[key]
+        if (value === undefined || value === null || value === '') {
+          delete employeeData[key]
+        }
       })
-
+  
+      console.log('📤 Sending employee data:', employeeData)
+  
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(employeeData),
+      })
+  
       if (response.ok) {
-        toast.success('اطلاعات کارمند با موفقیت بروزرسانی شد')
+        const result = await response.json()
+        const newEmployeeId = result.employee?.id || result.data?.id || result.id
+        
+        // 2. ذخیره اطلاعات مالی (بعد از ایجاد کارمند)
+        if (newEmployeeId) {
+          const financialData: Record<string, any> = {
+            bankAccountNo: formData.bankAccountNo || null,
+            insuranceNo: formData.insuranceNo || null,
+            laborCardNo: formData.laborCardNo || null,
+            baseSalary: parseFloat(formData.baseSalary) || 0,
+            housingAllowance: parseFloat(formData.housingAllowance) || 0,
+            workAllowance: parseFloat(formData.workAllowance) || 0,
+            spouseAllowance: parseFloat(formData.spouseAllowance) || 0,
+            childAllowance: parseFloat(formData.childAllowance) || 0,
+            yearsOfServiceBase: parseFloat(formData.yearsOfServiceBase) || 0,
+            responsibilityAllowance: parseFloat(formData.responsibilityAllowance) || 0,
+            otherAllowances: parseFloat(formData.otherAllowances) || 0,
+          }
+          
+          // حذف فیلدهای خالی در financialData
+          Object.keys(financialData).forEach(key => {
+            if (financialData[key] === undefined || financialData[key] === null) {
+              delete financialData[key]
+            }
+          })
+          
+          await fetch(`/api/employees/${newEmployeeId}/financial`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(financialData),
+          }).catch(err => console.warn('Financial data save error:', err))
+        }
+        
+        // 3. ذخیره مدارک (اگر وجود دارند)
+        if (newEmployeeId && pendingFiles.length > 0) {
+          for (const pendingFile of pendingFiles) {
+            const formData = new FormData()
+            formData.append('file', pendingFile.file)
+            formData.append('title', pendingFile.title)
+            formData.append('category', pendingFile.category)
+            formData.append('description', pendingFile.description || '')
+            
+            await fetch(`/api/employees/${newEmployeeId}/documents`, {
+              method: 'POST',
+              body: formData,
+            }).catch(console.error)
+          }
+        }
+        
+        toast.success('کارمند با موفقیت ثبت شد')
+        if (result.account) {
+          toast.info(`رمز عبور موقت: ${result.account.temporaryPassword || result.account.password}`)
+          toast.warning('کارمند در اولین ورود رمز عبور را تغییر دهد')
+        }
         onSuccess?.()
       } else {
         const error = await response.json()
-        toast.error(error.error || 'خطا در بروزرسانی')
+        console.error('Server error:', error)
+        toast.error(error.error || 'خطا در ثبت کارمند')
       }
     } catch (error) {
+      console.error('Submit error:', error)
       toast.error('خطا در ارتباط با سرور')
     } finally {
       setLoading(false)
     }
   }
+// اضافه کن در بالای کامپوننت، قبل از توابع
+const dateToSimpleShamsi = (date: Date | null): string => {
+  if (!date) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}/${month}/${day}`
+}
 
-  const handleUploadDocument = async () => {
-    if (!selectedFile || !docFormData.title || !docFormData.category) {
-      toast.error('لطفاً همه فیلدهای required را پر کنید')
-      return
+const handleUpdateEmployee = async () => {
+  setLoading(true)
+  const educationMap: Record<string, string> = {
+    'diploma': 'دیپلم',
+    'associate': 'کاردانی',
+    'bachelor': 'کارشناسی',
+    'master': 'کارشناسی ارشد',
+    'phd': 'دکتری',
+  }
+
+  // 🔴 استفاده از تابع جدید برای تبدیل تاریخ
+  const birthDateStr = formData.birthDate ? dateToSimpleShamsi(formData.birthDate) : ''
+  const hireDateStr = formData.hireDate ? dateToSimpleShamsi(formData.hireDate) : ''
+
+
+  try {
+    // 1. به‌روزرسانی اطلاعات پایه کارمند
+    const employeeData: Record<string, any> = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      fatherName: formData.fatherName || null,
+      nationalCode: formData.nationalId,
+      birthCertificateNo: formData.birthCertificateNo || null,  // ✅ اضافه شد
+      birthDate: formData.birthDate ? dateToSimpleShamsi(formData.birthDate) : '',
+      birthPlace: formData.birthPlace || null,
+      issuePlace: formData.issuePlace || null,                  // ✅ اضافه شد
+      gender: formData.gender || null,
+      maritalStatus: formData.maritalStatus || null,
+      childrenCount: parseInt(formData.childrenCount) || 0,
+      fieldOfStudy: formData.educationField || null,
+      phone: formData.phone || null,
+      secondaryPhone: formData.secondaryPhone || null,          // ✅ اضافه شد
+      homePhone: formData.landline || null,
+      education: educationMap[formData.educationLevel] || '',
+      address: formData.address || null,
+      postalCode: formData.postalCode || null,                  // ✅ اضافه شد
+      email: formData.email || null,
+      personnelCode: formData.employeeCode,
+      department: formData.departmentId || null,
+      position: formData.position || null,
+      contractType: formData.contractType === 'permanent' ? 'official' : 
+        formData.contractType === 'temporary' ? 'temporary' :
+        formData.contractType === 'hourly' ? 'contractual' : 'official',
+      hireDate: formData.hireDate ? dateToSimpleShamsi(formData.hireDate) : '',
+      contractEndDate: formData.contractEndDate ? dateToSimpleShamsi(formData.contractEndDate) : null,  // ✅ اضافه شد
+      contractMonths: parseInt(formData.contractMonths) || null,  // ✅ اضافه شد
+      status: 'active',
+      createContract: true,
+      createUser: true,
     }
+
+    // حذف فیلدهای خالی
+    Object.keys(employeeData).forEach(key => {
+      if (employeeData[key] === undefined || employeeData[key] === null || employeeData[key] === '') {
+        delete employeeData[key]
+      }
+    })
+
+
+    const employeeResponse = await fetch(`/api/employees/${employeeId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(employeeData),
+    })
+
+    if (!employeeResponse.ok) {
+      const error = await employeeResponse.json()
+      console.error('Employee update error:', error)
+      throw new Error(error.error || 'خطا در بروزرسانی اطلاعات پایه')
+    }
+
+    // 2. به‌روزرسانی اطلاعات مالی
+    const financialData = {
+      bankAccountNo: formData.bankAccountNo || null,
+      insuranceNo: formData.insuranceNo || null,
+      laborCardNo: formData.laborCardNo || null,
+      baseSalary: parseFloat(formData.baseSalary) || 0,
+      housingAllowance: parseFloat(formData.housingAllowance) || 0,
+      workAllowance: parseFloat(formData.workAllowance) || 0,
+      spouseAllowance: parseFloat(formData.spouseAllowance) || 0,
+      childAllowance: parseFloat(formData.childAllowance) || 0,
+      yearsOfServiceBase: parseFloat(formData.yearsOfServiceBase) || 0,
+      responsibilityAllowance: parseFloat(formData.responsibilityAllowance) || 0,
+      otherAllowances: parseFloat(formData.otherAllowances) || 0,
+    }
+
+    const financialResponse = await fetch(`/api/employees/${employeeId}/financial`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(financialData),
+    })
+
+    if (!financialResponse.ok) {
+      console.warn('Financial data update failed:', await financialResponse.json())
+    }
+
+    toast.success('اطلاعات کارمند با موفقیت بروزرسانی شد')
+    onSuccess?.()
+  } catch (error: any) {
+    console.error('Update error:', error)
+    toast.error(error.message || 'خطا در بروزرسانی')
+  } finally {
+    setLoading(false)
+  }
+}
+
+const handleUploadDocument = async () => {
+  if (!selectedFile || !docFormData.title || !docFormData.category) {
+    toast.error('لطفاً همه فیلدهای required را پر کنید')
+    return
+  }
+
+  // ذخیره موقت فایل در state (نه آپلود به سرور)
+  setPendingFiles(prev => [...prev, {
+    file: selectedFile,
+    title: docFormData.title,
+    category: docFormData.category,
+    description: docFormData.description,
+  }])
   
-    setUploadingDoc(true)
-    try {
-      setDocuments(prev => [...prev, {
-        id: Date.now().toString(),
-        employeeId: employeeId || 'temp',
-        title: docFormData.title,
-        category: docFormData.category,
-        fileName: selectedFile.name,
-        fileUrl: URL.createObjectURL(selectedFile),
-        fileSize: selectedFile.size,
-        fileType: selectedFile.type,
-        status: 'pending',
-        description: docFormData.description,
-        uploadedAt: new Date().toISOString()
-      }])
-      
-      toast.success('مدرک اضافه شد')
-      setShowUploadDialog(false)
-      setSelectedFile(null)
-      setDocFormData({ title: '', category: '', description: '' })
-    } catch (error) {
-      toast.error('خطا در افزودن مدرک')
-    } finally {
-      setUploadingDoc(false)
+  // برای نمایش در UI (پیش‌نمایش موقت)
+  const tempId = Date.now().toString()
+  setDbDocuments(prev => [...prev, {
+    id: tempId,
+    employeeId: 'pending',
+    title: docFormData.title,
+    category: docFormData.category,
+    fileName: selectedFile.name,
+    fileUrl: URL.createObjectURL(selectedFile),
+    fileSize: selectedFile.size,
+    fileType: selectedFile.type,
+    status: 'pending',
+    description: docFormData.description,
+    uploadedAt: new Date().toISOString()
+  }])
+  
+  toast.success('مدرک اضافه شد (پس از ثبت کارمند آپلود می‌شود)')
+  setShowUploadDialog(false)
+  setSelectedFile(null)
+  setDocFormData({ title: '', category: '', description: '' })
+}
+
+  const handleDeleteDocument = async (docId: string, isFromDb: boolean) => {
+    if (isFromDb) {
+      try {
+        const response = await fetch(`/api/employees/${employeeId}/documents/${docId}`, {
+          method: 'DELETE',
+        })
+        if (response.ok) {
+          setDbDocuments(prev => prev.filter(d => d.id !== docId))
+          toast.success('مدرک با موفقیت حذف شد')
+        } else {
+          toast.error('خطا در حذف مدرک')
+        }
+      } catch (error) {
+        console.error('Error deleting document:', error)
+        toast.error('خطا در حذف مدرک')
+      }
+    } else {
+      setDocuments(prev => prev.filter(d => d.id !== docId))
+      toast.success('مدرک حذف شد')
     }
   }
 
@@ -415,10 +710,11 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2"><Label>نام <span className="text-red-500">*</span></Label><Input value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />{errors.firstName && <p className="text-red-500 text-xs">{errors.firstName}</p>}</div>
             <div className="space-y-2"><Label>نام خانوادگی <span className="text-red-500">*</span></Label><Input value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />{errors.lastName && <p className="text-red-500 text-xs">{errors.lastName}</p>}</div>
-            <div className="space-y-2"><Label>نام پدر <span className="text-red-500">*</span></Label><Input value={formData.fatherName} onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })} />{errors.fatherName && <p className="text-red-500 text-xs">{errors.fatherName}</p>}</div>
+            <div className="space-y-2"><Label>نام پدر <span className="text-red-500">*</span></Label><Input value={formData.fatherName} onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}  />{errors.fatherName && <p className="text-red-500 text-xs">{errors.fatherName}</p>}</div>
             <div className="space-y-2"><Label>کد ملی <span className="text-red-500">*</span></Label><Input value={formData.nationalId} onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })} maxLength={10} dir="ltr" />{errors.nationalId && <p className="text-red-500 text-xs">{errors.nationalId}</p>}</div>
             <div className="space-y-2"><Label>شماره شناسنامه</Label><Input value={formData.birthCertificateNo} onChange={(e) => setFormData({ ...formData, birthCertificateNo: e.target.value })} dir="ltr" /></div>
-            <div className="space-y-2"><Label>تاریخ تولد</Label><PersianDatePicker value={formData.birthDate} onChange={(date) => setFormData({ ...formData, birthDate: date })} /></div>
+            <div className="space-y-2"><Label>تاریخ تولد</Label><PersianDatePicker minDate={new Date(1920, 0, 1)} maxDate={new Date(2016, 11, 31)}  value={formData.birthDate} onChange={(date) => setFormData({ ...formData, birthDate: date })} /></div>
+            
             <div className="space-y-2"><Label>محل تولد</Label><Input value={formData.birthPlace} onChange={(e) => setFormData({ ...formData, birthPlace: e.target.value })} /></div>
             <div className="space-y-2"><Label>محل صدور</Label><Input value={formData.issuePlace} onChange={(e) => setFormData({ ...formData, issuePlace: e.target.value })} /></div>
             <div className="space-y-2"><Label>جنسیت</Label><Select value={formData.gender} onValueChange={(v) => setFormData({ ...formData, gender: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="male">مرد</SelectItem><SelectItem value="female">زن</SelectItem></SelectContent></Select></div>
@@ -444,7 +740,92 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2"><Label>کد کارمندی <span className="text-red-500">*</span></Label><Input value={formData.employeeCode} onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })} dir="ltr" />{errors.employeeCode && <p className="text-red-500 text-xs">{errors.employeeCode}</p>}</div>
             <div className="space-y-2"><Label>واحد سازمانی <span className="text-red-500">*</span></Label><Select value={formData.departmentId} onValueChange={(v) => setFormData({ ...formData, departmentId: v })}><SelectTrigger><SelectValue placeholder="انتخاب واحد سازمانی" /></SelectTrigger><SelectContent>{departments.map(dept => (<SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>))}</SelectContent></Select>{errors.departmentId && <p className="text-red-500 text-xs">{errors.departmentId}</p>}</div>
-            <div className="space-y-2"><Label>سمت <span className="text-red-500">*</span></Label><Input value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} />{errors.position && <p className="text-red-500 text-xs">{errors.position}</p>}</div>
+            <div className="space-y-2">
+  <Label>سمت <span className="text-red-500">*</span></Label>
+  <div className="relative">
+  <div 
+    className="w-full border rounded-lg px-4 py-3 bg-white flex justify-between items-center cursor-pointer"
+    onClick={() => {
+      console.log('🔵 Clicked, current showPositionDropdown:', showPositionDropdown)
+      console.log('🔵 positions length:', positions.length)
+      setShowPositionDropdown(!showPositionDropdown)
+    }}
+  >
+    <span className={positionName ? 'text-black-900' : 'text-gray-400'}>
+      {positionName || 'انتخاب سمت...'}
+    </span>
+    <ChevronLeft className={`h-4 w-4 transition-transform ${showPositionDropdown ? 'rotate-90' : ''}`} />
+  </div>
+  
+  {console.log('🔵🔵🔵 Rendering dropdown, showPositionDropdown:', showPositionDropdown, 'positions.length:', positions.length)}
+  
+  {showPositionDropdown && (
+   <div className="absolute z-[9999] w-full mt-1 bg-white border rounded-lg shadow-lg" style={{ top: '100%', left: 0, right: 0 }}>
+      <div className="p-2 border-b">
+        <Input
+          type="text"
+          placeholder="جستجوی سمت..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full"
+          autoFocus
+        />
+      </div>
+      <div className="max-h-60 overflow-y-auto">
+        {positions.length === 0 && !searchTerm ? (
+          <div className="px-4 py-3 text-center text-gray-500">
+            لطفاً ابتدا واحد سازمانی را انتخاب کنید
+          </div>
+        ) : (
+          <>
+            {positions
+              .filter(p => !searchTerm || p.name.includes(searchTerm))
+              .map((position) => {
+                const isFull = position.maxOccupancy && (position.currentCount || 0) >= position.maxOccupancy
+                return (
+                  <div
+                    key={position.id}
+                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${isFull ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => {
+                      if (!isFull) {
+                        setFormData({ ...formData, position: position.id })
+                        setPositionName(position.name)
+                        setShowPositionDropdown(false)
+                        setSearchTerm('')
+                      } else {
+                        toast.error(`ظرفیت سمت "${position.name}" تکمیل شده است`)
+                      }
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span>{position.name}  </span>
+                      {position.maxOccupancy && (
+                        <span className="text-xs text-gray-500">
+                          ({position.currentCount || 0}/{position.maxOccupancy})
+                        </span>
+                      )}
+                      {isFull && <span className="text-xs text-rose-500">(پر شده)</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            <div
+              className="px-4 py-2 text-emerald-600 cursor-pointer hover:bg-gray-100 border-t"
+              onClick={() => {
+                setShowPositionDropdown(false)
+                setShowAddPositionDialog(true)
+              }}
+            >
+              + افزودن سمت جدید
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )}
+</div>
+  {errors.position && <p className="text-red-500 text-xs">{errors.position}</p>}
+</div>
             <div className="space-y-2"><Label>نوع قرارداد <span className="text-red-500">*</span></Label><Select value={formData.contractType} onValueChange={(v) => setFormData({ ...formData, contractType: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="permanent">دائمی</SelectItem><SelectItem value="temporary">موقت</SelectItem><SelectItem value="hourly">ساعتی</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label>تاریخ شروع قرارداد <span className="text-red-500">*</span></Label><PersianDatePicker value={formData.hireDate} onChange={(date) => setFormData({ ...formData, hireDate: date })} />{errors.hireDate && <p className="text-red-500 text-xs">{errors.hireDate}</p>}</div>
             {formData.contractType === 'temporary' && (<div className="space-y-2"><Label>مدت قرارداد (ماه) <span className="text-red-500">*</span></Label><Input type="number" value={formData.contractMonths} onChange={(e) => { const months = e.target.value; setFormData({ ...formData, contractMonths: months }); if (months && formData.hireDate) { const endDate = new Date(formData.hireDate); endDate.setMonth(endDate.getMonth() + parseInt(months)); setFormData(prev => ({ ...prev, contractEndDate: endDate })); } }} min="1" />{errors.contractMonths && <p className="text-red-500 text-xs">{errors.contractMonths}</p>}</div>)}
@@ -467,9 +848,10 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
           </div>
         )
       case 5:
+        const allDocuments = [...dbDocuments, ...documents]
         const filteredDocs = docCategoryFilter === 'all' 
-          ? documents 
-          : documents.filter(doc => doc.category === docCategoryFilter)
+          ? allDocuments 
+          : allDocuments.filter(doc => doc.category === docCategoryFilter)
         
         return (
           <div className="space-y-6">
@@ -532,30 +914,48 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {filteredDocs.map((doc) => {
                   const category = CATEGORIES.find(c => c.id === doc.category)
+                  const isFromDb = doc.id && !doc.fileUrl?.startsWith('blob:') && doc.fileUrl?.startsWith('/uploads')
                   return (
                     <Card key={doc.id} className="border hover:shadow-md transition-all">
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
                               <FileText className="w-4 h-4 text-emerald-600" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{doc.title}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{doc.title}</p>
                               <p className="text-[10px] text-gray-400">{category?.label}</p>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-rose-500"
-                            onClick={() => setDocuments(prev => prev.filter(d => d.id !== doc.id))}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {isFromDb && doc.fileUrl && (
+                              <a 
+                                href={doc.fileUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-600 text-xs px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                              >
+                                مشاهده
+                              </a>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                              onClick={() => handleDeleteDocument(doc.id, isFromDb)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         {doc.description && (
                           <p className="text-[10px] text-gray-500 mt-1 truncate">{doc.description}</p>
+                        )}
+                        {isFromDb && doc.uploadedAt && (
+                          <p className="text-[9px] text-gray-400 mt-1">
+                            آپلود: {new Date(doc.uploadedAt).toLocaleDateString('fa-IR')}
+                          </p>
                         )}
                       </CardContent>
                     </Card>
@@ -575,7 +975,11 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
             <div className="grid grid-cols-2 gap-4">
               <Card><CardContent className="p-4"><p className="font-medium">{formData.firstName} {formData.lastName}</p><p className="text-xs text-gray-500">کد ملی: {formData.nationalId}</p></CardContent></Card>
               <Card><CardContent className="p-4"><p className="font-medium">{formData.phone}</p><p className="text-xs text-gray-500 truncate">{formData.address}</p></CardContent></Card>
-              <Card><CardContent className="p-4"><p className="font-medium">{formData.position}</p><p className="text-xs text-gray-500">کد: {formData.employeeCode}</p></CardContent></Card>
+              <Card><CardContent className="p-4">
+                  <p className="font-medium">{positionName || formData.position || '—'}</p>
+                  <p className="text-xs text-gray-500">واحد: {departmentName || formData.departmentId}</p>
+                  <p className="text-xs text-gray-500">کد: {formData.employeeCode}</p>
+              </CardContent></Card>
               <Card><CardContent className="p-4"><p className="font-medium">حقوق پایه: {(parseFloat(formData.baseSalary) || 0).toLocaleString()} ریال</p></CardContent></Card>
             </div>
           </div>
@@ -605,24 +1009,34 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
       <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-white">
         <CardContent className="p-6">
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Progress value={progress} className="h-2" />
-              <div className="flex justify-between">
-                {STEPS.map((step) => {
-                  const Icon = step.icon
-                  const isActive = currentStep === step.id
-                  const isCompleted = currentStep > step.id
-                  return (
-                    <div key={step.id} className={`flex flex-col items-center text-xs cursor-pointer ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-500' : 'text-gray-400'}`} onClick={() => step.id <= currentStep && setCurrentStep(step.id)}>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${isActive ? 'bg-emerald-100 border-2 border-emerald-500' : isCompleted ? 'bg-emerald-500 text-white' : 'bg-gray-100'}`}>
-                        {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-                      </div>
-                      <span className="hidden sm:block">{step.title}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+            {/* Progress Bar - با جهت راست به چپ */}
+<div className="space-y-2">
+  <div className="relative w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+    <div 
+      className="absolute top-0 right-0 h-full bg-gradient-to-l from-emerald-500 to-teal-500 rounded-full transition-all duration-300"
+      style={{ width: `${progress}%` }}
+    />
+  </div>
+  <div className="flex justify-between">
+    {STEPS.map((step) => {
+      const Icon = step.icon
+      const isActive = currentStep === step.id
+      const isCompleted = currentStep > step.id
+      return (
+        <div 
+          key={step.id} 
+          className={`flex flex-col items-center text-xs cursor-pointer ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-500' : 'text-gray-400'}`} 
+          onClick={() => step.id <= currentStep && setCurrentStep(step.id)}
+        >
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${isActive ? 'bg-emerald-100 border-2 border-emerald-500' : isCompleted ? 'bg-emerald-500 text-white' : 'bg-gray-100'}`}>
+            {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+          </div>
+          <span className="hidden sm:block">{step.title}</span>
+        </div>
+      )
+    })}
+  </div>
+</div>
 
             <div className="min-h-[400px]">{renderStepContent()}</div>
 
@@ -642,9 +1056,13 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
                     <ChevronLeft className="h-4 w-4 mr-1" />
                   </Button>
                 ) : (
-                  <Button onClick={handleUpdateEmployee} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'ذخیره تغییرات'}
-                  </Button>
+                  <Button 
+  onClick={employeeId ? handleUpdateEmployee : handleFinalSubmit} 
+  disabled={loading} 
+  className="bg-emerald-600 hover:bg-emerald-700"
+>
+  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (employeeId ? 'ذخیره تغییرات' : 'ثبت نهایی')}
+</Button>
                 )}
               </div>
             </div>
@@ -708,7 +1126,7 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
               <Label>توضیحات</Label>
               <textarea
                 value={docFormData.description}
-                onChange={(e) => setDocFormData({ ...docFormData, description: e.target.value })}
+                onChange={(e) => setDocFormData({ ...formData, description: e.target.value })}
                 className="w-full p-2 border rounded-lg min-h-[80px]"
                 placeholder="توضیحات اضافی..."
               />
@@ -730,6 +1148,81 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
             >
               {uploadingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {uploadingDoc ? 'در حال افزودن...' : 'افزودن مدرک'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+            <Dialog open={showAddPositionDialog} onOpenChange={setShowAddPositionDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>افزودن سمت جدید</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>نام سمت *</Label>
+              <Input
+                value={newPositionName}
+                onChange={(e) => setNewPositionName(e.target.value)}
+                placeholder="مثال: برنامه‌نویس ارشد"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>واحد سازمانی</Label>
+              <Input
+                value={departmentName || departments.find(d => d.id === formData.departmentId)?.name || ''}
+                disabled
+                className="bg-gray-100"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowAddPositionDialog(false)
+              setNewPositionName('')
+            }}>
+              انصراف
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (!newPositionName.trim()) {
+                  toast.error('نام سمت الزامی است')
+                  return
+                }
+                if (!formData.departmentId) {
+                  toast.error('لطفاً ابتدا واحد سازمانی را انتخاب کنید')
+                  return
+                }
+                setAddingPosition(true)
+                try {
+                  const response = await fetch('/api/positions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      name: newPositionName,
+                      departmentId: formData.departmentId
+                    })
+                  })
+                  if (response.ok) {
+                    const result = await response.json()
+                    const newPosition = result.data || result
+                    toast.success('سمت با موفقیت اضافه شد')
+                    setNewPositionName('')
+                    setShowAddPositionDialog(false)
+                    await fetchPositions()
+                    setFormData({ ...formData, position: newPosition.id })
+                    setPositionName(newPosition.name)
+                  } else {
+                    toast.error('خطا در افزودن سمت')
+                  }
+                } catch {
+                  toast.error('خطا در ارتباط با سرور')
+                } finally {
+                  setAddingPosition(false)
+                }
+              }}
+              disabled={addingPosition || !newPositionName.trim()}
+            >
+              {addingPosition ? <Loader2 className="h-4 w-4 animate-spin" /> : 'افزودن'}
             </Button>
           </DialogFooter>
         </DialogContent>

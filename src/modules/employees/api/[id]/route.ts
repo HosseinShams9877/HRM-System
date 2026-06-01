@@ -11,6 +11,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    
+    // 1. اول کارمند رو بگیر
     const employee = await db.employee.findUnique({
       where: { id },
       include: {
@@ -22,7 +24,34 @@ export async function GET(
       return NextResponse.json({ error: 'کارمند یافت نشد' }, { status: 404 })
     }
 
-    return NextResponse.json({ data: employee })
+    // 2. بعد (در صورت وجود) نام دپارتمان رو بگیر
+    let departmentName = null
+    if (employee.department) {
+      const department = await db.department.findUnique({
+        where: { id: employee.department },
+        select: { name: true }
+      })
+      departmentName = department?.name || null
+    }
+
+    // 3. بعد (در صورت وجود) نام سمت رو بگیر
+    let positionName = null
+    if (employee.position) {
+      const position = await db.position.findUnique({
+        where: { id: employee.position },
+        select: { title: true }
+      })
+      positionName = position?.title || null
+    }
+
+    // 4. ترکیب نهایی
+    const formattedEmployee = {
+      ...employee,
+      departmentName,
+      positionName,
+    }
+
+    return NextResponse.json({ data: formattedEmployee })
   } catch (error) {
     console.error('Get employee error:', error)
     return NextResponse.json({ error: 'خطا در دریافت اطلاعات کارمند' }, { status: 500 })
@@ -46,13 +75,11 @@ export async function PUT(
     const { id } = await params
     const body = await req.json()
 
-    // Check employee exists
     const existing = await db.employee.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'کارمند یافت نشد' }, { status: 404 })
     }
 
-    // Validate update data
     const validation = validateWithZod(employeeUpdateSchema, { ...body, id })
     if (!validation.success) {
       return NextResponse.json(
@@ -62,9 +89,7 @@ export async function PUT(
     }
 
     const data = validation.data
-    // Remove id and undefined fields
     const { id: _, userRole, ...updateData } = data
-    // Clean up undefined/null values
     const cleanedData: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(updateData)) {
       if (value !== undefined) {
@@ -72,13 +97,19 @@ export async function PUT(
       }
     }
 
-    // Update employee
+    // ✅ اضافه کردن فیلدهای گمشده
+    if (body.education !== undefined) cleanedData.education = body.education === '' ? null : body.education
+    if (body.contractMonths !== undefined) cleanedData.contractMonths = body.contractMonths
+    if (body.secondaryPhone !== undefined) cleanedData.secondaryPhone = body.secondaryPhone === '' ? null : body.secondaryPhone
+    if (body.birthCertificateNo !== undefined) cleanedData.birthCertificateNo = body.birthCertificateNo === '' ? null : body.birthCertificateNo
+    if (body.issuePlace !== undefined) cleanedData.issuePlace = body.issuePlace === '' ? null : body.issuePlace
+    if (body.fieldOfStudy !== undefined) cleanedData.fieldOfStudy = body.fieldOfStudy === '' ? null : body.fieldOfStudy
+
     const employee = await db.employee.update({
       where: { id },
       data: cleanedData,
     })
 
-    // Update user role if provided
     if (userRole) {
       await db.user.updateMany({
         where: { employeeId: id },
@@ -92,7 +123,6 @@ export async function PUT(
     return NextResponse.json({ error: 'خطا در بروزرسانی اطلاعات کارمند' }, { status: 500 })
   }
 }
-
 // DELETE /api/employees/[id] — حذف کارمند
 export async function DELETE(
   req: NextRequest,

@@ -15,7 +15,6 @@ import { toPersianDigits } from '@/core/lib/utils-fa'
 import { exportToCSV } from '../lib/export-utils'
 import { ConfirmDialog } from '@/shared/components/confirm-dialog'
 import { EmployeeProfile } from './employee-profile'
-import { EmployeeWizard } from './employee-form'
 import type { Employee, NewAccountInfo, PaginationInfo } from '../index'
 import { CSV_COLUMNS, getEmployeeCSVData } from '../constants'
 import { EmployeeFilters } from './employee-filters'
@@ -252,8 +251,7 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
   }, [debouncedSearch, departmentFilter, statusFilter])
 
   // Get unique departments for filter
-  const departments = [...new Set(employees.map(e => e.department).filter(Boolean))] as string[]
-
+  const departments = [...new Set(employees.map(e => e.departmentName).filter(Boolean))] as string[]
   // Toggle select
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
@@ -301,47 +299,6 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
     setDeleteConfirm(null)
   }
 
-  // Submit form (create/update)
-  const handleFormSubmit = async (data: Record<string, unknown>) => {
-    try {
-      if (editingEmployee) {
-        // Update
-        const res = await fetch(`/api/employees/${editingEmployee.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        })
-        if (res.ok) {
-          sonnerToast.success('اطلاعات کارمند بروزرسانی شد')
-          setShowForm(false)
-          setEditingEmployee(null)
-          fetchEmployees()
-        }
-      } else {
-        // Create
-        const res = await fetch('/api/employees', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        })
-        if (res.ok) {
-          const result = await res.json()
-          sonnerToast.success('کارمند جدید ثبت شد')
-
-          // Show account info dialog
-          if (result.account) {
-            setAccountInfo(result.account)
-            setShowAccountDialog(true)
-          }
-
-          setShowForm(false)
-          fetchEmployees()
-        }
-      }
-    } catch (err) {
-      sonnerToast.error('خطا در ثبت اطلاعات')
-    }
-  }
 
   // Summary stats
   const totalActive = employees.filter(e => e.status === 'active').length
@@ -572,13 +529,7 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
         pagination={pagination}
       />
 
-      {/* Employee Form Dialog */}
-      <EmployeeWizard
-        open={showForm}
-        onClose={() => { setShowForm(false); setEditingEmployee(null) }}
-        onSubmit={handleFormSubmit}
-        employee={editingEmployee}
-      />
+     
 
       {/* Delete Confirm Dialog */}
       <ConfirmDialog

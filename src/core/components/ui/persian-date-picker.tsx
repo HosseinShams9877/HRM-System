@@ -10,8 +10,7 @@ import {
   PopoverTrigger,
 } from '@/core/components/ui/popover'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
-import { format } from 'date-fns-jalali'
-import { faIR } from 'date-fns-jalali/locale'
+import moment from 'moment-jalaali'
 
 // Persian month names
 const PERSIAN_MONTHS = [
@@ -51,17 +50,19 @@ export function PersianDatePicker({
   const [viewDate, setViewDate] = useState(value || new Date())
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Convert Gregorian to Jalali year/month/day
+  // تبدیل میلادی به شمسی
   const toJalali = (date: Date) => {
-    try {
-      return {
-        year: parseInt(format(date, 'yyyy', { locale: faIR })),
-        month: parseInt(format(date, 'MM', { locale: faIR })),
-        day: parseInt(format(date, 'dd', { locale: faIR }))
-      }
-    } catch {
-      return { year: 1403, month: 1, day: 1 }
+    const m = moment(date)
+    return {
+      year: m.jYear(),
+      month: m.jMonth() + 1,
+      day: m.jDate()
     }
+  }
+
+  // تبدیل شمسی به میلادی
+  const jalaliToGregorian = (year: number, month: number, day: number): Date => {
+    return moment(`${year}/${month}/${day}`, 'jYYYY/jMM/jDD').toDate()
   }
 
   // Get days in a Jalali month
@@ -69,43 +70,16 @@ export function PersianDatePicker({
     if (month <= 6) return 31
     if (month <= 11) return 30
     // Esfand - check for leap year
-    const isLeapYear = ((year % 33) % 4 - 1) === Math.floor((year % 33) / 4)
+    const isLeapYear = moment(`${year}/1/1`, 'jYYYY/jMM/jDD').jIsLeapYear()
     return isLeapYear ? 30 : 29
   }
 
-  // Get the day of week for the first day of month (0 = Saturday in Persian calendar)
+  // Get the day of week for the first day of month
   const getFirstDayOfMonth = (year: number, month: number) => {
-    // Create a date in the middle of the Jalali month to avoid edge cases
-    const gregorianDate = jalaliToGregorian(year, month, 15)
+    const gregorianDate = jalaliToGregorian(year, month, 1)
     const dayOfWeek = gregorianDate.getDay()
     // Convert to Persian week (Saturday = 0)
     return (dayOfWeek + 1) % 7
-  }
-
-  // Convert Jalali to Gregorian
-  const jalaliToGregorian = (jy: number, jm: number, jd: number): Date => {
-    // Simplified conversion using a reference point
-    // Reference: 1403/01/01 = 2024/03/20
-    const referenceJalali = { year: 1403, month: 1, day: 1 }
-    const referenceGregorian = new Date(2024, 2, 20) // March 20, 2024
-    
-    let totalDays = jd - 1
-    
-    // Add days from months in current year
-    for (let m = 1; m < jm; m++) {
-      totalDays += getDaysInMonth(jy, m)
-    }
-    
-    // Calculate difference in years from reference
-    const yearDiff = jy - referenceJalali.year
-    
-    // Add days for complete years (average 365.2425 days per year)
-    totalDays += Math.floor(yearDiff * 365.25)
-    
-    const result = new Date(referenceGregorian)
-    result.setDate(result.getDate() + totalDays)
-    
-    return result
   }
 
   // Generate calendar days
@@ -200,7 +174,7 @@ export function PersianDatePicker({
 
   // Year options for dropdown
   const jalali = toJalali(viewDate)
-  const years = Array.from({ length: 20 }, (_, i) => jalali.year - 10 + i)
+  const years = Array.from({ length: 86 }, (_, i) => 1320 + i)
 
   const handleYearChange = (year: number) => {
     const currentJalali = toJalali(viewDate)
@@ -340,14 +314,11 @@ export function PersianDatePicker({
 export function formatPersianDate(date: Date | null | undefined): string {
   if (!date) return '-'
   try {
-    const jalali = { year: 0, month: 0, day: 0 }
-    // Convert using date-fns-jalali
-    const y = parseInt(format(date, 'yyyy', { locale: faIR }))
-    const m = parseInt(format(date, 'MM', { locale: faIR }))
-    const d = parseInt(format(date, 'dd', { locale: faIR }))
-    
-    const toPersian = (n: number) => n.toString().replace(/\d/g, (d) => ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'][parseInt(d)])
-    return `${toPersian(y)}/${toPersian(m.toString().padStart(2, '0'))}/${toPersian(d.toString().padStart(2, '0'))}`
+    const m = moment(date)
+    const year = m.jYear()
+    const month = m.jMonth() + 1
+    const day = m.jDate()
+    return `${toPersianNumber(year)}/${toPersianNumber(month.toString().padStart(2, '0'))}/${toPersianNumber(day.toString().padStart(2, '0'))}`
   } catch {
     return '-'
   }
@@ -357,12 +328,11 @@ export function formatPersianDate(date: Date | null | undefined): string {
 export function formatPersianDateLong(date: Date | null | undefined): string {
   if (!date) return '-'
   try {
-    const toPersian = (n: number) => n.toString().replace(/\d/g, (d) => ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'][parseInt(d)])
-    const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
-    const y = parseInt(format(date, 'yyyy', { locale: faIR }))
-    const m = parseInt(format(date, 'MM', { locale: faIR }))
-    const d = parseInt(format(date, 'd', { locale: faIR }))
-    return `${toPersian(d)} ${months[m - 1]} ${toPersian(y)}`
+    const m = moment(date)
+    const year = m.jYear()
+    const month = m.jMonth() // 0-11
+    const day = m.jDate()
+    return `${toPersianNumber(day)} ${PERSIAN_MONTHS[month]} ${toPersianNumber(year)}`
   } catch {
     return '-'
   }
@@ -372,34 +342,10 @@ export function formatPersianDateLong(date: Date | null | undefined): string {
 export function parsePersianDate(dateStr: string): Date | null {
   if (!dateStr) return null
   try {
-    // Expected format: 1403/01/15
     const parts = dateStr.split('/').map(Number)
     if (parts.length !== 3) return null
-    
-    // Convert Jalali to Gregorian
     const [year, month, day] = parts
-    
-    // Reference: 1403/01/01 = 2024/03/20
-    const referenceJalali = { year: 1403, month: 1, day: 1 }
-    const referenceGregorian = new Date(2024, 2, 20)
-    
-    const getDaysInJalaliMonth = (y: number, m: number) => {
-      if (m <= 6) return 31
-      if (m <= 11) return 30
-      const isLeapYear = ((y % 33) % 4 - 1) === Math.floor((y % 33) / 4)
-      return isLeapYear ? 30 : 29
-    }
-    
-    let totalDays = day - 1
-    for (let m = 1; m < month; m++) {
-      totalDays += getDaysInJalaliMonth(year, m)
-    }
-    totalDays += Math.floor((year - referenceJalali.year) * 365.25)
-    
-    const result = new Date(referenceGregorian)
-    result.setDate(result.getDate() + totalDays)
-    
-    return result
+    return moment(`${year}/${month}/${day}`, 'jYYYY/jMM/jDD').toDate()
   } catch {
     return null
   }

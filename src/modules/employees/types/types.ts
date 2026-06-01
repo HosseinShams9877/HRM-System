@@ -22,6 +22,7 @@ export interface Employee {
   birthDate: string | null
   birthPlace: string | null
   gender: string | null
+  positionName  : string
   maritalStatus: string | null
   marriageDate: string | null
   childrenCount: number
@@ -31,6 +32,7 @@ export interface Employee {
   homePhone: string | null
   education: string | null
   fieldOfStudy: string | null
+  departmentName: string
   university: string | null
   militaryStatus: string | null
   hireDate: string

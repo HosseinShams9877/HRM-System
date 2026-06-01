@@ -1,15 +1,30 @@
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "email" TEXT NOT NULL,
+    "email" TEXT,
+    "mobile" TEXT,
     "password" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'employee',
-    "employeeId" TEXT NOT NULL,
+    "employeeId" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "isFirstLogin" BOOLEAN NOT NULL DEFAULT true,
+    "passwordChangedAt" DATETIME,
     "lastLogin" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "User_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "User_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "PasswordReset" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "mobile" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "isUsed" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PasswordReset_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -20,6 +35,7 @@ CREATE TABLE "Employee" (
     "nationalCode" TEXT NOT NULL,
     "personnelCode" TEXT NOT NULL,
     "email" TEXT,
+    "fatherName" TEXT,
     "phone" TEXT,
     "avatar" TEXT,
     "birthDate" TEXT,
@@ -41,6 +57,10 @@ CREATE TABLE "Employee" (
     "contractType" TEXT,
     "probationEnd" TEXT,
     "position" TEXT,
+    "birthCertificateNo" TEXT,
+    "issuePlace" TEXT,
+    "secondaryPhone" TEXT,
+    "contractMonths" INTEGER,
     "department" TEXT,
     "jobGrade" TEXT,
     "workLocation" TEXT,
@@ -207,29 +227,124 @@ CREATE TABLE "Holiday" (
 );
 
 -- CreateTable
+CREATE TABLE "PayrollItem" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "title" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "calculationType" TEXT NOT NULL,
+    "value" REAL NOT NULL,
+    "formulaId" TEXT,
+    "isInsurable" BOOLEAN NOT NULL DEFAULT true,
+    "isTaxable" BOOLEAN NOT NULL DEFAULT true,
+    "isEditable" BOOLEAN NOT NULL DEFAULT true,
+    "isSystem" BOOLEAN NOT NULL DEFAULT false,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "year" INTEGER NOT NULL,
+    "description" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "PayrollItem_formulaId_fkey" FOREIGN KEY ("formulaId") REFERENCES "SalaryFormula" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "TaxBracket" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "year" INTEGER NOT NULL,
+    "orderNum" INTEGER NOT NULL,
+    "minAmount" REAL NOT NULL,
+    "maxAmount" REAL NOT NULL,
+    "rate" REAL NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "PayrollSetting" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "year" INTEGER NOT NULL,
+    "minDailyWage" REAL NOT NULL,
+    "minMonthlyWage" REAL NOT NULL DEFAULT 0,
+    "baseSalaryDefault" REAL NOT NULL DEFAULT 0,
+    "workHoursPerDay" REAL NOT NULL DEFAULT 8,
+    "workDaysPerMonth" REAL NOT NULL DEFAULT 30,
+    "insuranceRate" REAL NOT NULL DEFAULT 7,
+    "employerInsRate" REAL NOT NULL DEFAULT 23,
+    "unemploymentInsRate" REAL NOT NULL DEFAULT 1,
+    "insuranceCeilingMultiplier" REAL NOT NULL DEFAULT 7,
+    "overtimeMultiplier" REAL NOT NULL DEFAULT 1.4,
+    "nightShiftMultiplier" REAL NOT NULL DEFAULT 1.15,
+    "mixedNightMultiplier" REAL NOT NULL DEFAULT 1.35,
+    "fridayWorkMultiplier" REAL NOT NULL DEFAULT 1.4,
+    "holidayWorkMultiplier" REAL NOT NULL DEFAULT 1.4,
+    "eidiMinDays" INTEGER NOT NULL DEFAULT 60,
+    "eidiMaxDays" INTEGER NOT NULL DEFAULT 90,
+    "sanavatRate" REAL NOT NULL DEFAULT 0,
+    "sanavatMaxYears" REAL NOT NULL DEFAULT 30,
+    "taxExemptAmount" REAL NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "PaySlip" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "employeeId" TEXT NOT NULL,
     "year" INTEGER NOT NULL,
     "month" INTEGER NOT NULL,
     "baseSalary" REAL NOT NULL,
-    "housing" REAL NOT NULL DEFAULT 0,
-    "family" REAL NOT NULL DEFAULT 0,
-    "food" REAL NOT NULL DEFAULT 0,
-    "performance" REAL NOT NULL DEFAULT 0,
-    "overtime" REAL NOT NULL DEFAULT 0,
-    "otherAdds" REAL NOT NULL DEFAULT 0,
-    "insurance" REAL NOT NULL DEFAULT 0,
-    "tax" REAL NOT NULL DEFAULT 0,
-    "loanDeduction" REAL NOT NULL DEFAULT 0,
-    "otherDeductions" REAL NOT NULL DEFAULT 0,
-    "totalAdds" REAL NOT NULL DEFAULT 0,
+    "totalAllowances" REAL NOT NULL DEFAULT 0,
     "totalDeductions" REAL NOT NULL DEFAULT 0,
+    "grossSalary" REAL NOT NULL DEFAULT 0,
     "netSalary" REAL NOT NULL DEFAULT 0,
+    "workDays" REAL NOT NULL DEFAULT 30,
+    "overtimeHours" REAL NOT NULL DEFAULT 0,
     "status" TEXT NOT NULL DEFAULT 'draft',
+    "notes" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "PaySlip_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "PaySlipItem" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "paySlipId" TEXT NOT NULL,
+    "payrollItemId" TEXT,
+    "title" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "amount" REAL NOT NULL DEFAULT 0,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PaySlipItem_paySlipId_fkey" FOREIGN KEY ("paySlipId") REFERENCES "PaySlip" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "PaySlipItem_payrollItemId_fkey" FOREIGN KEY ("payrollItemId") REFERENCES "PayrollItem" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "SalaryFormula" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "description" TEXT,
+    "expression" TEXT NOT NULL,
+    "year" INTEGER NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "SalaryFormulaVariable" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "formulaId" TEXT NOT NULL,
+    "varName" TEXT NOT NULL,
+    "sourceType" TEXT NOT NULL,
+    "sourceId" TEXT,
+    "label" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "SalaryFormulaVariable_formulaId_fkey" FOREIGN KEY ("formulaId") REFERENCES "SalaryFormula" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -296,6 +411,10 @@ CREATE TABLE "Training" (
     "endDate" TEXT,
     "location" TEXT,
     "status" TEXT NOT NULL DEFAULT 'planned',
+    "description" TEXT,
+    "capacity" INTEGER,
+    "category" TEXT,
+    "duration" INTEGER,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -412,11 +531,37 @@ CREATE TABLE "Regulation" (
     "updatedAt" DATETIME NOT NULL
 );
 
+-- CreateTable
+CREATE TABLE "EmployeeFinancial" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "employeeId" TEXT NOT NULL,
+    "bankAccountNo" TEXT,
+    "insuranceNo" TEXT,
+    "laborCardNo" TEXT,
+    "baseSalary" REAL,
+    "housingAllowance" REAL,
+    "workAllowance" REAL,
+    "spouseAllowance" REAL,
+    "childAllowance" REAL,
+    "yearsOfServiceBase" REAL,
+    "responsibilityAllowance" REAL,
+    "otherAllowances" REAL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "EmployeeFinancial_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_mobile_key" ON "User"("mobile");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_employeeId_key" ON "User"("employeeId");
+
+-- CreateIndex
+CREATE INDEX "PasswordReset_userId_idx" ON "PasswordReset"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Employee_nationalCode_key" ON "Employee"("nationalCode");
@@ -443,7 +588,22 @@ CREATE UNIQUE INDEX "EmployeeShiftAssignment_employeeId_startDate_shiftId_key" O
 CREATE UNIQUE INDEX "Attendance_employeeId_date_key" ON "Attendance"("employeeId", "date");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PayrollItem_code_key" ON "PayrollItem"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TaxBracket_year_orderNum_key" ON "TaxBracket"("year", "orderNum");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PayrollSetting_year_key" ON "PayrollSetting"("year");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "PaySlip_employeeId_year_month_key" ON "PaySlip"("employeeId", "year", "month");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SalaryFormula_code_key" ON "SalaryFormula"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SalaryFormulaVariable_formulaId_varName_key" ON "SalaryFormulaVariable"("formulaId", "varName");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "TrainingParticipant_trainingId_employeeId_key" ON "TrainingParticipant"("trainingId", "employeeId");
@@ -453,3 +613,6 @@ CREATE UNIQUE INDEX "Onboarding_employeeId_key" ON "Onboarding"("employeeId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Offboarding_employeeId_key" ON "Offboarding"("employeeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EmployeeFinancial_employeeId_key" ON "EmployeeFinancial"("employeeId");

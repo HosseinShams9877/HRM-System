@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "@/core/components/ui/sonner";
 import ErrorBoundary from "@/core/components/error-boundary"
+import { QueryProvider } from "@/core/providers/query-provider";
 
 const vazirmatn = localFont({
   src: [
@@ -35,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning className={vazirmatn.variable}>
       <body className="font-vazir antialiased bg-background text-foreground" suppressHydrationWarning>
+      <QueryProvider>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -46,6 +48,7 @@ export default function RootLayout({
           </ErrorBoundary>
           <Toaster position="top-center" dir="rtl" richColors closeButton />
         </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );
