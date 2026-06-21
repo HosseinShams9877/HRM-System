@@ -37,35 +37,49 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-
-    const validation = validateWithZod(departmentCreateSchema, body)
-    if (!validation.success) {
-      return NextResponse.json({ error: 'داده‌های ورودی نامعتبر است', details: validation.errors }, { status: 400 })
-    }
-    const validatedData = validation.data
-
-    const existing = await db.department.findFirst({
-      where: { code: body.code },
-    })
-    if (existing) {
-      return NextResponse.json(
-        { error: 'کد دپارتمان تکراری است' },
-        { status: 400 }
-      )
-    }
+    const { name, code, managerId, parentId } = body
 
     const department = await db.department.create({
       data: {
-        name: body.name,
-        code: body.code,
-        managerId: body.managerId || null,
-        parentId: body.parentId || null,
+        name,
+        code,
+        managerId: managerId || null,
+        parentId: parentId || null,
       },
     })
 
+    // ✅ اگر managerId مشخص شده، یک Appointment هم ایجاد کن
+    if (managerId) {
+      // پیدا کردن یا ایجاد سمت "مدیر دپارتمان"
+      let managerPosition = await db.position.findFirst({
+        where: { code: `DEPT_MGR_${code}` },
+      })
+
+      if (!managerPosition) {
+        managerPosition = await db.position.create({
+          data: {
+            title: `مدیر ${name}`,
+            code: `DEPT_MGR_${code}`,
+            departmentId: department.id,
+            headcount: 1,
+          },
+        })
+      }
+
+      // ایجاد حکم انتصاب
+      await db.appointment.create({
+        data: {
+          employeeId: managerId,
+          positionId: managerPosition.id,
+          type: 'main',
+          startDate: new Date().toISOString().split('T')[0],
+          status: 'active',
+        },
+      })
+    }
+
     return NextResponse.json(department, { status: 201 })
   } catch (error) {
-    console.error('Create department error:', error)
-    return NextResponse.json({ error: 'خطا در ثبت دپارتمان' }, { status: 500 })
+    // ...
   }
 }

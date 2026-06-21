@@ -85,6 +85,8 @@ export async function GET() {
           maxSalary: pos.maxSalary,
           headcount: pos.headcount,
           status: pos.status,
+          description: pos.description,     
+          requirements: pos.requirements,
           occupiedCount: pos.appointments.length,
           availableCount: pos.headcount - pos.appointments.length,
           appointments: pos.appointments.map(apt => ({

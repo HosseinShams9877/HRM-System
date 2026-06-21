@@ -224,18 +224,35 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
       .catch(console.error)
   }, [])
   const fetchPositions = async () => {
-    if (!formData.departmentId){
-    return}
+    if (!formData.departmentId) return
     try {
+      // گرفتن لیست سمت‌ها
       const response = await fetch(`/api/positions?departmentId=${formData.departmentId}`)
       const data = await response.json()
-      const formattedPositions = (data.data || data).map((pos: any) => ({
-        id: pos.id,
-        name: pos.title,           
-        maxOccupancy: pos.headcount,
-        currentCount: pos.occupiedCount || pos.appointments?.length || 0
-      }))
-            setPositions(formattedPositions)
+      const positionsList = (data.data || data)
+      
+      // گرفتن لیست کارمندها برای شمردن تعداد واقعی
+      const empResponse = await fetch(`/api/employees?departmentId=${formData.departmentId}&limit=10000`)
+      const empData = await empResponse.json()
+      const employeesList = empData.data || empData
+      
+      // ساخت آرایه نهایی با تعداد واقعی
+      const formattedPositions = positionsList.map((pos: any) => {
+        // تعداد کارمندهایی که این سمت رو دارن
+        const realCount = employeesList.filter((emp: any) => emp.position === pos.id).length
+        return {
+          id: pos.id,
+          name: pos.title,
+          maxOccupancy: pos.headcount,
+          currentCount: realCount
+        }
+      })
+      
+      setPositions(formattedPositions)
+      if (formData.position) {
+        const updatedPos = formattedPositions.find(p => p.id === formData.position)
+        if (updatedPos) setPositionName(updatedPos.name)
+      }
     } catch (error) {
       console.error('Error fetching positions:', error)
     }
@@ -517,6 +534,20 @@ useEffect(() => {
           toast.info(`رمز عبور موقت: ${result.account.temporaryPassword || result.account.password}`)
           toast.warning('کارمند در اولین ورود رمز عبور را تغییر دهد')
         }
+       if (formData.departmentId && formData.position) {
+  // آپدیت دستی تعداد در UI
+  setPositions(prevPositions => 
+    prevPositions.map(pos => 
+      pos.id === formData.position 
+        ? { ...pos, currentCount: (pos.currentCount || 0) + 1 }
+        : pos
+    )
+  )
+  // برای اطمینان، بعد از 2 ثانیه دوباره از سرور بگیر
+  setTimeout(() => {
+    fetchPositions()
+  }, 2000)
+}
         onSuccess?.()
       } else {
         const error = await response.json()
@@ -538,7 +569,6 @@ const dateToSimpleShamsi = (date: Date | null): string => {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}/${month}/${day}`
 }
-
 const handleUpdateEmployee = async () => {
   setLoading(true)
   const educationMap: Record<string, string> = {
@@ -549,11 +579,6 @@ const handleUpdateEmployee = async () => {
     'phd': 'دکتری',
   }
 
-  // 🔴 استفاده از تابع جدید برای تبدیل تاریخ
-  const birthDateStr = formData.birthDate ? dateToSimpleShamsi(formData.birthDate) : ''
-  const hireDateStr = formData.hireDate ? dateToSimpleShamsi(formData.hireDate) : ''
-
-
   try {
     // 1. به‌روزرسانی اطلاعات پایه کارمند
     const employeeData: Record<string, any> = {
@@ -561,20 +586,20 @@ const handleUpdateEmployee = async () => {
       lastName: formData.lastName,
       fatherName: formData.fatherName || null,
       nationalCode: formData.nationalId,
-      birthCertificateNo: formData.birthCertificateNo || null,  // ✅ اضافه شد
+      birthCertificateNo: formData.birthCertificateNo || null,
       birthDate: formData.birthDate ? dateToSimpleShamsi(formData.birthDate) : '',
       birthPlace: formData.birthPlace || null,
-      issuePlace: formData.issuePlace || null,                  // ✅ اضافه شد
+      issuePlace: formData.issuePlace || null,
       gender: formData.gender || null,
       maritalStatus: formData.maritalStatus || null,
       childrenCount: parseInt(formData.childrenCount) || 0,
       fieldOfStudy: formData.educationField || null,
       phone: formData.phone || null,
-      secondaryPhone: formData.secondaryPhone || null,          // ✅ اضافه شد
+      secondaryPhone: formData.secondaryPhone || null,
       homePhone: formData.landline || null,
       education: educationMap[formData.educationLevel] || '',
       address: formData.address || null,
-      postalCode: formData.postalCode || null,                  // ✅ اضافه شد
+      postalCode: formData.postalCode || null,
       email: formData.email || null,
       personnelCode: formData.employeeCode,
       department: formData.departmentId || null,
@@ -583,11 +608,9 @@ const handleUpdateEmployee = async () => {
         formData.contractType === 'temporary' ? 'temporary' :
         formData.contractType === 'hourly' ? 'contractual' : 'official',
       hireDate: formData.hireDate ? dateToSimpleShamsi(formData.hireDate) : '',
-      contractEndDate: formData.contractEndDate ? dateToSimpleShamsi(formData.contractEndDate) : null,  // ✅ اضافه شد
-      contractMonths: parseInt(formData.contractMonths) || null,  // ✅ اضافه شد
+      contractEndDate: formData.contractEndDate ? dateToSimpleShamsi(formData.contractEndDate) : null,
+      contractMonths: parseInt(formData.contractMonths) || null,
       status: 'active',
-      createContract: true,
-      createUser: true,
     }
 
     // حذف فیلدهای خالی
@@ -596,7 +619,6 @@ const handleUpdateEmployee = async () => {
         delete employeeData[key]
       }
     })
-
 
     const employeeResponse = await fetch(`/api/employees/${employeeId}`, {
       method: 'PUT',
@@ -635,7 +657,40 @@ const handleUpdateEmployee = async () => {
       console.warn('Financial data update failed:', await financialResponse.json())
     }
 
+    // 3. ذخیره مدارک جدید (pendingFiles) - فقط در حالت ویرایش
+    if (pendingFiles.length > 0) {
+      console.log(`📤 آپلود ${pendingFiles.length} مدرک برای کارمند ${employeeId}...`)
+      
+      for (const pendingFile of pendingFiles) {
+        const formData = new FormData()
+        formData.append('file', pendingFile.file)
+        formData.append('title', pendingFile.title)
+        formData.append('category', pendingFile.category)
+        formData.append('description', pendingFile.description || '')
+        
+        try {
+          const uploadResponse = await fetch(`/api/employees/${employeeId}/documents`, {
+            method: 'POST',
+            body: formData,
+          })
+          
+          if (uploadResponse.ok) {
+            console.log(`✅ مدرک "${pendingFile.title}" آپلود شد`)
+          } else {
+            console.error(`❌ خطا در آپلود مدرک "${pendingFile.title}"`)
+          }
+        } catch (err) {
+          console.error(`❌ خطا در آپلود مدرک "${pendingFile.title}":`, err)
+        }
+      }
+      
+      // پاک کردن pendingFiles بعد از آپلود
+      setPendingFiles([])
+      console.log('✅ همه مدارک آپلود شدند')
+    }
+
     toast.success('اطلاعات کارمند با موفقیت بروزرسانی شد')
+    await fetchPositions()
     onSuccess?.()
   } catch (error: any) {
     console.error('Update error:', error)
@@ -778,37 +833,42 @@ const handleUploadDocument = async () => {
           </div>
         ) : (
           <>
-            {positions
-              .filter(p => !searchTerm || p.name.includes(searchTerm))
-              .map((position) => {
-                const isFull = position.maxOccupancy && (position.currentCount || 0) >= position.maxOccupancy
-                return (
-                  <div
-                    key={position.id}
-                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${isFull ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => {
-                      if (!isFull) {
-                        setFormData({ ...formData, position: position.id })
-                        setPositionName(position.name)
-                        setShowPositionDropdown(false)
-                        setSearchTerm('')
-                      } else {
-                        toast.error(`ظرفیت سمت "${position.name}" تکمیل شده است`)
-                      }
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>{position.name}  </span>
-                      {position.maxOccupancy && (
-                        <span className="text-xs text-gray-500">
-                          ({position.currentCount || 0}/{position.maxOccupancy})
-                        </span>
-                      )}
-                      {isFull && <span className="text-xs text-rose-500">(پر شده)</span>}
-                    </div>
-                  </div>
-                )
-              })}
+           {positions
+  .filter(p => !searchTerm || p.name.includes(searchTerm))
+  .map((position) => {
+    const isFull = position.maxOccupancy && (position.currentCount || 0) >= position.maxOccupancy
+    const remaining = (position.maxOccupancy || 0) - (position.currentCount || 0)
+    return (
+      <div
+        key={position.id}
+        className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${isFull ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => {
+          if (!isFull) {
+            setFormData({ ...formData, position: position.id })
+            setPositionName(position.name)
+            setShowPositionDropdown(false)
+            setSearchTerm('')
+          } else {
+            toast.error(`ظرفیت سمت "${position.name}" تکمیل شده است`)
+          }
+        }}
+      >
+        <div className="flex justify-between items-center">
+          <span>{position.name}</span>
+          <div className="flex gap-2 text-xs">
+            {position.maxOccupancy ? (
+              <span className={`${remaining === 0 ? 'text-red-500' : remaining <= 2 ? 'text-amber-500' : 'text-green-500'}`}>
+                {position.currentCount || 0}/{position.maxOccupancy}
+              </span>
+            ) : (
+              <span className="text-gray-400">نامحدود</span>
+            )}
+          </div>
+        </div>
+        {isFull && <span className="text-xs text-rose-500 block">(پر شده)</span>}
+      </div>
+    )
+  })}
             <div
               className="px-4 py-2 text-emerald-600 cursor-pointer hover:bg-gray-100 border-t"
               onClick={() => {
@@ -1041,9 +1101,35 @@ const handleUploadDocument = async () => {
             <div className="min-h-[400px]">{renderStepContent()}</div>
 
             <div className="flex justify-between pt-4 border-t">
-              <Button variant="outline" onClick={onCancel}>
-                لغو
-              </Button>
+            <Button 
+  variant="outline" 
+  onClick={() => {
+    console.log('✅ دکمه لغو کلیک شد - EmployeeWizard')
+    
+    // ریست کردن state های فرم
+    setCurrentStep(1)
+    setFormData(initialFormData)
+    setErrors({})
+    setSelectedFile(null)
+    setDocFormData({ title: '', category: '', description: '' })
+    setPendingFiles([])
+    
+    // سعی کن onCancel رو صدا بزنی
+    if (onCancel) {
+      console.log('✅ onCancel وجود داره، صدا میزنم...')
+      onCancel()
+    } else {
+      console.log('❌ onCancel وجود نداره!')
+      // راه حل جایگزین: مستقیم parent رو صدا بزن
+      // اگه EmployeeWizard داخل Dialog نیست، از onSuccess استفاده کن
+      if (onSuccess) {
+        onSuccess()
+      }
+    }
+  }}
+>
+  لغو
+</Button>
               <div className="flex gap-2">
                 {currentStep > 1 && (
                   <Button variant="outline" onClick={handlePrev}>
@@ -1125,11 +1211,11 @@ const handleUploadDocument = async () => {
             <div className="space-y-2">
               <Label>توضیحات</Label>
               <textarea
-                value={docFormData.description}
-                onChange={(e) => setDocFormData({ ...formData, description: e.target.value })}
-                className="w-full p-2 border rounded-lg min-h-[80px]"
-                placeholder="توضیحات اضافی..."
-              />
+  value={docFormData.description || ''}
+  onChange={(e) => setDocFormData({ ...docFormData, description: e.target.value })}
+  className="w-full p-2 border rounded-lg min-h-[80px]"
+  placeholder="توضیحات اضافی..."
+/>
             </div>
           </div>
 

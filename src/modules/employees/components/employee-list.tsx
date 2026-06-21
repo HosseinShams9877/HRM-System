@@ -19,6 +19,8 @@ import type { Employee, NewAccountInfo, PaginationInfo } from '../index'
 import { CSV_COLUMNS, getEmployeeCSVData } from '../constants'
 import { EmployeeFilters } from './employee-filters'
 import { EmployeeTable } from './employee-table'
+import { EmployeeWizard } from './employee-form'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 
 interface EmployeesModuleProps {
@@ -190,9 +192,7 @@ function AccountCreatedDialog({
 // ============================================
 
 export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -207,43 +207,36 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
   const [showAccountDialog, setShowAccountDialog] = useState(false)
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null)
   const { toast } = useToast()
 
   const debouncedSearch = useDebounce(search, 300)
 
-  const fetchEmployees = useCallback(async () => {
-    try {
-      setError(false)
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['employees', page, debouncedSearch, departmentFilter, statusFilter],
+    queryFn: async () => {
       const params = new URLSearchParams()
       params.set('page', String(page))
       params.set('limit', String(limit))
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (departmentFilter && departmentFilter !== 'all') params.set('department', departmentFilter)
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
-
+  
       const res = await fetch(`/api/employees?${params.toString()}`)
-      if (res.ok) {
-        const result = await res.json()
-        // Handle both old (array) and new ({ data, pagination }) format
-        const items = Array.isArray(result) ? result : (result.data || [])
-        const paginationInfo = result.pagination || null
-        setEmployees(items)
-        if (paginationInfo) setPagination(paginationInfo)
-      } else {
-        setError(true)
+      if (!res.ok) throw new Error('Failed to fetch')
+      const result = await res.json()
+      return {
+        employees: Array.isArray(result) ? result : (result.data || []),
+        pagination: result.pagination || null
       }
-    } catch (err) {
-      console.error('Fetch employees error:', err)
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [debouncedSearch, departmentFilter, statusFilter, page, limit])
+    },
+    staleTime: 5000, // 5 ثانیه داده کش بشه
+  })
+  const employees = data?.employees || []
+  const loading = isLoading
+  const error = isError
+  const pagination = data?.pagination || null
 
-  useEffect(() => {
-    fetchEmployees()
-  }, [fetchEmployees])
+
 
   // Reset page when filters change
   useEffect(() => {
@@ -266,32 +259,23 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
   }
 
   // View employee profile
-  const handleViewEmployee = async (emp: Employee) => {
-    try {
-      const res = await fetch(`/api/employees/${emp.id}`)
-      if (res.ok) {
-        const fullData = await res.json()
-        setSelectedEmployee(fullData)
-        setShowProfile(true)
-      }
-    } catch (err) {
-      console.error('Error fetching employee details:', err)
-    }
+  const handleViewEmployee = (emp: Employee) => {
+    sessionStorage.setItem('selectedEmployee', JSON.stringify(emp))
+    onNavigate?.('org-employee')
   }
 
   // Edit employee
-  const handleEditEmployee = (emp: Employee) => {
-    setEditingEmployee(emp)
-    setShowForm(true)
-  }
-
+const handleEditEmployee = (emp: Employee) => {
+  sessionStorage.setItem('editEmployee', JSON.stringify(emp))
+  onNavigate?.(`employee-edit/${emp.id}`)
+}
   // Delete employee
   const handleDeleteEmployee = async (emp: Employee) => {
     try {
       const res = await fetch(`/api/employees/${emp.id}`, { method: 'DELETE' })
       if (res.ok) {
         sonnerToast.success(`${emp.firstName} ${emp.lastName} غیرفعال شد`)
-        fetchEmployees()
+        queryClient.invalidateQueries({ queryKey: ['employees'] })
       }
     } catch (err) {
       sonnerToast.error('خطا در حذف کارمند')
@@ -529,7 +513,21 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
         pagination={pagination}
       />
 
-     
+{showForm && (
+  <EmployeeWizard
+    employeeId={editingEmployee?.id}
+    onSuccess={() => {
+      setShowForm(false)
+      setEditingEmployee(null)
+      // این خط باعث میشه کش قدیمی بشه و دیتای جدید از سرور گرفته بشه
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    }}
+    onCancel={() => {
+      setShowForm(false)
+      setEditingEmployee(null)
+    }}
+  />
+)}
 
       {/* Delete Confirm Dialog */}
       <ConfirmDialog

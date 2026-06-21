@@ -29,60 +29,75 @@ export async function GET(
 }
 
 // PUT /api/departments/[id] — ویرایش دپارتمان
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const body = await req.json()
+    const { name, code, managerId, parentId } = body
 
-    const existing = await db.department.findUnique({ where: { id } })
-    if (!existing) {
-      return NextResponse.json({ error: 'دپارتمان یافت نشد' }, { status: 404 })
-    }
+    const oldDepartment = await db.department.findUnique({
+      where: { id },
+      include: { positions: { where: { code: { startsWith: 'DEPT_MGR_' } } } },
+    })
 
-    // بررسی یکتا بودن کد (اگر تغییر کرده)
-    if (body.code && body.code !== existing.code) {
-      const duplicate = await db.department.findFirst({
-        where: { code: body.code, id: { not: id } },
-      })
-      if (duplicate) {
-        return NextResponse.json(
-          { error: 'کد دپارتمان تکراری است' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // بررسی چرخه والد-فرزندی
-    if (body.parentId) {
-      if (body.parentId === id) {
-        return NextResponse.json(
-          { error: 'دپارتمان نمی‌تواند زیرمجموعه خودش باشد' },
-          { status: 400 }
-        )
-      }
-    }
-
+    // بروزرسانی دپارتمان
     const department = await db.department.update({
       where: { id },
       data: {
-        name: body.name ?? existing.name,
-        code: body.code ?? existing.code,
-        managerId: body.managerId !== undefined ? body.managerId : existing.managerId,
-        parentId: body.parentId !== undefined ? body.parentId : existing.parentId,
-      },
-      include: {
-        parent: { select: { id: true, name: true, code: true } },
-        children: { select: { id: true, name: true, code: true } },
+        name: name ?? oldDepartment?.name,
+        code: code ?? oldDepartment?.code,
+        managerId: managerId !== undefined ? managerId : oldDepartment?.managerId,
+        parentId: parentId !== undefined ? parentId : oldDepartment?.parentId,
       },
     })
 
+    // ✅ اگر managerId تغییر کرده
+    if (managerId !== undefined && managerId !== oldDepartment?.managerId) {
+      // پیدا کردن سمت مدیریت
+      let managerPosition = await db.position.findFirst({
+        where: { code: `DEPT_MGR_${code ?? oldDepartment?.code}` },
+      })
+
+      if (!managerPosition) {
+        managerPosition = await db.position.create({
+          data: {
+            title: `مدیر ${name ?? oldDepartment?.name}`,
+            code: `DEPT_MGR_${code ?? oldDepartment?.code}`,
+            departmentId: department.id,
+            headcount: 1,
+          },
+        })
+      }
+
+      // پایان حکم قبلی (اگه وجود داشته)
+      if (oldDepartment?.managerId) {
+        await db.appointment.updateMany({
+          where: {
+            employeeId: oldDepartment.managerId,
+            positionId: managerPosition.id,
+            status: 'active',
+          },
+          data: { status: 'ended', endDate: new Date().toISOString().split('T')[0] },
+        })
+      }
+
+      // ایجاد حکم جدید (اگه manager جدید انتخاب شده)
+      if (managerId) {
+        await db.appointment.create({
+          data: {
+            employeeId: managerId,
+            positionId: managerPosition.id,
+            type: 'main',
+            startDate: new Date().toISOString().split('T')[0],
+            status: 'active',
+          },
+        })
+      }
+    }
+
     return NextResponse.json(department)
   } catch (error) {
-    console.error('Update department error:', error)
-    return NextResponse.json({ error: 'خطا در ویرایش دپارتمان' }, { status: 500 })
+    // ...
   }
 }
 

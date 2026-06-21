@@ -20,7 +20,7 @@ export function SettingsModule() {
   // ─── General ───
   const [saving, setSaving] = useState(false)
   const [general, setGeneral] = useState<GeneralSettings>(DEFAULT_GENERAL)
-
+  const [employeesList, setEmployeesList] = useState<{ id: string; firstName: string; lastName: string; personnelCode: string }[]>([])
   // ─── Departments ───
   const [departments, setDepartments] = useState<Department[]>([])
   const [deptLoading, setDeptLoading] = useState(false)
@@ -71,6 +71,22 @@ export function SettingsModule() {
     finally { setHolidayLoading(false) }
   }, [holidayTypeFilter, holidayYearFilter])
 
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const res = await fetch('/api/employees?limit=1000')
+      if (res.ok) {
+        const data = await res.json()
+        const employees = data.data || data
+        setEmployeesList(employees.map((emp: any) => ({
+          id: emp.id,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          personnelCode: emp.personnelCode,
+        })))
+      }
+    } catch (e) { console.error(e) }
+  }, [])
+  useEffect(() => { fetchEmployees() }, [fetchEmployees])
   useEffect(() => { fetchDepartments() }, [fetchDepartments])
   useEffect(() => { fetchHolidays() }, [fetchHolidays])
 
@@ -227,7 +243,7 @@ export function SettingsModule() {
     onOpenAddHoliday: openAddHoliday, onOpenEditHoliday: openEditHoliday,
     onSetHolidayDialogOpen: setHolidayDialogOpen, onHolidayFormChange: setHolidayForm,
     onSaveHoliday: saveHoliday, onSetDeleteHolidayDialog: setDeleteHolidayDialog,
-    onConfirmDeleteHoliday: confirmDeleteHoliday,
+    onConfirmDeleteHoliday: confirmDeleteHoliday,employees: employeesList,
   }
 
   // ============================================
@@ -274,6 +290,7 @@ export function SettingsModule() {
           <GeneralSettingsTab
             general={general}
             onGeneralChange={setGeneral}
+            employees={employeesList}
             saving={saving}
             onSave={saveGeneral}
           />

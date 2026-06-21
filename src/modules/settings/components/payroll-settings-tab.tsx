@@ -53,23 +53,44 @@ interface DepartmentsSectionProps {
   deptLoading: boolean
   deptDialogOpen: boolean
   editingDept: Department | null
-  deptForm: { name: string; code: string }
+  deptForm: { name: string; code: string; managerId: string; parentId: string }
   deptSaving: boolean
   deleteDeptDialog: Department | null
+  employees: { id: string; firstName: string; lastName: string; personnelCode: string }[]
   onOpenAddDept: () => void
   onOpenEditDept: (dept: Department) => void
   onSetDeptDialogOpen: (open: boolean) => void
-  onDeptFormChange: (form: { name: string; code: string }) => void
+  onDeptFormChange: (form: { name: string; code: string; managerId: string; parentId: string }) => void
   onSaveDepartment: () => void
   onSetDeleteDeptDialog: (dept: Department | null) => void
   onConfirmDeleteDept: () => void
 }
 
-function DepartmentsSection({
-  departments, deptLoading, deptDialogOpen, editingDept, deptForm, deptSaving, deleteDeptDialog,
-  onOpenAddDept, onOpenEditDept, onSetDeptDialogOpen, onDeptFormChange, onSaveDepartment, onSetDeleteDeptDialog, onConfirmDeleteDept,
+export function DepartmentsSection({
+  departments,
+  deptLoading,
+  deptDialogOpen,
+  editingDept,
+  deptForm,
+  deptSaving,
+  deleteDeptDialog,
+  employees,
+  onOpenAddDept,
+  onOpenEditDept,
+  onSetDeptDialogOpen,
+  onDeptFormChange,
+  onSaveDepartment,
+  onSetDeleteDeptDialog,
+  onConfirmDeleteDept,
 }: DepartmentsSectionProps) {
   const getDeptColor = (idx: number) => DEPT_COLORS[idx % DEPT_COLORS.length]
+
+  // پیدا کردن نام مدیر بر اساس managerId
+  const getManagerName = (managerId: string | null) => {
+    if (!managerId) return '—'
+    const manager = employees.find(emp => emp.id === managerId)
+    return manager ? `${manager.firstName} ${manager.lastName}` : 'تعیین شده'
+  }
 
   return (
     <>
@@ -109,6 +130,7 @@ function DepartmentsSection({
                   <TableHead className="text-xs">نام</TableHead>
                   <TableHead className="text-xs">کد</TableHead>
                   <TableHead className="text-xs">مدیر</TableHead>
+                  <TableHead className="text-xs">دپارتمان والد</TableHead>
                   <TableHead className="text-xs">پست سازمانی</TableHead>
                   <TableHead className="text-xs text-left">اقدامات</TableHead>
                 </TableRow>
@@ -129,8 +151,11 @@ function DepartmentsSection({
                         {dept.code}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {getManagerName(dept.managerId)}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {dept.managerId ? 'تعیین شده' : '—'}
+                      {dept.parent?.name || '—'}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {dept.positions ? toPersianDigits(dept.positions.length) : '—'}
@@ -163,16 +188,16 @@ function DepartmentsSection({
 
       {/* Department Add/Edit Dialog */}
       <Dialog open={deptDialogOpen} onOpenChange={onSetDeptDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-sm">
               {editingDept ? 'ویرایش دپارتمان' : 'افزودن دپارتمان جدید'}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              {editingDept ? 'اطلاعات دپارتمان را ویرایش کنید' : 'نام و کد دپارتمان جدید را وارد کنید'}
+              {editingDept ? 'اطلاعات دپارتمان را ویرایش کنید' : 'اطلاعات دپارتمان جدید را وارد کنید'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 py-2">
             <div>
               <label className="text-xs font-medium mb-1.5 block">نام دپارتمان *</label>
               <Input
@@ -189,7 +214,68 @@ function DepartmentsSection({
                 onChange={e => onDeptFormChange({ ...deptForm, code: e.target.value })}
                 className="text-xs"
                 placeholder="مثال: HR"
+                dir="ltr"
               />
+            </div>
+            <div>
+  <label className="text-xs font-medium mb-1.5 block">مدیر دپارتمان</label>
+  <Select
+    value={deptForm.managerId || 'none'}
+    onValueChange={(v) => onDeptFormChange({ ...deptForm, managerId: v === 'none' ? '' : v })}
+  >
+    <SelectTrigger className="text-xs">
+      <SelectValue placeholder="انتخاب مدیر..." />
+    </SelectTrigger>
+    <SelectContent className="max-h-[300px]">
+      <div className="sticky top-0 bg-white dark:bg-gray-950 p-2 border-b z-10">
+        <Input
+          placeholder="جستجوی کارمند..."
+          className="text-xs h-8"
+          onChange={(e) => {
+            const searchTerm = e.target.value.toLowerCase()
+            const items = document.querySelectorAll('.employee-select-item')
+            items.forEach(item => {
+              const text = item.textContent?.toLowerCase() || ''
+              if (text.includes(searchTerm)) {
+                (item as HTMLElement).style.display = 'flex'
+              } else {
+                (item as HTMLElement).style.display = 'none'
+              }
+            })
+          }}
+        />
+      </div>
+      <SelectItem value="none">بدون مدیر</SelectItem>
+      {employees && employees.length > 0 ? (
+        employees.map(emp => (
+          <SelectItem key={emp.id} value={emp.id} className="employee-select-item">
+            {emp.firstName} {emp.lastName} ({emp.personnelCode})
+          </SelectItem>
+        ))
+      ) : (
+        <SelectItem value="none" disabled>کارمندی یافت نشد</SelectItem>
+      )}
+    </SelectContent>
+  </Select>
+</div>
+            <div>
+              <label className="text-xs font-medium mb-1.5 block">دپارتمان والد</label>
+              <Select
+                value={deptForm.parentId || 'none'}
+                onValueChange={(v) => onDeptFormChange({ ...deptForm, parentId: v === 'none' ? '' : v })}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="انتخاب دپارتمان والد..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون والد (ریشه)</SelectItem>
+                  {departments.filter(d => d.id !== editingDept?.id).map(dept => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name} ({dept.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -634,13 +720,14 @@ interface PayrollSettingsTabProps {
   deptLoading: boolean
   deptDialogOpen: boolean
   editingDept: Department | null
-  deptForm: { name: string; code: string }
+  deptForm: { name: string; code: string; managerId: string; parentId: string }
   deptSaving: boolean
   deleteDeptDialog: Department | null
+  employees: { id: string; firstName: string; lastName: string; personnelCode: string }[]
   onOpenAddDept: () => void
   onOpenEditDept: (dept: Department) => void
   onSetDeptDialogOpen: (open: boolean) => void
-  onDeptFormChange: (form: { name: string; code: string }) => void
+  onDeptFormChange: (form: { name: string; code: string; managerId: string; parentId: string }) => void
   onSaveDepartment: () => void
   onSetDeleteDeptDialog: (dept: Department | null) => void
   onConfirmDeleteDept: () => void

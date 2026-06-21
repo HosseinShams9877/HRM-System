@@ -139,20 +139,39 @@ export async function DELETE(
 
     const { id } = await params
 
-    const existing = await db.employee.findUnique({ where: { id } })
+    // بررسی وجود کارمند
+    const existing = await db.employee.findUnique({ 
+      where: { id },
+      include: { user: true }
+    })
+    
     if (!existing) {
       return NextResponse.json({ error: 'کارمند یافت نشد' }, { status: 404 })
     }
 
-    // Delete associated user first
-    await db.user.deleteMany({ where: { employeeId: id } })
-    
-    // Delete employee (cascading will handle related records)
-    await db.employee.delete({ where: { id } })
+    // فقط وضعیت رو به غیرفعال تغییر بده (حذف نکن!)
+    await db.employee.update({
+      where: { id },
+      data: {
+        status: 'inactive',  // ← فقط همین
+      },
+    })
 
-    return NextResponse.json({ success: true })
+    // غیرفعال کردن کاربر مرتبط (اگه وجود داشته باشه)
+    if (existing.user) {
+      await db.user.update({
+        where: { id: existing.user.id },
+        data: { isActive: false },
+      })
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'کارمند با موفقیت غیرفعال شد',
+      employee: { id, status: 'inactive' }
+    })
   } catch (error) {
-    console.error('Delete employee error:', error)
-    return NextResponse.json({ error: 'خطا در حذف کارمند' }, { status: 500 })
+    console.error('Disable employee error:', error)
+    return NextResponse.json({ error: 'خطا در غیرفعال کردن کارمند' }, { status: 500 })
   }
 }

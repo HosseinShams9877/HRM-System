@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   Network, Building2, Briefcase, Users, ChevronDown, ChevronLeft,
-  Loader2, ChevronRight, Search, Filter, Crown, User
+  Loader2, ChevronRight, Search, Filter, Crown, User,Edit 
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
@@ -15,6 +15,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select'
 import { Progress } from '@/core/components/ui/progress'
 import { toPersianDigits, formatCurrency } from '@/core/lib/utils-fa'
+import { PositionFormDialog } from '@/modules/appointments/positions/components/position-form-dialog'
+import { toast } from 'sonner'
 
 // ============================================
 // Types
@@ -72,6 +74,11 @@ interface OrgData {
   }
   departments: DepartmentNode[]
   tree: DepartmentNode[]
+}
+
+interface PositionsTabProps {
+  data: OrgData
+  onRefresh?: () => void
 }
 
 // ============================================
@@ -654,16 +661,18 @@ function DepartmentStructureTab({ data }: { data: OrgData }) {
 // Tab 3: Positions
 // ============================================
 
-function PositionsTab({ data }: { data: OrgData }) {
+function PositionsTab({ data, onRefresh }: PositionsTabProps) {
   const [deptFilter, setDeptFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [showPositionForm, setShowPositionForm] = useState(false)
+  const [selectedPosition, setSelectedPosition] = useState<any>(null)
 
   const allPositions = data.departments.flatMap(d =>
     d.positions.map(p => ({ 
       ...p, 
       departmentName: d.name, 
       departmentCode: d.code,
-      departmentManager: d.manager  // اضافه کردن مدیر دپارتمان
+      departmentManager: d.manager  
     }))
   )
 
@@ -736,6 +745,20 @@ function PositionsTab({ data }: { data: OrgData }) {
           </CardContent>
         </Card>
       </div>
+      {/* بعد از کارت‌های آماری، این دکمه رو اضافه کن */}
+<div className="flex justify-end mb-4">
+  <Button 
+    onClick={() => {
+      setSelectedPosition(null)
+      setShowPositionForm(true)
+    }}
+    className="gap-2 bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+  >
+    <Briefcase className="w-4 h-4" />
+    ایجاد پست سازمانی جدید
+  </Button>
+</div>
+
       {/* فیلترها */}
       <Card className="border-0 shadow-lg rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <CardContent className="p-4">
@@ -792,6 +815,7 @@ function PositionsTab({ data }: { data: OrgData }) {
                   <TableHead className="text-center text-xs font-bold text-gray-700 dark:text-gray-300 py-3 w-[7%]">تعداد مشغول</TableHead>
                   <TableHead className="text-right text-xs font-bold text-gray-700 dark:text-gray-300 py-3 w-[12%]">حقوق</TableHead>
                   <TableHead className="text-center text-xs font-bold text-gray-700 dark:text-gray-300 py-3 w-[8%]">وضعیت</TableHead>
+                  <TableHead className="text-center text-xs font-bold text-gray-700 dark:text-gray-300 py-3 w-[8%]">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -812,7 +836,7 @@ function PositionsTab({ data }: { data: OrgData }) {
                           {pos.title}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-gray-500 dark:text-gray-400" dir="ltr">{pos.code}</TableCell>
+                      <TableCell className="text-xs font-mono text-gray-500 text-right dark:text-gray-400" dir="ltr">{pos.code}</TableCell>
                       <TableCell>
                         {pos.level ? (
                           <Badge variant="outline" className="text-[9px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800">
@@ -831,21 +855,21 @@ function PositionsTab({ data }: { data: OrgData }) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {positionManager ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
-                              <span className="text-[9px] font-bold text-white">
-                                {positionManager.firstName?.[0]}{positionManager.lastName?.[0]}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-700 dark:text-gray-300">
-                              {positionManager.firstName} {positionManager.lastName}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
-                      </TableCell>
+  {pos.departmentManager ? (
+    <div className="flex items-center gap-1.5">
+      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
+        <span className="text-[9px] font-bold text-white">
+          {pos.departmentManager.firstName?.[0]}{pos.departmentManager.lastName?.[0]}
+        </span>
+      </div>
+      <span className="text-xs text-gray-700 dark:text-gray-300">
+        {pos.departmentManager.firstName} {pos.departmentManager.lastName}
+      </span>
+    </div>
+  ) : (
+    <span className="text-xs text-gray-400">—</span>
+  )}
+</TableCell>
                       <TableCell className="text-xs text-gray-500 dark:text-gray-400">{pos.jobGrade || '—'}</TableCell>
                       <TableCell className="text-xs text-center">
                         <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium">
@@ -875,6 +899,26 @@ function PositionsTab({ data }: { data: OrgData }) {
                           {pos.status === 'active' ? 'فعال' : 'غیرفعال'}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-center">
+                            <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            onClick={(e) => {
+                            e.stopPropagation()
+                            console.log('🔍 [DEBUG] Position before edit:', {
+  id: pos.id,
+  title: pos.title,
+  description: pos.description,
+  requirements: pos.requirements
+})
+                            setSelectedPosition(pos)
+                            setShowPositionForm(true)
+                                    }}
+                                         >
+                              <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          </TableCell>
                     </TableRow>
                   )
                 })}
@@ -883,7 +927,44 @@ function PositionsTab({ data }: { data: OrgData }) {
           </div>
         </Card>
       )}
-
+{/* Dialog ایجاد/ویرایش پست سازمانی */}
+<PositionFormDialog
+  open={showPositionForm}
+  onClose={() => {
+    setShowPositionForm(false)
+    setSelectedPosition(null)
+  }}
+  onSubmit={async (data) => {
+    try {
+      const url = selectedPosition 
+        ? `/api/positions/${selectedPosition.id}` 
+        : '/api/positions'
+      const method = selectedPosition ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      
+      if (response.ok) {
+        toast.success(selectedPosition ? 'پست با موفقیت بروزرسانی شد' : 'پست با موفقیت ایجاد شد')
+        setShowPositionForm(false)
+        setSelectedPosition(null)
+        // رفرش کردن داده‌ها
+        onRefresh?.()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'خطا در ذخیره پست')
+      }
+    } catch (error) {
+      console.error('Error saving position:', error)
+      toast.error('خطا در ارتباط با سرور')
+    }
+  }}
+  position={selectedPosition}
+  departments={data.departments || []}
+/>
       
     </div>
   )
@@ -981,7 +1062,7 @@ export function OrganizationModule({ initialTab = 'org-chart' }: { initialTab?: 
           <DepartmentStructureTab data={data} />
         </TabsContent>
         <TabsContent value="org-positions">
-          <PositionsTab data={data} />
+          <PositionsTab data={data} onRefresh={fetchOrgData}/>
         </TabsContent>
       </Tabs>
     </div>
@@ -1263,6 +1344,7 @@ function DepartmentDetailCard({ dept, activeTab, onTabChange, allEmployees }: {
   activeTab: string
   onTabChange: (tab: string) => void
   allEmployees?: EmployeeBasic[]
+  
 }) {
   const c = getLevelColor(dept.level)
   
