@@ -109,39 +109,114 @@ export async function DELETE(
   try {
     const { id } = await params
 
+    // بررسی وجود دپارتمان با اطلاعات کامل
     const existing = await db.department.findUnique({
       where: { id },
       include: {
-        children: true,
-        positions: true,
-      },
+        children: {
+          include: {
+            positions: {
+              include: {
+                appointments: {
+                  include: { employee: true }
+                }
+              }
+            }
+          }
+        },
+        positions: {
+          include: {
+            appointments: {
+              include: { employee: true }
+            }
+          }
+        }
+      }
     })
 
     if (!existing) {
       return NextResponse.json({ error: 'دپارتمان یافت نشد' }, { status: 404 })
     }
 
-    // بررسی وجود زیرمجموعه
-    if (existing.children.length > 0) {
-      return NextResponse.json(
-        { error: `این دپارتمان ${existing.children.length} زیرمجموعه دارد و قابل حذف نیست` },
-        { status: 400 }
-      )
+    // جمع‌آوری همه positionهای مربوطه
+    const allPositions = [...existing.positions, ...existing.children.flatMap(c => c.positions)]
+    const allPositionIds = allPositions.map(p => p.id)
+
+    // جمع‌آوری همه کارمندانی که به این positionها متصل هستند
+    const affectedEmployees: string[] = []
+    for (const position of allPositions) {
+      const appointments = await db.appointment.findMany({
+        where: {
+          positionId: position.id,
+          status: 'active'
+        },
+        include: { employee: true }
+      })
+      for (const app of appointments) {
+        if (app.employee) {
+          affectedEmployees.push(app.employee.id)
+        }
+      }
     }
 
-    // بررسی وجود پست سازمانی
-    if (existing.positions.length > 0) {
-      return NextResponse.json(
-        { error: `این دپارتمان ${existing.positions.length} پست سازمانی دارد و قابل حذف نیست` },
-        { status: 400 }
-      )
-    }
+    // ✅ استفاده از تراکنش
+    await db.$transaction(async (tx) => {
+      // 1️⃣ به‌روزرسانی کارمندان: position و department را null کن
+      for (const employeeId of affectedEmployees) {
+        await tx.employee.update({
+          where: { id: employeeId },
+          data: {
+            position: null,
+            department: null
+          }
+        })
+      }
 
-    await db.department.delete({ where: { id } })
+      // 2️⃣ حذف همه انتصابات (Appointment) مربوط به positionها
+      if (allPositionIds.length > 0) {
+        await tx.appointment.deleteMany({
+          where: {
+            positionId: { in: allPositionIds }
+          }
+        })
+      }
 
-    return NextResponse.json({ message: 'دپارتمان حذف شد' })
+      // 3️⃣ حذف همه positionهای مربوطه
+      if (allPositionIds.length > 0) {
+        await tx.position.deleteMany({
+          where: {
+            id: { in: allPositionIds }
+          }
+        })
+      }
+
+      // 4️⃣ حذف زیرمجموعه‌ها
+      for (const child of existing.children) {
+        await tx.department.delete({
+          where: { id: child.id }
+        })
+      }
+
+      // 5️⃣ حذف دپارتمان اصلی
+      await tx.department.delete({
+        where: { id }
+      })
+    })
+
+    return NextResponse.json({ 
+      message: 'دپارتمان و تمام سمت‌های مرتبط حذف شدند',
+      details: {
+        departmentId: id,
+        positionsDeleted: allPositions.length,
+        employeesUpdated: affectedEmployees.length,
+        childrenDeleted: existing.children.length
+      }
+    })
   } catch (error) {
     console.error('Delete department error:', error)
-    return NextResponse.json({ error: 'خطا در حذف دپارتمان' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'خطا در حذف دپارتمان', 
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 }
