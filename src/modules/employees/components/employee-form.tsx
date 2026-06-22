@@ -227,7 +227,7 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
     if (!formData.departmentId) return
     try {
       // گرفتن لیست سمت‌ها
-      const response = await fetch(`/api/positions?departmentId=${formData.departmentId}`)
+      const response = await fetch(`/api/positions?departmentId=${formData.departmentId}&status=active`)
       const data = await response.json()
       const positionsList = (data.data || data)
       

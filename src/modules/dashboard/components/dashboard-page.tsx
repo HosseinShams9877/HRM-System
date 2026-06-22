@@ -36,6 +36,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Briefcase: Briefcase,
   LogOut: LogOut,
   Bell: Bell,
+  Megaphone: Megaphone,   
+  BookOpen: BookOpen,     
+  BellRing: BellRing,
   Sun: Sun,
   Moon: Moon,
   ChevronLeft: ChevronLeft,
@@ -49,7 +52,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   BarChart3: TrendingUp,
   User: User,
   Activity: Activity,
-  Network: Network,
   Building2: Building2,
   FileBadge: FileBadge,
   Settings: Settings,
@@ -57,14 +59,12 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Archive: Archive,
   FileText: FileText,
   Folder: Folder,
+  Network: Network,
   Eye: Eye,
   PlaneTakeoff: PlaneTakeoff,
   GraduationCap: GraduationCap,
   ClipboardList: ClipboardList,
-  BellRing: Bell,
   Smartphone: Smartphone,
-  Megaphone: Bell,
-  BookOpen: BookOpen,
 }
 
 
@@ -179,20 +179,6 @@ const resolveNavItems = () =>
     
       // تابع فیلتر کردن منوها بر اساس نقش کاربر
       const getFilteredNavItems = useCallback(() => {
-        // ❌ این بخش رو کامل حذف کن (بین خط 78 تا 92)
-// در getFilteredNavItems، قبل از return:
-  NAV_ITEMS.forEach(item => {
-  if (!ICON_MAP[item.icon]) {
-  }
-  item.children?.forEach(child => {
-    if (!ICON_MAP[child.icon]) {
-    }
-    child.children?.forEach(grandChild => {
-      if (!ICON_MAP[grandChild.icon]) {
-      }
-    })
-  })
-})
         const role = user?.role
         return NAV_ITEMS
           .filter(item => !item.mobileOnly)
@@ -209,6 +195,10 @@ const resolveNavItems = () =>
             }).map(child => ({
               ...child,
               icon: ICON_MAP[child.icon] || Briefcase,
+              children: child.children?.map(grandChild => ({
+                ...grandChild,
+                icon: ICON_MAP[grandChild.icon] || Briefcase,
+              })),
             })),
           }))
       }, [user])
