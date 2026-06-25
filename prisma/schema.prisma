@@ -461,6 +461,8 @@ model Contract {
   filePath       String? // فایل ضمیمه
   approvedById   String? // تأییدکننده
   approvedAt     String? // تاریخ تأیید شمسی
+  content        String?  // ←(متن قرارداد)
+  variables      Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

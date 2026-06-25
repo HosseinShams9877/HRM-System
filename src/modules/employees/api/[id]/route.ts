@@ -105,6 +105,13 @@ export async function PUT(
     if (body.issuePlace !== undefined) cleanedData.issuePlace = body.issuePlace === '' ? null : body.issuePlace
     if (body.fieldOfStudy !== undefined) cleanedData.fieldOfStudy = body.fieldOfStudy === '' ? null : body.fieldOfStudy
 
+    if (body.contractType === 'official') {
+      cleanedData.contractMonths = null
+      cleanedData.contractEndDate = null
+    } else if (body.contractMonths !== undefined) {
+      cleanedData.contractMonths = body.contractMonths
+    }
+
     const employee = await db.employee.update({
       where: { id },
       data: cleanedData,

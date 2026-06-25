@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
 import { getTodayShamsi } from '@/core/lib/utils-fa'
-import { validateWithZod, contractCreateSchema } from '@/core/lib/validators'
+import { contractCreateSchema } from '../lib/contract-validators'
+import { validateWithZod } from '@/core/lib/validators'
 import { getSessionUser, hasPermission } from '@/core/lib/auth'
 import { parsePagination, createPaginationMeta } from '@/core/lib/pagination'
 
@@ -163,12 +164,21 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
+   // بعد از گرفتن body، قبل از ایجاد قرارداد
+const existingActiveContract = await db.contract.findFirst({
+  where: {
+    employeeId: body.employeeId,
+    status: 'active',
+  },
+})
 
-    const validation = validateWithZod(contractCreateSchema, body)
-    if (!validation.success) {
-      return NextResponse.json({ error: 'داده‌های ورودی نامعتبر است', details: validation.errors }, { status: 400 })
-    }
-    const validatedData = validation.data
+if (existingActiveContract) {
+  return NextResponse.json(
+    { error: 'این کارمند قبلاً قرارداد فعال دارد!' },
+    { status: 409 }
+  )
+}
+    
 
     // تولید خودکار شماره قرارداد اگر وارد نشده
     if (!body.contractNumber) {
@@ -192,6 +202,8 @@ export async function POST(req: NextRequest) {
         filePath: body.filePath || null,
         approvedById: body.approvedById || null,
         approvedAt: body.approvedAt || null,
+        content: body.content || null,
+    variables: body.variables || null,
       },
       include: {
         employee: {

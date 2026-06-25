@@ -26,16 +26,6 @@ export const loginSchema = z.object({
   password: z.string().min(4, 'رمز عبور باید حداقل ۴ کاراکتر باشد'),
 })
 
-// ---- Contract Validation ----
-export const contractCreateSchema = z.object({
-  employeeId: z.string().min(1, 'انتخاب کارمند الزامی است'),
-  type: z.enum(['official', 'contractual', 'probation', 'temporary'], { errorMap: () => ({ message: 'نوع قرارداد نامعتبر است' }) }),
-  startDate: z.string().regex(/^\d{4}\/\d{2}\/\d{2}$/, 'فرمت تاریخ شمسی نامعتبر'),
-  endDate: z.string().regex(/^\d{4}\/\d{2}\/\d{2}$/, 'فرمت تاریخ شمسی نامعتبر').optional().or(z.literal('')),
-  amount: z.coerce.number().min(0, 'مبلغ باید مثبت باشد').optional(),
-  status: z.enum(['active', 'expired', 'terminated', 'draft']).default('active'),
-  description: z.string().optional(),
-})
 
 // ---- Attendance Validation ----
 export const attendanceCreateSchema = z.object({

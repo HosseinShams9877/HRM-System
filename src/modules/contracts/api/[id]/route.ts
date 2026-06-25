@@ -129,14 +129,29 @@ export async function DELETE(
 
     const { id } = await params
 
-    const existing = await db.contract.findUnique({ where: { id } })
+    const existing = await db.contract.findUnique({ 
+      where: { id },
+      select: { employeeId: true, status: true }
+    })
     if (!existing) {
       return NextResponse.json({ error: 'قرارداد یافت نشد' }, { status: 404 })
     }
 
+    // 🔥 اگر قرارداد فعال بود، کارمند رو غیرفعال کن
+    if (existing.status === 'active') {
+      await db.employee.update({
+        where: { id: existing.employeeId },
+        data: { status: 'inactive' },
+      })
+    }
+
+    // حذف قرارداد
     await db.contract.delete({ where: { id } })
 
-    return NextResponse.json({ message: 'قرارداد حذف شد' })
+    return NextResponse.json({ 
+      message: 'قرارداد حذف شد',
+      employeeStatusUpdated: existing.status === 'active'
+    })
   } catch (error) {
     console.error('Delete contract error:', error)
     return NextResponse.json({ error: 'خطا در حذف قرارداد' }, { status: 500 })

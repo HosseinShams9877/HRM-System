@@ -304,3 +304,45 @@ body {
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
+/* ============================================
+   CUSTOM SCROLLBAR - برای جدول قراردادها
+   ============================================ */
+
+/* اسکرول افقی ضخیم‌تر و نرم‌تر */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 10px !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 10px !important;
+  transition: all 0.3s ease !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+  border-radius: 10px !important;
+}
+
+.dark .overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #475569 !important;
+}
+
+.dark .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+/* برای فایرفاکس */
+.overflow-x-auto {
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 transparent !important;
+}
+
+.dark .overflow-x-auto {
+  scrollbar-color: #475569 transparent !important;
+}
