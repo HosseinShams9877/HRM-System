@@ -3,6 +3,40 @@ import { db } from '@/core/lib/db'
 import { getTodayShamsi } from '@/core/lib/utils-fa'
 import { getSessionUser, hasPermission } from '@/core/lib/auth'
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    const contract = await db.contract.findUnique({
+      where: { id },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            personnelCode: true,
+            department: true,
+            position: true,
+          },
+        },
+      },
+    })
+
+    if (!contract) {
+      return NextResponse.json({ error: 'قرارداد یافت نشد' }, { status: 404 })
+    }
+
+    return NextResponse.json(contract)
+  } catch (error) {
+    console.error('Get contract error:', error)
+    return NextResponse.json({ error: 'خطا در دریافت قرارداد' }, { status: 500 })
+  }
+}
+
 // PUT /api/contracts/[id] — بروزرسانی قرارداد (تأیید، فسخ، تمدید)
 export async function PUT(
   req: NextRequest,
@@ -86,6 +120,8 @@ export async function PUT(
         ...(body.notes !== undefined && { notes: body.notes }),
         ...(body.status && { status: body.status }),
         ...(body.filePath !== undefined && { filePath: body.filePath }),
+        ...(body.content !== undefined && { content: body.content }),      
+        ...(body.variables !== undefined && { variables: body.variables }),
       }
     }
 

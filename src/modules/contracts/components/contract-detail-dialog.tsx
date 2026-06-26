@@ -70,6 +70,9 @@ export function ContractDetailDialog({
   onClose: () => void
   contract: ContractRecord | null
 }) {
+
+  console.log('🔍 Contract in dialog:', contract)
+  console.log('🔍 endDate in dialog:', contract?.endDate)
   if (!contract) return null
 
   const typeInfo = CONTRACT_TYPES.find(t => t.value === contract.type)

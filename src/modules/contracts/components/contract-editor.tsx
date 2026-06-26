@@ -270,20 +270,20 @@ export function ContractEditor({
 
                 <div className="relative">
                 <Textarea
-  value={showPreview ? previewText : contractText}  // ← ویرایش شده یا پیش‌نمایش
-  onChange={(e) => {
-    console.log('✏️ Text changed:', e.target.value)  // ← این رو اضافه کن
-    console.log('🔍 showPreview:', showPreview)       // ← این رو اضافه کن
-    if (!showPreview) {
-      setContractText(e.target.value)
-    }
-  }}
-  className={`min-h-[350px] sm:min-h-[500px] font-mono text-xs sm:text-sm leading-relaxed rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 ${
-    showPreview ? 'pointer-events-none' : ''
-  }`}
-  dir="rtl"
-  readOnly={showPreview}
-/>
+                      value={showPreview ? previewText : contractText}  // ← ویرایش شده یا پیش‌نمایش
+                       onChange={(e) => {
+                       if (!showPreview) {
+                       setContractText(e.target.value)
+                        }
+                      }}
+                        className={`min-h-[350px] sm:min-h-[500px] font-mono
+                         text-xs sm:text-sm leading-relaxed rounded-xl bg-gray-50 
+                         dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 ${
+                        showPreview ? 'pointer-events-none' : ''
+                      }`}
+                        dir="rtl"
+                      readOnly={showPreview}
+                  />
                 </div>
 
                 {/* Variables Legend */}

@@ -42,10 +42,26 @@ export async function GET(req: NextRequest) {
     }
 
     const where = andConditions.length > 0 ? { AND: andConditions } : {}
-
+    
     const contracts = await db.contract.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        employeeId: true,
+        type: true,
+        contractNumber: true,
+        title: true,
+        startDate: true,
+        endDate: true,        // ← این رو اضافه کن
+        amount: true,         // ← این رو اضافه کن
+        department: true,     // ← این رو اضافه کن
+        notes: true,
+        status: true,
+        filePath: true,
+        approvedById: true,
+        approvedAt: true,
+        createdAt: true,
+        updatedAt: true,
         employee: {
           select: {
             id: true,
@@ -61,6 +77,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ createdAt: 'desc' }],
     })
 
+   
     // فیلتر قراردادهای در حال انقضا در حافظه
     let filteredContracts = contracts
     if (expiringDays) {
@@ -140,7 +157,7 @@ export async function GET(req: NextRequest) {
         renewal: allContracts.filter(c => c.type === 'حکم تمدید').length,
       },
     }
-
+    
     return NextResponse.json({
       data: paginatedContracts,
       pagination: createPaginationMeta(page, limit, total),

@@ -1,128 +1,22 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
 import { ContractTable } from './contract-table'
 import {
-  FileText, Search, Plus, Save, Printer, User, Building2,
-  CreditCard, Calendar, Hash, Briefcase, UserCircle, Phone,
-  Mail, MapPin, CheckCircle2, XCircle, Edit, Eye, CheckCircle, AlertCircle, UserMinus
+  FileText,  Save, 
+ CheckCircle2
 } from 'lucide-react'
-import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
-import { Badge } from '@/core/components/ui/badge'
-import { Input } from '@/core/components/ui/input'
-import { Label } from '@/core/components/ui/label'
-import { Textarea } from '@/core/components/ui/textarea'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/core/components/ui/select'
-import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { ScrollArea } from '@/core/components/ui/scroll-area'
-import { Separator } from '@/core/components/ui/separator'
 import { PERMANENT_CONTRACT_TEMPLATE, TEMPORARY_CONTRACT_TEMPLATE } from '../lib/contract-templates'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogDescription
 } from '@/core/components/ui/dialog'
 import { toast } from 'sonner'
-import { toShamsi, toPersianDigits, formatShamsi, formatCurrency } from '@/core/lib/utils-fa'
+import { toShamsi, toPersianDigits,  getTodayShamsi ,formatCurrency } from '@/core/lib/utils-fa'
 import { ContractEditor } from './contract-editor'
-
-// ============================================
-// Types
-// ============================================
-
-interface Employee {
-  id: string
-  firstName: string
-  lastName: string
-  personnelCode: string
-  nationalCode: string
-  positionName?: string
-  email?: string
-  phone?: string
-  position?: string
-  department?: string
-  contractMonths?: number    
-  contractEndDate?: string
-  departmentName?: string
-  contractType?: string
-  hireDate?: string
-  basicSalary?: number
-  housingAllowance?: number
-  transportationAllowance?: number
-  mealAllowance?: number
-  financial?: {
-    baseSalary?: number
-    housingAllowance?: number
-    workAllowance?: number
-    spouseAllowance?: number
-    childAllowance?: number
-    yearsOfServiceBase?: number
-    responsibilityAllowance?: number
-    otherAllowances?: number
-  } | null
-  [key: string]: unknown
-}
-
-interface Contract {
-  id: string
-  employeeId: string
-  type: string          // نوع قرارداد (official, temporary, ...)
-  contractNumber: string
-  title: string
-  startDate: string
-  endDate: string | null
-  amount: number | null
-  department: string | null
-  notes: string | null
-  status: string        // active, expired, terminated, draft
-  filePath: string | null
-  approvedById: string | null
-  approvedAt: string | null
-  createdAt?: string
-  updatedAt?: string
-  employee?: {
-    id: string
-    firstName: string
-    lastName: string
-    personnelCode: string
-    department: string | null
-    position: string | null
-  }
-}
-
-
-// ============================================
-// Stats Card Component
-// ============================================
-
-const StatsCard = ({ title, value, icon: Icon, color, bgColor, subText }: { 
-  title: string
-  value: number
-  icon: React.ElementType
-  color: string
-  bgColor: string
-  subText?: string
-}) => {
-  return (
-    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{toPersianDigits(value)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{title}</p>
-            {subText && <p className="text-[9px] text-muted-foreground mt-0.5">{subText}</p>}
-          </div>
-          <div className={`p-3 rounded-2xl ${bgColor}`}>
-            <Icon className={`w-5 h-5 ${color}`} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+import { Employee , Contract } from '../types/types'
+import { StatisticsTab } from './statistics-tab'
 
 // ============================================
 // Main Contracts Module
@@ -140,6 +34,31 @@ export function ContractsModule() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const getDaysRemaining = (endDate: string | null): number => {
+    if (!endDate) return Infinity
+    try {
+      const [ey, em, ed] = endDate.split('/').map(Number)
+      const today = getTodayShamsi()
+      const endTotal = (ey * 365) + (em * 31) + ed
+      const nowTotal = (today.year * 365) + (today.month * 31) + today.day
+      return endTotal - nowTotal
+    } catch {
+      return Infinity
+    }
+  }
+  
+  const stats = {
+    total: contracts.length,
+    active: contracts.filter(c => c.status === 'active').length,
+    expiringSoon: contracts.filter(c => {
+      if (c.status !== 'active' || !c.endDate) return false
+      const daysLeft = getDaysRemaining(c.endDate)
+      return daysLeft >= 0 && daysLeft <= 30
+    }).length,
+    expired: contracts.filter(c => c.status === 'expired').length,
+    terminated: contracts.filter(c => c.status === 'terminated').length,
+    draft: contracts.filter(c => c.status === 'draft').length,
+  }
 
 // ============================================
 // Update contract text when employee changes
@@ -379,18 +298,15 @@ const availableEmployees = useMemo(() => {
       toast.error('لطفاً ابتدا یک کارمند انتخاب کنید.')
       return
     }
-    const hasActiveContract = contracts.some(c => c.employeeId === selectedEmployee.id && c.status === 'active')
-    if (hasActiveContract) {
-      toast.error('این کارمند قبلاً قرارداد فعال دارد!')
-      return
-    }
+    
     setIsSaving(true)
-
+  
     try {
       const contentToSave = contractText
       let endDate = null
       let contractDuration = 'دائم'
       
+      // محاسبه endDate
       if (selectedEmployee.contractEndDate) {
         const date = new Date(selectedEmployee.contractEndDate)
         if (!isNaN(date.getTime())) {
@@ -411,12 +327,19 @@ const availableEmployees = useMemo(() => {
         contractDuration = 'دائم'
       }
       
+      // ✅ بررسی کن که آیا این قرارداد قبلاً وجود دارد (ویرایش)
+      const existingContract = contracts.find(c => c.employeeId === selectedEmployee.id && c.status === 'active')
+      
+      // ✅ اگر در حال ویرایش هستیم، از contractNumber موجود استفاده کن
+      const contractNumber = existingContract?.contractNumber || `C-${new Date().getFullYear()}/${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+      
       const payload = {
         employeeId: selectedEmployee.id,
         title: `قرارداد کاری ${selectedEmployee.firstName} ${selectedEmployee.lastName}`,
-        contractNumber: `C-${new Date().getFullYear()}/${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+        contractNumber: contractNumber,
         type: selectedEmployee.contractType === 'permanent' || selectedEmployee.contractType === 'official' ? 'official' : 'temporary',
         status: 'active',
+        department: selectedEmployee.departmentName || selectedEmployee.department || null,
         startDate: selectedEmployee.hireDate ? toShamsi(new Date(selectedEmployee.hireDate)) : '1404/01/01',
         endDate: endDate,
         content: contentToSave,
@@ -426,26 +349,40 @@ const availableEmployees = useMemo(() => {
           position: selectedEmployee.positionName || selectedEmployee.position,
           department: selectedEmployee.departmentName || selectedEmployee.department,
           basicSalary: selectedEmployee.financial?.baseSalary || 0,
-    housingAllowance: selectedEmployee.financial?.housingAllowance || 0,
-    transportationAllowance: selectedEmployee.financial?.workAllowance || 0,
-    mealAllowance: selectedEmployee.financial?.otherAllowances || 0,
-        }
+          housingAllowance: selectedEmployee.financial?.housingAllowance || 0,
+          transportationAllowance: selectedEmployee.financial?.workAllowance || 0,
+          mealAllowance: selectedEmployee.financial?.otherAllowances || 0,
+        },
+        amount: 
+          (selectedEmployee.financial?.baseSalary || 0) +
+          (selectedEmployee.financial?.housingAllowance || 0) +
+          (selectedEmployee.financial?.workAllowance || 0) +
+          (selectedEmployee.financial?.otherAllowances || 0),
       }
-
-      const res = await fetch('/api/contracts', {
-        method: 'POST',
+  
+      // ✅ اگر قرارداد وجود دارد (ویرایش)، از PUT استفاده کن
+      let url = '/api/contracts'
+      let method = 'POST'
+      
+      if (existingContract) {
+        url = `/api/contracts/${existingContract.id}`
+        method = 'PUT'
+      }
+  
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-
+  
       if (res.ok) {
+        toast.success(existingContract ? 'قرارداد با موفقیت ویرایش شد' : 'قرارداد با موفقیت ذخیره شد')
         setShowSuccess(true)
-        toast.success('قرارداد با موفقیت ذخیره شد')
         await fetchContracts()
         await fetchEmployees()
-        const template = getContractTemplate(selectedEmployee)
-        const filledText = replaceVariables(template, selectedEmployee)
-        setContractText(filledText)
+        // ریست کردن فرم
+        setSelectedEmployee(null)
+        setContractText(TEMPORARY_CONTRACT_TEMPLATE)
         setTimeout(() => setShowSuccess(false), 5000)
       } else {
         const err = await res.json()
@@ -458,14 +395,48 @@ const availableEmployees = useMemo(() => {
       setIsSaving(false)
     }
   }
-  const handleEditContract = (contract: Contract) => {
+  const handleEditContract = async (contract: Contract) => {
+    // فقط قراردادهای فعال قابل ویرایش هستند
+    if (contract.status !== 'active') {
+      toast.warning('فقط قراردادهای فعال قابل ویرایش هستند')
+      return
+    }
+  
     const employee = employees.find(e => e.id === contract.employeeId)
-    if (employee) {
-      setSelectedEmployee(employee)
-      const template = getContractTemplate(employee)
-      const filledText = replaceVariables(template, employee)
-      setContractText(filledText)
-      toast.info('در حال ویرایش قرارداد...')
+    if (!employee) {
+      toast.error('کارمند یافت نشد')
+      return
+    }
+  
+    setSelectedEmployee(employee)
+    
+    // ✅ متن قرارداد را از دیتابیس بارگذاری کن
+    try {
+      const res = await fetch(`/api/contracts/${contract.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        const contractData = data.data || data
+        
+        // اگر قرارداد متن ذخیره شده دارد، آن را نمایش بده
+        if (contractData.content) {
+          setContractText(contractData.content)
+          // همچنین متغیرهای قرارداد رو هم آپدیت کن
+          if (contractData.variables) {
+            // می‌تونی متغیرها رو هم در صورت نیاز به state اضافه کنی
+          }
+        } else {
+          // اگر متن ذخیره نشده، از قالب استفاده کن
+          const template = getContractTemplate(employee)
+          setContractText(replaceVariables(template, employee))
+        }
+        
+        toast.info('در حال ویرایش قرارداد...')
+      } else {
+        toast.error('خطا در دریافت متن قرارداد')
+      }
+    } catch (error) {
+      console.error('Error fetching contract content:', error)
+      toast.error('خطا در ارتباط با سرور')
     }
   }
 
@@ -518,36 +489,7 @@ const availableEmployees = useMemo(() => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-        <StatsCard 
-          title="کل قراردادها" 
-          value={contracts.length} 
-          icon={FileText}
-          color="text-blue-600 dark:text-blue-400"
-          bgColor="bg-blue-50 dark:bg-blue-950/30"
-        />
-        <StatsCard 
-          title="فعال" 
-          value={contracts.filter(c => c.status === 'active').length} 
-          icon={CheckCircle}
-          color="text-emerald-600 dark:text-emerald-400"
-          bgColor="bg-emerald-50 dark:bg-emerald-950/30"
-        />
-        <StatsCard 
-          title="دائم" 
-          value={contracts.filter(c => c.type === 'official' && c.status === 'active').length} 
-          icon={CheckCircle}
-          color="text-emerald-600 dark:text-emerald-400"
-          bgColor="bg-emerald-50 dark:bg-emerald-950/30"
-        />
-        <StatsCard 
-          title="موقت" 
-          value={contracts.filter(c => c.type === 'temporary' && c.status === 'active').length} 
-          icon={AlertCircle}
-          color="text-amber-600 dark:text-amber-400"
-          bgColor="bg-amber-50 dark:bg-amber-950/30"
-        />
-      </div>
+      <StatisticsTab stats={stats} />
 
       {/* Contract Table */}
       

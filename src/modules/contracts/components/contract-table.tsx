@@ -5,10 +5,20 @@ import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { Edit, XCircle, CheckCircle, FileText, ChevronLeft, ChevronRight, Filter, X, Search} from 'lucide-react'
+import { Edit, XCircle, CheckCircle, FileText, ChevronLeft, ChevronRight, Eye, X, Search , Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatShamsi, getTodayShamsi, toPersianDigits } from '@/core/lib/utils-fa'
+import { ContractDetailDialog } from './contract-detail-dialog' 
 import { Input } from '@/core/components/ui/input'
+import { TerminateDialog } from './contract-form-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/core/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -21,37 +31,10 @@ import {
   PaginationContent,
   PaginationItem,
 } from '@/core/components/ui/pagination'
+import { Contract } from '../index'
 
-interface Contract {
-  id: string
-  employeeId: string
-  type: string
-  contractNumber: string
-  title: string
-  startDate: string
-  endDate: string | null
-  amount: number | null
-  department: string | null
-  notes: string | null
-  status: string
-  filePath: string | null
-  approvedById: string | null
-  approvedAt: string | null
-  createdAt?: string
-  updatedAt?: string
-  variables?: {
-    contractMonths?: number
-    [key: string]: unknown
-  }
-  employee?: {
-    id: string
-    firstName: string
-    lastName: string
-    personnelCode: string
-    department: string | null
-    position: string | null
-  }
-}
+
+
 
 interface Employee {
   id: string
@@ -144,7 +127,9 @@ export function ContractTable({
   const [filterType, setFilterType] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
-
+  const [detailContract, setDetailContract] = useState<Contract | null>(null)
+  const [terminateContract, setTerminateContract] = useState<Contract | null>(null)
+  const [deleteContract, setDeleteContract] = useState<Contract | null>(null)
   // ============================================
   // Filtered Contracts
   // ============================================
@@ -184,36 +169,55 @@ export function ContractTable({
   // ============================================
   // Toggle Contract Status
   // ============================================
-  const handleToggleStatus = async (contract: Contract) => {
+  const handleEditContract = async (contract: Contract) => {
+    // فقط قراردادهای فعال قابل ویرایش هستند
+    if (contract.status !== 'active') {
+      toast.warning('فقط قراردادهای فعال قابل ویرایش هستند')
+      return
+    }
+  
+    // ✅ اینجا باید متن قرارداد رو از دیتابیس بگیری
+    // و به `onEdit` پاس بدی
+    // اگه `onEdit` فقط قرارداد رو می‌گیره و توی والد متن رو مدیریت می‌کنه:
+    onEdit(contract)
+  }
+ 
+  const handleTerminate = async (data: Record<string, unknown>) => {
+    if (!terminateContract) return
     try {
-      const newStatus = contract.status === 'active' ? 'expired' : 'active'
-
-      const res = await fetch(`/api/contracts/${contract.id}`, {
+      const res = await fetch(`/api/contracts/${terminateContract.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'toggle-status',
-          status: newStatus
+          action: 'terminate',
+          status: 'terminated',
+          notes: data.notes,
         }),
       })
-
       if (res.ok) {
-        toast.success(`قرارداد با موفقیت ${newStatus === 'active' ? 'فعال' : 'غیرفعال'} شد`)
-
-       
-        if (onRefresh) {
-          await onRefresh()
-        }
-      } else {
-        const err = await res.json()
-        toast.error(err.error || 'خطا در تغییر وضعیت')
+        toast.success('قرارداد فسخ شد')
+        setTerminateContract(null)
+        await onRefresh()
       }
     } catch (error) {
-      console.error('Error toggling contract status:', error)
-      toast.error('خطا در ارتباط با سرور')
+      toast.error('خطا در فسخ قرارداد')
     }
   }
 
+  const handleDelete = async (contract: Contract) => {
+    try {
+      const res = await fetch(`/api/contracts/${contract.id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success('قرارداد حذف شد')
+        setDeleteContract(null)
+        await onRefresh()
+      }
+    } catch (error) {
+      toast.error('خطا در حذف قرارداد')
+    }
+  }
   // ============================================
   // Pagination
   // ============================================
@@ -309,12 +313,13 @@ export function ContractTable({
                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-200">زمان باقیمانده</th>
                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-200">وضعیت</th>
                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-200">عملیات</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-200">جزئیات</th>
               </tr>
             </thead>
             <tbody>
               {currentContracts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground dark:text-gray-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground dark:text-gray-400">
                     {hasActiveFilters ? 'هیچ قراردادی با فیلترهای انتخاب شده یافت نشد' : 'هیچ قراردادی ثبت نشده است'}
                   </td>
                 </tr>
@@ -370,24 +375,41 @@ export function ContractTable({
                       </td>
                       <td className="px-3 py-2 sm:px-4 sm:py-3">
                         <div className="flex items-center gap-1">
+                        <Button
+  variant="ghost"
+  size="sm"
+  className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:scale-110"
+  onClick={() => handleEditContract(contract)}  
+>
+  <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+</Button>
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                            onClick={() => onEdit(contract)}
-                          >
-                            <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                            onClick={() => handleToggleStatus(contract)}
-                          >
-                            {isActive ? <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                          </Button>
+  variant="ghost"
+  size="sm"
+  className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-110"
+  onClick={() => {
+    if (contract.status === 'active') {
+      setTerminateContract(contract)
+    } else {
+      setDeleteContract(contract)
+    }
+  }}
+>
+  <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+</Button>
                         </div>
                       </td>
+                      <td className="px-3 py-2 sm:px-4 sm:py-3">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-500 hover:bg-gray-100
+                             dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 hover:scale-110"
+                            onClick={() => setDetailContract(contract)}
+                        >
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Button>
+                        </td>
                     </tr>
                   )
                 })
@@ -470,6 +492,60 @@ export function ContractTable({
           </Pagination>
         </div>
       )}
+
+      {/* ============================================
+        Contract Detail Dialog
+          ============================================ */}
+          <ContractDetailDialog
+             open={!!detailContract}  // ← اگه detailContract وجود داشته باشه، باز میشه
+             onClose={() => setDetailContract(null)}  // ← بستن دیالوگ
+             contract={detailContract as any}  // ← قرارداد انتخاب شده
+          />
+
+          <TerminateDialog
+            open={!!terminateContract}
+            onClose={() => setTerminateContract(null)}
+            onSubmit={handleTerminate}
+            contract={terminateContract  as any}
+          />
+
+<Dialog open={!!deleteContract} onOpenChange={() => setDeleteContract(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              حذف قرارداد
+            </DialogTitle>
+            <DialogDescription>
+              آیا از حذف قرارداد «{deleteContract?.title}» برای {deleteContract?.employee?.firstName} {deleteContract?.employee?.lastName} اطمینان دارید؟
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-sm text-red-700 dark:text-red-300">
+              <p className="font-semibold">⚠️ این عمل غیرقابل بازگشت است!</p>
+              <p className="text-xs mt-1">قرارداد به طور کامل از دیتابیس حذف خواهد شد.</p>
+              {deleteContract?.status === 'active' && (
+                <p className="text-xs mt-1 text-amber-600 dark:text-amber-400">
+                  🔸 کارمند مرتبط با این قرارداد غیرفعال خواهد شد.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteContract(null)}>انصراف</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteContract && handleDelete(deleteContract)}
+              className="gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              حذف قطعی
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

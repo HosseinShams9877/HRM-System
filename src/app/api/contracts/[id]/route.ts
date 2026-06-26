@@ -1,1 +1,1 @@
-export { PUT , DELETE } from '@/modules/contracts/api/[id]/route'
+export { PUT , DELETE  ,GET } from '@/modules/contracts/api/[id]/route'
