@@ -22,7 +22,7 @@ import { OrganizationModule } from '@/modules/organization/components/organizati
 import { OrgPulseModule } from '@/modules/organization/components/org-pulse-module'
 import { Recruitment } from '@/modules/recruitment/components/Recruitment' 
 import { EmployeeProfilePage } from '@/modules/employees/components/employee-profile-page'
-import { OrdersModule } from '@/modules/contracts/components/orders-module'  
+import { OrdersModule } from '@/modules/orders/components/orders-module'  
 import {CareersSite} from '@/core/components/CareersSite'
 import { EmployeeWorkHistory } from '@/modules/employees/components/work-history'
 import AdminDesktop from './layouts/admin-desktop'

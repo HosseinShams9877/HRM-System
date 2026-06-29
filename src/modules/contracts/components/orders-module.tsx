@@ -52,20 +52,31 @@ interface Employee {
   lastName: string
   personnelCode: string
 }
-
 interface OrderRecord {
   id: string
-  orderType: 'promotion' | 'transfer' | 'salary' | 'disciplinary' | 'leave' | 'termination' | 'other'
   orderNumber: string
+  orderType: string // استخدام، تمدید، افزایش حقوق، تغییر سمت، انتقال، ارتقا، تعلیق، پایان همکاری
   title: string
   description?: string
-  issueDate: string
-  effectiveDate: string
-  status: 'pending' | 'approved' | 'rejected' | 'executed' | 'active'
-  fileUrl?: string
-  fileName?: string
   employeeId: string
   employee: Employee
+  contractId?: string
+  issueDate: string
+  effectiveDate: string
+  expiryDate?: string
+  newPosition?: string
+  newDepartment?: string
+  newManagerId?: string
+  baseSalary?: number
+  housingAllowance?: number
+  foodAllowance?: number
+  attractionAllowance?: number
+  responsibilityAllowance?: number
+  otherAllowances?: number
+  fixedDeductions?: number
+  status: 'draft' | 'pending' | 'approved' | 'active' | 'cancelled' | 'replaced'
+  fileUrl?: string
+  fileName?: string
   createdAt: string
   updatedAt: string
 }
@@ -82,21 +93,25 @@ interface OrderStats {
 // ============================================
 
 const ORDER_TYPES = [
+  { value: 'employment', label: 'استخدام', icon: '📋', color: 'bg-emerald-100 text-emerald-600' },
+  { value: 'extension', label: 'تمدید قرارداد', icon: '📄', color: 'bg-blue-100 text-blue-600' },
+  { value: 'salary_increase', label: 'افزایش حقوق', icon: '💰', color: 'bg-amber-100 text-amber-600' },
+  { value: 'position_change', label: 'تغییر سمت', icon: '🔄', color: 'bg-purple-100 text-purple-600' },
+  { value: 'department_change', label: 'تغییر واحد', icon: '🏢', color: 'bg-indigo-100 text-indigo-600' },
   { value: 'promotion', label: 'ارتقاء شغلی', icon: '⬆️', color: 'bg-emerald-100 text-emerald-600' },
-  { value: 'transfer', label: 'انتقالی', icon: '🔄', color: 'bg-blue-100 text-blue-600' },
-  { value: 'salary', label: 'حقوق و مزایا', icon: '💰', color: 'bg-amber-100 text-amber-600' },
-  { value: 'disciplinary', label: 'تنبیهی', icon: '⚠️', color: 'bg-rose-100 text-rose-600' },
-  { value: 'leave', label: 'مرخصی', icon: '🏖️', color: 'bg-purple-100 text-purple-600' },
-  { value: 'termination', label: 'پایان همکاری', icon: '🚪', color: 'bg-gray-100 text-gray-600' },
+  { value: 'transfer', label: 'انتقال', icon: '🚚', color: 'bg-teal-100 text-teal-600' },
+  { value: 'suspension', label: 'تعلیق', icon: '⏸️', color: 'bg-orange-100 text-orange-600' },
+  { value: 'termination', label: 'پایان همکاری', icon: '🚪', color: 'bg-rose-100 text-rose-600' },
   { value: 'other', label: 'سایر', icon: '📄', color: 'bg-gray-100 text-gray-600' },
 ]
 
 const STATUS_OPTIONS = [
-  { value: 'pending', label: 'در انتظار', color: 'bg-amber-100 text-amber-600' },
-  { value: 'approved', label: 'تایید شده', color: 'bg-blue-100 text-blue-600' },
-  { value: 'rejected', label: 'رد شده', color: 'bg-rose-100 text-rose-600' },
-  { value: 'active', label: 'در حال اجرا', color: 'bg-emerald-100 text-emerald-600' },
-  { value: 'executed', label: 'اجرا شده', color: 'bg-teal-100 text-teal-600' },
+  { value: 'draft', label: 'پیش‌نویس', color: 'bg-gray-100 text-gray-600' },
+  { value: 'pending', label: 'در انتظار تأیید', color: 'bg-amber-100 text-amber-600' },
+  { value: 'approved', label: 'تأیید شده', color: 'bg-blue-100 text-blue-600' },
+  { value: 'active', label: 'فعال', color: 'bg-emerald-100 text-emerald-600' },
+  { value: 'cancelled', label: 'ابطال شده', color: 'bg-rose-100 text-rose-600' },
+  { value: 'replaced', label: 'جایگزین شده', color: 'bg-gray-100 text-gray-600' },
 ]
 
 // ============================================

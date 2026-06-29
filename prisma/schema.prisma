@@ -28,7 +28,7 @@ model User {
   lastLogin         DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
-
+  approvedOrders    Order[]    @relation("OrderApprover")  
   passwordResets PasswordReset[]
 }
 
@@ -68,6 +68,8 @@ model Employee {
   childrenCount  Int                @default(0) // تعداد فرزندان
   bloodType      String? // A+, B+, O+, AB+
   medicalInfo    String? // بیماری خاص
+  orders         Order[]    @relation("EmployeeOrders") // احکام صادر شده برای این کارمند
+  managedOrders  Order[]    @relation("OrderManager")
   address        String? // آدرس منزل
   postalCode     String?
   homePhone      String? // تلفن ثابت
@@ -457,6 +459,7 @@ model Contract {
   amount         Float? // مبلغ قرارداد (ریال)
   department     String? // دپارتمان مربوطه
   notes          String? // توضیحات
+  orders         Order[] 
   status         String   @default("active") // active, expired, terminated, draft
   filePath       String? // فایل ضمیمه
   approvedById   String? // تأییدکننده
@@ -465,6 +468,72 @@ model Contract {
   variables      Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+
+// ============================================
+// احکام کارگزینی
+// ============================================
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique // شماره حکم: H-1405/001
+  orderType       String   // استخدام، تمدید، افزایش حقوق، تغییر سمت، انتقال، ارتقا، تعلیق، پایان همکاری
+  title           String   // عنوان حکم
+  description     String?
+
+  // ارتباط با کارمند و قرارداد
+  employeeId      String
+  employee        Employee @relation("EmployeeOrders", fields: [employeeId], references: [id])
+  contractId      String?
+  contract        Contract? @relation(fields: [contractId], references: [id])
+
+  // تاریخ‌ها
+  issueDate       String   // تاریخ صدور (شمسی)
+  effectiveDate   String   // تاریخ اجرا (شمسی)
+  expiryDate      String?
+
+  // اطلاعات شغلی جدید
+  newPosition     String?
+  newDepartment   String?
+  newManagerId    String?
+  newManager      Employee? @relation("OrderManager", fields: [newManagerId], references: [id])
+
+  // اطلاعات حقوقی جدید
+  baseSalary      Float?
+  housingAllowance Float?
+  foodAllowance   Float?
+  attractionAllowance Float?
+  responsibilityAllowance Float?
+  otherAllowances Float?
+  fixedDeductions Float?
+
+  // وضعیت‌های حکم
+  status          String   @default("draft") // draft, pending, approved, active, cancelled, replaced
+  insuranceStatus String?
+  taxStatus       String?
+
+  // تأیید
+  approvedById    String?
+  approvedBy      User?    @relation("OrderApprover", fields: [approvedById], references: [id])
+  approvedAt      String?
+
+  // فایل ضمیمه
+  fileUrl         String?
+  fileName        String?
+
+  // جایگزینی
+  replacesOrderId String?
+  replacesOrder   Order?   @relation("OrderReplacement", fields: [replacesOrderId], references: [id])
+  replacedBy      Order[]  @relation("OrderReplacement")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // ایندکس‌ها
+  @@index([employeeId])
+  @@index([status])
+  @@index([effectiveDate])
 }
 
 // ============================================
