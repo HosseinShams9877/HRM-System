@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   serverExternalPackages: ["@prisma/client"],
+  experimental: {
+    esmExternals: 'loose'},
 
   webpack: (config) => {
     config.resolve.alias = {
@@ -15,6 +17,12 @@ const nextConfig: NextConfig = {
       '@': path.resolve(__dirname, 'src'),
       '@/core': path.resolve(__dirname, 'src/core'),
       '@/modules': path.resolve(__dirname, 'src/modules'),
+    }
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      canvas: false,
+      fs: false,
+      path: false,
     }
     return config
   },

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { Edit, XCircle, CheckCircle, FileText, ChevronLeft, ChevronRight, Eye, X, Search , Trash2 } from 'lucide-react'
+import { Edit, XCircle,Download, FileText, ChevronLeft, ChevronRight, Eye, X, Search , Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatShamsi, getTodayShamsi, toPersianDigits } from '@/core/lib/utils-fa'
 import { ContractDetailDialog } from './contract-detail-dialog' 
@@ -112,6 +112,22 @@ const getRemainingTime = (endDate: string | null): { text: string; isExpired: bo
   }
 }
 
+// اضافه کنید بالای کامپوننت
+const getTypeColor = (type: string): string => {
+  const colors: Record<string, string> = {
+    'permanent': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    'official': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    'temporary': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    'contractual': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    'hourly': 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    'part_time': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+    'full_time': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
+    'contract': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    'freelance': 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
+  }
+  return colors[type] || 'bg-gray-100 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300'
+}
+
 export function ContractTable({
   contracts,
   employees,
@@ -130,6 +146,22 @@ export function ContractTable({
   const [detailContract, setDetailContract] = useState<Contract | null>(null)
   const [terminateContract, setTerminateContract] = useState<Contract | null>(null)
   const [deleteContract, setDeleteContract] = useState<Contract | null>(null)
+
+
+  const getTypeLabel = (type: string): string => {
+    const map: Record<string, string> = {
+      'permanent': 'دائم',
+      'temporary': 'موقت',
+      'official': 'دائم',
+      'contractual': 'قراردادی',
+      'hourly': 'ساعتی',
+      'part_time': 'پاره‌وقت',
+      'full_time': 'تمام‌وقت',
+      'contract': 'قراردادی',
+      'freelance': 'آزاد',
+    }
+    return map[type] || type
+  }
   // ============================================
   // Filtered Contracts
   // ============================================
@@ -201,6 +233,32 @@ export function ContractTable({
       }
     } catch (error) {
       toast.error('خطا در فسخ قرارداد')
+    }
+  }
+  const handleDownloadContract = async (contract : Contract) =>{
+    try{
+      const res = await fetch(`/api/contracts/${contract.id}/download`)
+
+      if (!res.ok){
+        toast.error('خطا در دانلود قرارداد')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Contract-${contract.contractNumber || contract.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("قرارداد دانلود شد");
+    }catch (err) {
+      console.error(err);
+      toast.error("خطا در دانلود قرارداد");
     }
   }
 
@@ -326,6 +384,7 @@ export function ContractTable({
               ) : (
                 currentContracts.map((contract, idx) => {
                   const employee = employees.find(e => e.id === contract.employeeId)
+                  const employmentType = employee?.contractType || 'نامشخص'
                   const isPermanent = contract.type === 'official'
                   const isActive = contract.status === 'active'
                   const remaining = getRemainingTime(contract.endDate)
@@ -347,10 +406,10 @@ export function ContractTable({
                         </div>
                       </td>
                       <td className="px-3 py-2 sm:px-4 sm:py-3">
-                        <Badge className={`${isPermanent ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800'} border-0 rounded-full px-2 py-0.5 text-[8px] sm:text-[10px]`}>
-                          {isPermanent ? 'دائم' : 'موقت'}
-                        </Badge>
-                      </td>
+                      <Badge className={`border-0 rounded-full px-2 py-0.5 text-[8px] sm:text-[10px] ${getTypeColor(employmentType)}`}>
+                       {getTypeLabel(employmentType)}
+                          </Badge>  
+                        </td>
                       <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300">{formatShamsi(contract.startDate)}</td>
                       <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                         {contract.endDate ? formatShamsi(contract.endDate) : 'نامحدود'}
@@ -400,16 +459,28 @@ export function ContractTable({
                         </div>
                       </td>
                       <td className="px-3 py-2 sm:px-4 sm:py-3">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-500 hover:bg-gray-100
-                             dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 hover:scale-110"
-                            onClick={() => setDetailContract(contract)}
-                        >
-                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </Button>
-                        </td>
+  <div className="flex items-center gap-1">
+
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 rounded-lg transition-all duration-200 hover:scale-110"
+      onClick={() => handleDownloadContract(contract)}
+    >
+      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+    </Button>
+
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 hover:scale-110"
+      onClick={() => setDetailContract(contract)}
+    >
+      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+    </Button>
+
+  </div>
+</td>
                     </tr>
                   )
                 })

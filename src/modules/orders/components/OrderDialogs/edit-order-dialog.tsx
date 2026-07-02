@@ -1,7 +1,7 @@
 // src/modules/orders/components/OrderDialogs/edit-order-dialog.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/core/components/ui/select'
 import { toast } from 'sonner'
-import { Edit, Loader2, Check, Upload } from 'lucide-react'
+import { Edit, Loader2, Check, Upload, Info } from 'lucide-react'
 
 const ORDER_TYPES = [
   { value: 'employment', label: 'استخدام', icon: '📋' },
@@ -44,11 +44,16 @@ const STATUS_OPTIONS = [
   { value: 'replaced', label: 'جایگزین شده' },
 ]
 
+// انواع حکمی که نیاز به اطلاعات شغلی/حقوقی جدید دارن
+const CHANGE_ORDER_TYPES = ['salary_increase', 'position_change', 'department_change', 'promotion', 'transfer']
+
 interface Employee {
   id: string
   firstName: string
   lastName: string
   personnelCode: string
+  department?: string
+  position?: string
 }
 
 interface OrderRecord {
@@ -61,6 +66,15 @@ interface OrderRecord {
   effectiveDate: string
   description?: string
   status: string
+  newPosition?: string
+  newDepartment?: string
+  baseSalary?: number
+  housingAllowance?: number
+  foodAllowance?: number
+  attractionAllowance?: number
+  responsibilityAllowance?: number
+  otherAllowances?: number
+  fixedDeductions?: number
 }
 
 interface EditOrderDialogProps {
@@ -81,9 +95,26 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
     issueDate: '',
     effectiveDate: '',
     description: '',
-    status: ''
+    status: '',
+    newPosition: '',
+    newDepartment: '',
+    baseSalary: '',
+    housingAllowance: '',
+    foodAllowance: '',
+    attractionAllowance: '',
+    responsibilityAllowance: '',
+    otherAllowances: '',
+    fixedDeductions: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+
+  // تشخیص اینکه آیا نوع حکم نیاز به اطلاعات شغلی/حقوقی جدید داره
+  const showJobInfoFields = useMemo(() => {
+    return CHANGE_ORDER_TYPES.includes(formData.orderType)
+  }, [formData.orderType])
+
+  // تشخیص اینکه آیا حکم استخدام هست
+  const isEmployment = formData.orderType === 'employment'
 
   useEffect(() => {
     if (order) {
@@ -95,7 +126,16 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
         issueDate: order.issueDate,
         effectiveDate: order.effectiveDate,
         description: order.description || '',
-        status: order.status
+        status: order.status,
+        newPosition: order.newPosition || '',
+        newDepartment: order.newDepartment || '',
+        baseSalary: order.baseSalary?.toString() || '',
+        housingAllowance: order.housingAllowance?.toString() || '',
+        foodAllowance: order.foodAllowance?.toString() || '',
+        attractionAllowance: order.attractionAllowance?.toString() || '',
+        responsibilityAllowance: order.responsibilityAllowance?.toString() || '',
+        otherAllowances: order.otherAllowances?.toString() || '',
+        fixedDeductions: order.fixedDeductions?.toString() || '',
       })
     }
   }, [order])
@@ -109,7 +149,16 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
       issueDate: '',
       effectiveDate: '',
       description: '',
-      status: ''
+      status: '',
+      newPosition: '',
+      newDepartment: '',
+      baseSalary: '',
+      housingAllowance: '',
+      foodAllowance: '',
+      attractionAllowance: '',
+      responsibilityAllowance: '',
+      otherAllowances: '',
+      fixedDeductions: '',
     })
     setSelectedFile(null)
   }
@@ -138,7 +187,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
       onOpenChange(open)
       if (!open) resetForm()
     }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit className="w-5 h-5 text-blue-600" />
@@ -146,7 +195,8 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+        <div className="space-y-4 py-4">
+          {/* نوع حکم */}
           <div className="space-y-2">
             <Label>نوع حکم *</Label>
             <Select value={formData.orderType} onValueChange={(v) => setFormData({ ...formData, orderType: v })}>
@@ -163,6 +213,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             </Select>
           </div>
 
+          {/* کارمند */}
           <div className="space-y-2">
             <Label>کارمند *</Label>
             <Select value={formData.employeeId} onValueChange={(v) => setFormData({ ...formData, employeeId: v })}>
@@ -179,6 +230,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             </Select>
           </div>
 
+          {/* عنوان حکم */}
           <div className="space-y-2">
             <Label>عنوان حکم *</Label>
             <Input
@@ -188,6 +240,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             />
           </div>
 
+          {/* شماره حکم */}
           <div className="space-y-2">
             <Label>شماره حکم *</Label>
             <Input
@@ -197,6 +250,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             />
           </div>
 
+          {/* تاریخ‌ها */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>تاریخ صدور *</Label>
@@ -216,6 +270,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             </div>
           </div>
 
+          {/* وضعیت */}
           <div className="space-y-2">
             <Label>وضعیت</Label>
             <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
@@ -230,6 +285,110 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             </Select>
           </div>
 
+          {/* بخش اطلاعات شغلی و حقوقی - شرطی */}
+          {isEmployment && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700">
+              <Info className="h-4 w-4 inline ml-1" />
+              اطلاعات شغلی و حقوقی از اطلاعات ثبت‌شده کارمند و قرارداد به‌صورت خودکار اعمال می‌شود.
+            </div>
+          )}
+
+          {showJobInfoFields && (
+            <>
+              <div className="border-t border-gray-200 pt-4">
+                <Label className="font-bold text-emerald-700 block mb-3">اطلاعات شغلی جدید</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>سمت جدید</Label>
+                    <Input
+                      value={formData.newPosition || ''}
+                      onChange={(e) => setFormData({ ...formData, newPosition: e.target.value })}
+                      placeholder="سمت جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>دپارتمان جدید</Label>
+                    <Input
+                      value={formData.newDepartment || ''}
+                      onChange={(e) => setFormData({ ...formData, newDepartment: e.target.value })}
+                      placeholder="دپارتمان جدید"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <Label className="font-bold text-emerald-700 block mb-3">اطلاعات حقوقی جدید</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>حقوق پایه</Label>
+                    <Input
+                      type="number"
+                      value={formData.baseSalary || ''}
+                      onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
+                      placeholder="حقوق پایه جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق مسکن</Label>
+                    <Input
+                      type="number"
+                      value={formData.housingAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, housingAllowance: e.target.value })}
+                      placeholder="حق مسکن جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>بن کارگری</Label>
+                    <Input
+                      type="number"
+                      value={formData.foodAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, foodAllowance: e.target.value })}
+                      placeholder="بن کارگری جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق جذب</Label>
+                    <Input
+                      type="number"
+                      value={formData.attractionAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, attractionAllowance: e.target.value })}
+                      placeholder="حق جذب جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق مسئولیت</Label>
+                    <Input
+                      type="number"
+                      value={formData.responsibilityAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, responsibilityAllowance: e.target.value })}
+                      placeholder="حق مسئولیت جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>سایر مزایا</Label>
+                    <Input
+                      type="number"
+                      value={formData.otherAllowances || ''}
+                      onChange={(e) => setFormData({ ...formData, otherAllowances: e.target.value })}
+                      placeholder="سایر مزایا"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 mt-2">
+                  <Label>کسورات ثابت</Label>
+                  <Input
+                    type="number"
+                    value={formData.fixedDeductions || ''}
+                    onChange={(e) => setFormData({ ...formData, fixedDeductions: e.target.value })}
+                    placeholder="کسورات ثابت"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* توضیحات */}
           <div className="space-y-2">
             <Label>توضیحات</Label>
             <textarea
@@ -240,6 +399,7 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
             />
           </div>
 
+          {/* فایل جدید */}
           <div className="space-y-2">
             <Label>فایل جدید (اختیاری)</Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-emerald-400 transition-colors">

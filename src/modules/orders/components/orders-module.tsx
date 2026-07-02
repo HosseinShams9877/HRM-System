@@ -6,7 +6,7 @@ import { FileBadge, Plus, Download, Loader2 } from 'lucide-react'
 import { Button } from '@/core/components/ui/button'
 import { Skeleton } from '@/core/components/ui/skeleton'
 import { toast } from 'sonner'
-
+import { ViewOrderDialog } from './view-order-dialog'
 import { useOrders } from '../hooks/use-orders'
 import { OrderStats } from './order-stats'
 import { OrderFilter } from './order-filter'
@@ -41,7 +41,7 @@ export function OrdersModule() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null)
   const [exporting, setExporting] = useState(false)
-
+  const [showViewDialog, setShowViewDialog] = useState(false)
 
 const handleAddOrder = async (data: FormData) => {
   setSubmitting(true)
@@ -194,6 +194,10 @@ const handleExportCSV = async () => {
     setExporting(false)
   }
 }
+const handleView = (order: OrderRecord) => {
+  setSelectedOrder(order)
+  setShowViewDialog(true)
+}
 
   if (loading) {
     return <OrdersLoading />
@@ -251,6 +255,7 @@ const handleExportCSV = async () => {
           setSelectedOrder(order)
           setShowDeleteDialog(true)
         }}
+        onView={handleView}
       />
 
       {/* Dialogs */}
@@ -276,6 +281,11 @@ const handleExportCSV = async () => {
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDeleteOrder}
         submitting={submitting}
+      />
+      <ViewOrderDialog
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+        order={selectedOrder}
       />
     </div>
   )

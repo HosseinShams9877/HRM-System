@@ -4,7 +4,7 @@
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { Download, Edit, Trash2, FileText } from 'lucide-react'
+import { Download, Edit, Trash2, FileText, Eye } from 'lucide-react'
 import { toPersianDigits, formatShamsi } from '@/core/lib/utils-fa'
 import { OrderTypeBadge, OrderStatusBadge } from './order-badges'
 
@@ -26,6 +26,12 @@ interface OrderRecord {
   effectiveDate: string
   status: string
   fileUrl?: string
+  newPosition?: string
+  newDepartment?: string
+  baseSalary?: number
+  housingAllowance?: number
+  foodAllowance?: number
+  description?: string
 }
 
 interface OrdersTableProps {
@@ -33,9 +39,10 @@ interface OrdersTableProps {
   onDownload: (order: OrderRecord) => void
   onEdit: (order: OrderRecord) => void
   onDelete: (order: OrderRecord) => void
+  onView: (order: OrderRecord) => void 
 }
 
-export function OrdersTable({ orders, onDownload, onEdit, onDelete }: OrdersTableProps) {
+export function OrdersTable({ orders, onDownload, onEdit, onDelete , onView }: OrdersTableProps) {
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -104,6 +111,15 @@ export function OrdersTable({ orders, onDownload, onEdit, onDelete }: OrdersTabl
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
+                    <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                       onClick={() => onView(order)}
+                       title="مشاهده حکم"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
                       <Button
                         variant="ghost"
                         size="sm"

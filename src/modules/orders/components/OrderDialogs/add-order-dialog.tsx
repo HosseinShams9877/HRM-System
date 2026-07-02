@@ -34,7 +34,7 @@ import {
 } from '@/core/components/ui/popover'
 import { toast } from 'sonner'
 import { getTodayShamsi } from '@/core/lib/utils-fa'
-import { Plus, Loader2, Check, Upload, ChevronDown, Search, X } from 'lucide-react'
+import { Plus, Loader2, Check, Upload, ChevronDown, Info } from 'lucide-react'
 import { cn } from '@/core/lib/utils'
 
 const ORDER_TYPES = [
@@ -58,6 +58,9 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'ابطال شده' },
   { value: 'replaced', label: 'جایگزین شده' },
 ]
+
+// انواع حکمی که نیاز به اطلاعات شغلی/حقوقی جدید دارن
+const CHANGE_ORDER_TYPES = ['salary_increase', 'position_change', 'department_change', 'promotion', 'transfer']
 
 interface Employee {
   id: string
@@ -88,11 +91,28 @@ export function AddOrderDialog({ open, onOpenChange, employees, onSubmit, submit
     issueDate: '',
     effectiveDate: '',
     description: '',
-    status: 'draft'
+    status: 'draft',
+    newPosition: '',
+    newDepartment: '',
+    baseSalary: '',
+    housingAllowance: '',
+    foodAllowance: '',
+    attractionAllowance: '',
+    responsibilityAllowance: '',
+    otherAllowances: '',
+    fixedDeductions: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [employeePopoverOpen, setEmployeePopoverOpen] = useState(false)
+
+  // تشخیص اینکه آیا نوع حکم نیاز به اطلاعات شغلی/حقوقی جدید داره
+  const showJobInfoFields = useMemo(() => {
+    return CHANGE_ORDER_TYPES.includes(formData.orderType)
+  }, [formData.orderType])
+
+  // تشخیص اینکه آیا حکم استخدام هست
+  const isEmployment = formData.orderType === 'employment'
 
   // فیلتر کردن کارمندان بر اساس جستجو
   const filteredEmployees = useMemo(() => {
@@ -118,38 +138,47 @@ export function AddOrderDialog({ open, onOpenChange, employees, onSubmit, submit
       issueDate: '',
       effectiveDate: '',
       description: '',
-      status: 'draft'
+      status: 'draft',
+      newPosition: '',
+      newDepartment: '',
+      baseSalary: '',
+      housingAllowance: '',
+      foodAllowance: '',
+      attractionAllowance: '',
+      responsibilityAllowance: '',
+      otherAllowances: '',
+      fixedDeductions: '',
     })
     setSelectedFile(null)
     setEmployeeSearch('')
     setEmployeePopoverOpen(false)
   }
 
-const handleSubmit = async () => {
-  if (!formData.orderType || !formData.employeeId || !formData.title || 
-      !formData.orderNumber || !formData.issueDate || !formData.effectiveDate) {
-    toast.error('لطفاً همه فیلدهای الزامی را پر کنید')
-    return
-  }
+  const handleSubmit = async () => {
+    if (!formData.orderType || !formData.employeeId || !formData.title || 
+        !formData.orderNumber || !formData.issueDate || !formData.effectiveDate) {
+      toast.error('لطفاً همه فیلدهای الزامی را پر کنید')
+      return
+    }
 
-  const submitData = new FormData()
-  Object.entries(formData).forEach(([key, value]) => {
-    if (value) submitData.append(key, value)
-  })
-  if (selectedFile) {
-    submitData.append('file', selectedFile)
-  }
+    const submitData = new FormData()
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value) submitData.append(key, value)
+    })
+    if (selectedFile) {
+      submitData.append('file', selectedFile)
+    }
 
-  await onSubmit(submitData)
-  resetForm()
-}
+    await onSubmit(submitData)
+    resetForm()
+  }
 
   return (
     <Dialog open={open} onOpenChange={(open) => {
       onOpenChange(open)
       if (!open) resetForm()
     }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5 text-emerald-600" />
@@ -157,7 +186,7 @@ const handleSubmit = async () => {
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+        <div className="space-y-4 py-4">
           {/* نوع حکم */}
           <div className="space-y-2">
             <Label>نوع حکم *</Label>
@@ -300,6 +329,109 @@ const handleSubmit = async () => {
               </SelectContent>
             </Select>
           </div>
+
+          {/* بخش اطلاعات شغلی و حقوقی - شرطی */}
+          {isEmployment && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700">
+              <Info className="h-4 w-4 inline ml-1" />
+              اطلاعات شغلی و حقوقی از اطلاعات ثبت‌شده کارمند و قرارداد به‌صورت خودکار اعمال می‌شود.
+            </div>
+          )}
+
+          {showJobInfoFields && (
+            <>
+              <div className="border-t border-gray-200 pt-4">
+                <Label className="font-bold text-emerald-700 block mb-3">اطلاعات شغلی جدید</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>سمت جدید</Label>
+                    <Input
+                      value={formData.newPosition || ''}
+                      onChange={(e) => setFormData({ ...formData, newPosition: e.target.value })}
+                      placeholder="سمت جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>دپارتمان جدید</Label>
+                    <Input
+                      value={formData.newDepartment || ''}
+                      onChange={(e) => setFormData({ ...formData, newDepartment: e.target.value })}
+                      placeholder="دپارتمان جدید"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <Label className="font-bold text-emerald-700 block mb-3">اطلاعات حقوقی جدید</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>حقوق پایه</Label>
+                    <Input
+                      type="number"
+                      value={formData.baseSalary || ''}
+                      onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
+                      placeholder="حقوق پایه جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق مسکن</Label>
+                    <Input
+                      type="number"
+                      value={formData.housingAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, housingAllowance: e.target.value })}
+                      placeholder="حق مسکن جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>بن کارگری</Label>
+                    <Input
+                      type="number"
+                      value={formData.foodAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, foodAllowance: e.target.value })}
+                      placeholder="بن کارگری جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق جذب</Label>
+                    <Input
+                      type="number"
+                      value={formData.attractionAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, attractionAllowance: e.target.value })}
+                      placeholder="حق جذب جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق مسئولیت</Label>
+                    <Input
+                      type="number"
+                      value={formData.responsibilityAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, responsibilityAllowance: e.target.value })}
+                      placeholder="حق مسئولیت جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>سایر مزایا</Label>
+                    <Input
+                      type="number"
+                      value={formData.otherAllowances || ''}
+                      onChange={(e) => setFormData({ ...formData, otherAllowances: e.target.value })}
+                      placeholder="سایر مزایا"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 mt-2">
+                  <Label>کسورات ثابت</Label>
+                  <Input
+                    type="number"
+                    value={formData.fixedDeductions || ''}
+                    onChange={(e) => setFormData({ ...formData, fixedDeductions: e.target.value })}
+                    placeholder="کسورات ثابت"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* توضیحات */}
           <div className="space-y-2">
