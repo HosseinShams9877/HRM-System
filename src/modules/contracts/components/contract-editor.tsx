@@ -107,6 +107,89 @@ export function ContractEditor({
 }: ContractEditorProps) {
   const [showPreview, setShowPreview] = useState(false)
 
+  // اضافه کن بعد از const [showPreview, setShowPreview] = useState(false)
+  const insertVariable = (variable: string) => {
+    if (!showPreview && selectedEmployee) {
+      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      if (textarea) {
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        const text = contractText
+        const before = text.substring(0, start)
+        const after = text.substring(end)
+        
+        // دریافت مقدار واقعی متغیر از selectedEmployee
+        let value = ''
+        switch(variable) {
+          case 'firstName': value = selectedEmployee.firstName || ''; break
+          case 'lastName': value = selectedEmployee.lastName || ''; break
+          case 'position': value = selectedEmployee.positionName || selectedEmployee.position || ''; break
+          case 'department': value = selectedEmployee.departmentName || selectedEmployee.department || ''; break
+          case 'startDate': value = selectedEmployee.hireDate ? formatShamsi(selectedEmployee.hireDate) : ''; break
+          case 'endDate': value = selectedEmployee.contractEndDate ? formatShamsi(selectedEmployee.contractEndDate) : ''; break
+          case 'basicSalary': value = selectedEmployee.financial?.baseSalary ? toPersianDigits(selectedEmployee.financial.baseSalary.toLocaleString()) : '۰'; break
+          case 'housingAllowance': value = selectedEmployee.financial?.housingAllowance ? toPersianDigits(selectedEmployee.financial.housingAllowance.toLocaleString()) : '۰'; break
+          case 'transportationAllowance': value = selectedEmployee.financial?.workAllowance ? toPersianDigits(selectedEmployee.financial.workAllowance.toLocaleString()) : '۰'; break
+          case 'mealAllowance': value = selectedEmployee.financial?.otherAllowances ? toPersianDigits(selectedEmployee.financial.otherAllowances.toLocaleString()) : '۰'; break
+          case 'totalSalary': 
+            const total = (selectedEmployee.financial?.baseSalary || 0) + 
+                         (selectedEmployee.financial?.housingAllowance || 0) + 
+                         (selectedEmployee.financial?.workAllowance || 0) + 
+                         (selectedEmployee.financial?.otherAllowances || 0)
+            value = toPersianDigits(total.toLocaleString())
+            break
+          case 'contractDuration': value = selectedEmployee.contractMonths ? toPersianDigits(selectedEmployee.contractMonths.toString()) : '۰'; break
+          default: value = `{{${variable}}}`
+        }
+        
+        const newText = before + value + after
+        setContractText(newText)
+        
+        setTimeout(() => {
+          textarea.focus()
+          const newCursorPos = start + value.length
+          textarea.setSelectionRange(newCursorPos, newCursorPos)
+        }, 0)
+      }
+    }
+  }
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!showPreview) {
+      const textarea = e.target
+      const cursorPos = textarea.selectionStart
+      const value = textarea.value
+      
+      // تبدیل همه اعداد انگلیسی به فارسی
+      const persianDigits = '۰۱۲۳۴۵۶۷۸۹'
+      const englishDigits = '0123456789'
+      let newValue = ''
+      let hasChanged = false
+      for (let i = 0; i < value.length; i++) {
+        const char = value[i]
+        const index = englishDigits.indexOf(char)
+        if (index !== -1) {
+          newValue += persianDigits[index]
+          hasChanged = true
+        } else {
+          newValue += char
+        }
+      }
+      
+      // فقط اگه تغییری کرده باشه
+      if (hasChanged) {
+        // مقدار textarea رو مستقیم تغییر بده (بدون رندر مجدد)
+        textarea.value = newValue
+        // cursor رو به همون جا برگردون
+        textarea.setSelectionRange(cursorPos, cursorPos)
+        // state رو به‌روز کن
+        setContractText(newValue)
+      } else {
+        setContractText(value)
+      }
+    }
+  }
+
   // Preview Text
   const previewText = useMemo(() => {
     if (!selectedEmployee) return 'لطفاً ابتدا یک کارمند انتخاب کنید.'
@@ -270,37 +353,48 @@ export function ContractEditor({
 
                 <div className="relative">
                 <Textarea
-                      value={showPreview ? previewText : contractText}  // ← ویرایش شده یا پیش‌نمایش
-                       onChange={(e) => {
-                       if (!showPreview) {
-                       setContractText(e.target.value)
-                        }
-                      }}
-                        className={`min-h-[350px] sm:min-h-[500px] font-mono
-                         text-xs sm:text-sm leading-relaxed rounded-xl bg-gray-50 
-                         dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 ${
-                        showPreview ? 'pointer-events-none' : ''
-                      }`}
-                        dir="rtl"
-                      readOnly={showPreview}
-                  />
+  value={showPreview ? previewText : contractText}
+  onChange={handleInput}  
+  className={`min-h-[350px] sm:min-h-[500px] font-mono
+    text-xs sm:text-sm leading-relaxed rounded-xl bg-gray-50 
+    dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 ${
+    showPreview ? 'pointer-events-none' : ''
+  }`}
+  dir="rtl"
+  readOnly={showPreview}
+/>
                 </div>
 
-                {/* Variables Legend */}
+               {/* Variables Legend - قابل کلیک */}
                 <div className="flex flex-wrap items-center gap-1.5 p-2.5 sm:p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <span className="text-[10px] sm:text-xs text-muted-foreground dark:text-gray-400">متغیرهای قابل استفاده:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {[
-                      'firstName', 'lastName', 'position', 'department',
-                      'startDate', 'endDate', 'basicSalary', 'housingAllowance',
-                      'transportationAllowance', 'mealAllowance', 'totalSalary', 'contractDuration'
-                    ].map((v) => (
-                      <Badge key={v} variant="outline" className="text-[8px] sm:text-[9px] font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                        {'{{' + v + '}}'}
-                      </Badge>
-                    ))}
+                  <span className="text-[10px] sm:text-xs text-muted-foreground dark:text-gray-400">متغیرهای قابل استفاده (کلیک کنید):</span>
+                      <div className="flex flex-wrap gap-1">
+                      {[
+  { key: 'firstName', label: 'نام' },
+  { key: 'lastName', label: 'نام‌خانوادگی' },
+  { key: 'position', label: 'سمت' },
+  { key: 'department', label: 'دپارتمان' },
+  { key: 'startDate', label: 'تاریخ شروع' },
+  { key: 'endDate', label: 'تاریخ پایان' },
+  { key: 'basicSalary', label: 'حقوق پایه' },
+  { key: 'housingAllowance', label: 'مسکن' },
+  { key: 'transportationAllowance', label: 'ایاب‌ذهاب' },
+  { key: 'mealAllowance', label: 'وعده غذایی' },
+  { key: 'totalSalary', label: 'مجموع حقوق' },
+  { key: 'contractDuration', label: 'مدت قرارداد' }
+].map(({ key, label }) => (
+  <Badge 
+    key={key} 
+    variant="outline" 
+    className={`text-[10px] sm:text-xs font-medium bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-200 ${showPreview ? 'opacity-50 cursor-not-allowed' : ''}`}
+    onClick={() => !showPreview && insertVariable(key)}
+    title={`کلیک کنید تا ${label} در متن درج شود`}
+  >
+    {label}
+  </Badge>
+))}
                   </div>
-                </div>
+              </div>
               </>
             )}
           </CardContent>

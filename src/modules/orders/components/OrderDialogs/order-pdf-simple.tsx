@@ -4,42 +4,28 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 
-// ===== تابع برای ثبت فونت با کلید جدید =====
-export const registerFonts = (key?: string) => {
-  try {
-    const fontRegular = require('../../../../../public/fonts/Vazirmatn-Regular.ttf')
-    const fontBold = require('../../../../../public/fonts/Vazirmatn-Bold.ttf')
-    
-    const familyName = key ? `Vazirmatn-${key}` : 'Vazirmatn'
-    
-    Font.register({
-      family: familyName,
-      src: fontRegular,
-      fontWeight: 400,
-    })
+try {
+  const fontRegular = require('../../../../../public/fonts/Vazirmatn-Regular.ttf')
+  Font.register({
+    family: 'Vazirmatn',
+    src: fontRegular,
+    fontWeight: 400,
+  })
 
-    Font.register({
-      family: familyName,
-      src: fontBold,
-      fontWeight: 700,
-    })
-    
-    console.log('Fonts registered successfully with family:', familyName)
-    return familyName
-  } catch (error) {
-    console.error('Error registering fonts:', error)
-    return 'Vazirmatn'
-  }
+  const fontBold = require('../../../../../public/fonts/Vazirmatn-Bold.ttf')
+  Font.register({
+    family: 'Vazirmatn',
+    src: fontBold,
+    fontWeight: 700,
+  })
+} catch (error) {
+  console.error('Error loading fonts:', error)
 }
 
-// ===== ثبت اولیه فونت =====
-registerFonts()
-
-// ===== تابع ایجاد استایل با fontFamily پویا =====
-const getStyles = (fontFamily: string) => StyleSheet.create({
+const styles = StyleSheet.create({
   page: {
     padding: 20,
-    fontFamily: fontFamily,
+    fontFamily: 'Vazirmatn',
     direction: 'rtl',
   },
   header: {
@@ -252,10 +238,9 @@ interface OrderPDFProps {
   formatShamsi: (date: string) => string
   formatCurrency: (amount: number) => string
   toPersianDigits: (num: string) => string
-  fontKey?: string
 }
 
-export function OrderPDF({
+export function OrderPDFSimple({
   order,
   employee,
   displayOrder,
@@ -265,11 +250,7 @@ export function OrderPDF({
   formatShamsi,
   formatCurrency,
   toPersianDigits,
-  fontKey,
 }: OrderPDFProps) {
-  const fontFamily = fontKey ? `Vazirmatn-${fontKey}` : 'Vazirmatn'
-  const styles = getStyles(fontFamily)
-  
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -427,6 +408,16 @@ export function OrderPDF({
                 </Text>
               </View>
               <View style={styles.gridItem}>
+                <Text style={styles.label}>حق جذب</Text>
+                <Text style={styles.value}>
+                  {hasSalaryChange && displayOrder.attractionAllowance ? (
+                    `${formatCurrency(displayOrder.attractionAllowance)} (جدید)`
+                  ) : (
+                    formatCurrency(employee.attractionAllowance || employee.responsibilityAllowance)
+                  )}
+                </Text>
+              </View>
+              <View style={styles.gridItem}>
                 <Text style={styles.label}>حق مسئولیت</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.responsibilityAllowance ? (
@@ -437,42 +428,22 @@ export function OrderPDF({
                 </Text>
               </View>
               <View style={styles.gridItem}>
-  <Text style={styles.label}>حق تاهل</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.spouseAllowance ? (
-      `${formatCurrency(displayOrder.spouseAllowance)} (جدید)`
-    ) : (
-      formatCurrency(employee.spouseAllowance)
-    )}
-  </Text>
-</View>
-<View style={styles.gridItem}>
-  <Text style={styles.label}>حق اولاد</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.childAllowance ? (
-      `${formatCurrency(displayOrder.childAllowance)} (جدید)`
-    ) : (
-      formatCurrency(employee.childAllowance)
-    )}
-  </Text>
-</View>
-<View style={styles.gridItem}>
-  <Text style={styles.label}>پایه سنوات</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.yearsOfServiceBase ? (
-      `${formatCurrency(displayOrder.yearsOfServiceBase)} (جدید)`
-    ) : (
-      formatCurrency(employee.yearsOfServiceBase)
-    )}
-  </Text>
-</View>
-              <View style={styles.gridItem}>
                 <Text style={styles.label}>سایر مزایا</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.otherAllowances ? (
                     `${formatCurrency(displayOrder.otherAllowances)} (جدید)`
                   ) : (
                     formatCurrency(employee.otherAllowances)
+                  )}
+                </Text>
+              </View>
+              <View style={[styles.gridItem, { width: '100%' }]}>
+                <Text style={styles.label}>کسورات ثابت</Text>
+                <Text style={styles.value}>
+                  {hasSalaryChange && displayOrder.fixedDeductions ? (
+                    `${formatCurrency(displayOrder.fixedDeductions)} (جدید)`
+                  ) : (
+                    formatCurrency(employee.fixedDeductions)
                   )}
                 </Text>
               </View>

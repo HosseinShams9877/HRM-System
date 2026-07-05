@@ -20,8 +20,9 @@ import { formatShamsi, toPersianDigits } from '@/core/lib/utils-fa'
 import { toast } from 'sonner'
 import { useEmployee } from '@/modules/employees/hooks/use-employee'
 import { cn } from '@/core/lib/utils'
-import { pdf } from '@react-pdf/renderer'
-import { OrderPDF } from './OrderDialogs/order-pdf'
+import { pdf, Font } from '@react-pdf/renderer'
+import { OrderPDF,registerFonts } from './OrderDialogs/order-pdf'
+import { OrderPDFSimple } from './OrderDialogs/order-pdf-simple' 
 
 // تایپ‌ها
 interface Employee {
@@ -49,6 +50,9 @@ interface Employee {
   responsibilityAllowance?: number
   otherAllowances?: number
   fixedDeductions?: number
+  spouseAllowance?: number      
+  childAllowance?: number       
+  yearsOfServiceBase?: number
 }
 
 interface OrderRecord {
@@ -75,6 +79,9 @@ interface OrderRecord {
   responsibilityAllowance?: number
   otherAllowances?: number
   fixedDeductions?: number
+  spouseAllowance?: number      
+  childAllowance?: number       
+  yearsOfServiceBase?: number
   status: string
   fileUrl?: string
   fileName?: string
@@ -128,8 +135,17 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
   const handleDownloadPDF = async () => {
     setIsDownloading(true)
     try {
+      const fontKey = Date.now().toString()
+      
+      await registerFonts(fontKey)
+      // انتخاب PDF مناسب بر اساس تغییرات
+      const PDFComponent = OrderPDF
+       
+        console.log('PDFComponent:', PDFComponent.name || PDFComponent)
+      
+      
       const blob = await pdf(
-        <OrderPDF
+        <PDFComponent
           order={order}
           employee={employee}
           displayOrder={displayOrder}
@@ -139,6 +155,7 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
           formatShamsi={formatShamsi}
           formatCurrency={formatCurrency}
           toPersianDigits={toPersianDigits}
+          fontKey={fontKey}
         />
       ).toBlob()
       
@@ -349,16 +366,23 @@ const handlePrint = () => {
     attractionAllowance: displayOrder.attractionAllowance ?? employeeData?.financial?.responsibilityAllowance ?? displayOrder.employee?.attractionAllowance,
     responsibilityAllowance: displayOrder.responsibilityAllowance ?? employeeData?.financial?.responsibilityAllowance ?? displayOrder.employee?.responsibilityAllowance,
     otherAllowances: displayOrder.otherAllowances ?? employeeData?.financial?.otherAllowances ?? displayOrder.employee?.otherAllowances,
-    fixedDeductions: displayOrder.fixedDeductions ?? displayOrder.employee?.fixedDeductions,
+    fixedDeductions: displayOrder.fixedDeductions ?? employeeData?.financial?.fixedDeductions ?? displayOrder.employee?.fixedDeductions,
+    spouseAllowance: displayOrder.spouseAllowance ?? employeeData?.financial?.spouseAllowance ?? displayOrder.employee?.spouseAllowance,
+    childAllowance: displayOrder.childAllowance ?? employeeData?.financial?.childAllowance ?? displayOrder.employee?.childAllowance,
+    yearsOfServiceBase: displayOrder.yearsOfServiceBase ?? employeeData?.financial?.yearsOfServiceBase ?? displayOrder.employee?.yearsOfServiceBase,
   }
 
   const hasPositionChange = displayOrder.newPosition || displayOrder.newDepartment
   const hasSalaryChange = displayOrder.baseSalary || 
-                         displayOrder.housingAllowance || 
-                         displayOrder.foodAllowance || 
-                         displayOrder.attractionAllowance || 
-                         displayOrder.responsibilityAllowance || 
-                         displayOrder.otherAllowances
+                       displayOrder.housingAllowance || 
+                       displayOrder.foodAllowance || 
+                       displayOrder.attractionAllowance || 
+                       displayOrder.responsibilityAllowance || 
+                       displayOrder.otherAllowances ||
+                       displayOrder.spouseAllowance ||
+                       displayOrder.childAllowance ||
+                       displayOrder.yearsOfServiceBase ||
+                       displayOrder.fixedDeductions
 
   const statusColors: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -649,6 +673,24 @@ const handlePrint = () => {
                     )}
                   </p>
                 </div>
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+  <p className="text-[10px] text-gray-500 dark:text-gray-400">حق تاهل</p>
+  <p className="text-sm font-semibold dark:text-gray-200 truncate">
+    {formatCurrency(employee.spouseAllowance)}
+  </p>
+</div>
+<div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+  <p className="text-[10px] text-gray-500 dark:text-gray-400">حق اولاد</p>
+  <p className="text-sm font-semibold dark:text-gray-200 truncate">
+    {formatCurrency(employee.childAllowance)}
+  </p>
+</div>
+<div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+  <p className="text-[10px] text-gray-500 dark:text-gray-400">پایه سنوات</p>
+  <p className="text-sm font-semibold dark:text-gray-200 truncate">
+    {formatCurrency(employee.yearsOfServiceBase)}
+  </p>
+</div>
                 <div className="col-span-2 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">کسورات ثابت</p>
                   <p className="text-sm font-semibold dark:text-gray-200 truncate">

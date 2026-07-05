@@ -11,6 +11,8 @@ import { formatShamsi, getTodayShamsi, toPersianDigits } from '@/core/lib/utils-
 import { ContractDetailDialog } from './contract-detail-dialog' 
 import { Input } from '@/core/components/ui/input'
 import { TerminateDialog } from './contract-form-dialog'
+import { pdf } from '@react-pdf/renderer'
+import { ContractPDF } from './contract-pdf'
 import {
   Dialog,
   DialogContent,
@@ -235,30 +237,38 @@ export function ContractTable({
       toast.error('خطا در فسخ قرارداد')
     }
   }
-  const handleDownloadContract = async (contract : Contract) =>{
-    try{
-      const res = await fetch(`/api/contracts/${contract.id}/download`)
-
-      if (!res.ok){
-        toast.error('خطا در دانلود قرارداد')
+  const handleDownloadContract = async (contract: Contract) => {
+    try {
+      // ===== گرفتن قرارداد کامل با content =====
+      const res = await fetch(`/api/contracts/${contract.id}`)
+      
+      if (!res.ok) {
+        toast.error('خطا در دریافت اطلاعات قرارداد')
         return
       }
-
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Contract-${contract.contractNumber || contract.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success("قرارداد دانلود شد");
-    }catch (err) {
-      console.error(err);
-      toast.error("خطا در دانلود قرارداد");
+      
+      const data = await res.json()
+      const fullContract = data.data || data
+      
+      console.log('📄 Contract content:', fullContract.content)
+      
+      const blob = await pdf(
+        <ContractPDF contract={fullContract} />
+      ).toBlob()
+      
+      // ===== دانلود فایل =====
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `قرارداد_${fullContract.contractNumber || fullContract.id}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+      
+      toast.success('قرارداد با موفقیت دانلود شد')
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('خطا در دانلود قرارداد')
     }
   }
 

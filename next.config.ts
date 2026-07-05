@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
       '@/core': path.resolve(__dirname, 'src/core'),
       '@/modules': path.resolve(__dirname, 'src/modules'),
     }
+    config.module.rules.push({
+      test: /\.(ttf)$/,
+      type: 'asset/resource',
+      generator: {
+        filename: 'static/fonts/[name][ext]'
+      }
+    })
     config.resolve.fallback = {
       ...config.resolve.fallback,
       canvas: false,

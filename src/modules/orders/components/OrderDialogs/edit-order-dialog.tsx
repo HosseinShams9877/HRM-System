@@ -19,8 +19,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/core/components/ui/select'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/core/components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/core/components/ui/popover'
 import { toast } from 'sonner'
-import { Edit, Loader2, Check, Upload, Info } from 'lucide-react'
+import { Edit, Loader2, Check, Upload, Info, ChevronDown } from 'lucide-react'
 
 const ORDER_TYPES = [
   { value: 'employment', label: 'استخدام', icon: '📋' },
@@ -56,6 +69,17 @@ interface Employee {
   position?: string
 }
 
+interface Department {
+  id: string
+  name: string
+}
+
+interface Position {
+  id: string
+  title: string
+  departmentId?: string
+}
+
 interface OrderRecord {
   id: string
   orderType: string
@@ -75,6 +99,9 @@ interface OrderRecord {
   responsibilityAllowance?: number
   otherAllowances?: number
   fixedDeductions?: number
+  spouseAllowance?: number
+  childAllowance?: number
+  yearsOfServiceBase?: number
 }
 
 interface EditOrderDialogProps {
@@ -105,8 +132,20 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
     responsibilityAllowance: '',
     otherAllowances: '',
     fixedDeductions: '',
+    spouseAllowance: '',
+    childAllowance: '',
+    yearsOfServiceBase: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  
+  // State برای سلکتورهای سمت و دپارتمان
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [positions, setPositions] = useState<Position[]>([])
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('')
+  const [selectedPositionId, setSelectedPositionId] = useState<string>('')
+  const [loadingDepartments, setLoadingDepartments] = useState(false)
+  const [loadingPositions, setLoadingPositions] = useState(false)
+  const [positionSearch, setPositionSearch] = useState('')
 
   // تشخیص اینکه آیا نوع حکم نیاز به اطلاعات شغلی/حقوقی جدید داره
   const showJobInfoFields = useMemo(() => {
@@ -115,6 +154,71 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
 
   // تشخیص اینکه آیا حکم استخدام هست
   const isEmployment = formData.orderType === 'employment'
+
+  // گرفتن لیست دپارتمان‌ها
+  const fetchDepartments = async () => {
+    setLoadingDepartments(true)
+    try {
+      const res = await fetch('/api/departments')
+      if (res.ok) {
+        const data = await res.json()
+        const depts = data.data || data
+        setDepartments(Array.isArray(depts) ? depts : [])
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+    } finally {
+      setLoadingDepartments(false)
+    }
+  }
+
+  // گرفتن لیست سمت‌ها بر اساس دپارتمان
+  const fetchPositions = async (departmentId: string) => {
+    if (!departmentId) {
+      setPositions([])
+      return
+    }
+    setLoadingPositions(true)
+    try {
+      const res = await fetch(`/api/positions?departmentId=${departmentId}&status=active`)
+      if (res.ok) {
+        const data = await res.json()
+        const pos = data.data || data
+        setPositions(Array.isArray(pos) ? pos : [])
+      }
+    } catch (error) {
+      console.error('Error fetching positions:', error)
+    } finally {
+      setLoadingPositions(false)
+    }
+  }
+
+  // بارگذاری دپارتمان‌ها هنگام باز شدن دیالوگ
+  useEffect(() => {
+    if (open) {
+      fetchDepartments()
+    }
+  }, [open])
+
+  // وقتی دپارتمان تغییر میکنه، سمت‌ها رو بگیر
+  useEffect(() => {
+    if (selectedDepartmentId) {
+      fetchPositions(selectedDepartmentId)
+      setFormData(prev => ({ ...prev, newDepartment: selectedDepartmentId }))
+    } else {
+      setPositions([])
+      setFormData(prev => ({ ...prev, newDepartment: '' }))
+    }
+  }, [selectedDepartmentId])
+
+  // وقتی سمت انتخاب میشه
+  useEffect(() => {
+    if (selectedPositionId) {
+      setFormData(prev => ({ ...prev, newPosition: selectedPositionId }))
+    } else {
+      setFormData(prev => ({ ...prev, newPosition: '' }))
+    }
+  }, [selectedPositionId])
 
   useEffect(() => {
     if (order) {
@@ -136,9 +240,38 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
         responsibilityAllowance: order.responsibilityAllowance?.toString() || '',
         otherAllowances: order.otherAllowances?.toString() || '',
         fixedDeductions: order.fixedDeductions?.toString() || '',
+        spouseAllowance: order.spouseAllowance?.toString() || '',
+        childAllowance: order.childAllowance?.toString() || '',
+        yearsOfServiceBase: order.yearsOfServiceBase?.toString() || '',
       })
+      
+      // اگر دپارتمان و سمت جدید داره، سلکتورها رو ست کن
+      if (order.newDepartment) {
+        setSelectedDepartmentId(order.newDepartment)
+      }
+      if (order.newPosition) {
+        setSelectedPositionId(order.newPosition)
+      }
     }
   }, [order])
+
+  // فیلتر کردن سمت‌ها بر اساس جستجو
+  const filteredPositions = useMemo(() => {
+    if (!positionSearch.trim()) return positions
+    const search = positionSearch.toLowerCase().trim()
+    return positions.filter(pos => pos.title.toLowerCase().includes(search))
+  }, [positions, positionSearch])
+
+  // پیدا کردن نام دپارتمان و سمت
+  const getDepartmentName = (id: string) => {
+    const dept = departments.find(d => d.id === id)
+    return dept?.name || id
+  }
+
+  const getPositionName = (id: string) => {
+    const pos = positions.find(p => p.id === id)
+    return pos?.title || id
+  }
 
   const resetForm = () => {
     setFormData({
@@ -159,8 +292,14 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
       responsibilityAllowance: '',
       otherAllowances: '',
       fixedDeductions: '',
+      spouseAllowance: '',
+      childAllowance: '',
+      yearsOfServiceBase: '',
     })
     setSelectedFile(null)
+    setSelectedDepartmentId('')
+    setSelectedPositionId('')
+    setPositionSearch('')
   }
 
   const handleSubmit = async () => {
@@ -298,21 +437,99 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
               <div className="border-t border-gray-200 pt-4">
                 <Label className="font-bold text-emerald-700 block mb-3">اطلاعات شغلی جدید</Label>
                 <div className="grid grid-cols-2 gap-4">
+                  {/* سلکتور دپارتمان */}
+                  <div className="space-y-2">
+                    <Label>واحد سازمانی جدید</Label>
+                    <Select 
+                      value={selectedDepartmentId} 
+                      onValueChange={(value) => setSelectedDepartmentId(value)}
+                      disabled={loadingDepartments}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="انتخاب واحد..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingDepartments ? (
+                          <div className="flex items-center justify-center py-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </div>
+                        ) : departments.length === 0 ? (
+                          <SelectItem value="no-department" disabled>واحدی یافت نشد</SelectItem>
+                        ) : (
+                          departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.id}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* سلکتور سمت */}
                   <div className="space-y-2">
                     <Label>سمت جدید</Label>
-                    <Input
-                      value={formData.newPosition || ''}
-                      onChange={(e) => setFormData({ ...formData, newPosition: e.target.value })}
-                      placeholder="سمت جدید"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>دپارتمان جدید</Label>
-                    <Input
-                      value={formData.newDepartment || ''}
-                      onChange={(e) => setFormData({ ...formData, newDepartment: e.target.value })}
-                      placeholder="دپارتمان جدید"
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between h-10 font-normal"
+                          disabled={!selectedDepartmentId || loadingPositions}
+                        >
+                          {selectedPositionId ? (
+                            getPositionName(selectedPositionId)
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {!selectedDepartmentId ? 'ابتدا واحد را انتخاب کنید' : 'انتخاب سمت...'}
+                            </span>
+                          )}
+                          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput 
+                            placeholder="جستجوی سمت..." 
+                            value={positionSearch}
+                            onValueChange={setPositionSearch}
+                            className="h-9"
+                          />
+                          <CommandList className="max-h-56">
+                            <CommandEmpty>سمتی یافت نشد</CommandEmpty>
+                            <CommandGroup>
+                              {loadingPositions ? (
+                                <div className="flex items-center justify-center py-4">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <span className="mr-2">در حال بارگذاری...</span>
+                                </div>
+                              ) : filteredPositions.length === 0 ? (
+                                <div className="text-center py-4 text-sm text-muted-foreground">
+                                  {selectedDepartmentId ? 'سمتی برای این واحد یافت نشد' : 'ابتدا واحد را انتخاب کنید'}
+                                </div>
+                              ) : (
+                                filteredPositions.map((pos) => (
+                                  <CommandItem
+                                    key={pos.id}
+                                    value={pos.id}
+                                    onSelect={() => {
+                                      setSelectedPositionId(pos.id)
+                                      setPositionSearch('')
+                                    }}
+                                    className="flex items-center justify-between"
+                                  >
+                                    <span>{pos.title}</span>
+                                    {selectedPositionId === pos.id && (
+                                      <Check className="h-4 w-4 text-emerald-500" />
+                                    )}
+                                  </CommandItem>
+                                ))
+                              )}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               </div>
@@ -345,6 +562,33 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
                       value={formData.foodAllowance || ''}
                       onChange={(e) => setFormData({ ...formData, foodAllowance: e.target.value })}
                       placeholder="بن کارگری جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق تاهل</Label>
+                    <Input
+                      type="number"
+                      value={formData.spouseAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, spouseAllowance: e.target.value })}
+                      placeholder="حق تاهل جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>حق اولاد</Label>
+                    <Input
+                      type="number"
+                      value={formData.childAllowance || ''}
+                      onChange={(e) => setFormData({ ...formData, childAllowance: e.target.value })}
+                      placeholder="حق اولاد جدید"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>پایه سنوات</Label>
+                    <Input
+                      type="number"
+                      value={formData.yearsOfServiceBase || ''}
+                      onChange={(e) => setFormData({ ...formData, yearsOfServiceBase: e.target.value })}
+                      placeholder="پایه سنوات جدید"
                     />
                   </div>
                   <div className="space-y-2">

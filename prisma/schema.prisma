@@ -507,6 +507,9 @@ model Order {
   responsibilityAllowance Float?
   otherAllowances Float?
   fixedDeductions Float?
+  spouseAllowance   Float?  // حق تاهل
+  childAllowance    Float?  // حق اولاد
+  yearsOfServiceBase Float? // پایه سنوات
 
   // وضعیت‌های حکم
   status          String   @default("draft") // draft, pending, approved, active, cancelled, replaced
