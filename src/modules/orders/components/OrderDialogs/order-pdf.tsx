@@ -3,6 +3,8 @@
 
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { convertMiladiToShamsi  } from '@/core/lib/utils-fa'
+
 
 // ===== تابع برای ثبت فونت با کلید جدید =====
 export const registerFonts = (key?: string) => {
@@ -157,7 +159,7 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     borderStyle: 'solid',
     padding: 2,
     borderRadius: 3,
-    width: '49%',
+    width: '49.8%',
     flexDirection: 'column',
     alignItems: 'flex-end',
   },
@@ -253,6 +255,8 @@ interface OrderPDFProps {
   formatCurrency: (amount: number) => string
   toPersianDigits: (num: string) => string
   fontKey?: string
+  newPositionName?: string   
+  newDepartmentName?: string 
 }
 
 export function OrderPDF({
@@ -266,6 +270,8 @@ export function OrderPDF({
   formatCurrency,
   toPersianDigits,
   fontKey,
+  newPositionName,
+  newDepartmentName
 }: OrderPDFProps) {
   const fontFamily = fontKey ? `Vazirmatn-${fontKey}` : 'Vazirmatn'
   const styles = getStyles(fontFamily)
@@ -323,7 +329,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ تولد</Text>
-                <Text style={styles.value}>{formatShamsi(employee.birthDate || '')}</Text>
+                <Text style={styles.value}>{convertMiladiToShamsi(employee.birthDate || '')}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>شماره موبایل</Text>
@@ -335,7 +341,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ شروع همکاری</Text>
-                <Text style={styles.value}>{formatShamsi(employee.hireDate || '')}</Text>
+                <Text style={styles.value}>{convertMiladiToShamsi(employee.hireDate || '')}</Text>
               </View>
             </View>
           </View>
@@ -350,11 +356,11 @@ export function OrderPDF({
             <View style={styles.grid2}>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>سمت</Text>
-                <Text style={styles.value}>{employee.positionName || employee.position || '—'}</Text>
+                <Text style={styles.value}>{newPositionName || employee.positionName || employee.position || '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>واحد سازمانی</Text>
-                <Text style={styles.value}>{employee.departmentName || employee.department || '—'}</Text>
+                <Text style={styles.value}>{newDepartmentName || employee.departmentName || employee.department || '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>نوع حکم</Text>
@@ -369,13 +375,13 @@ export function OrderPDF({
                   <View style={styles.changeBox}>
                     <Text style={styles.changeLabel}>سمت جدید</Text>
                     <Text style={styles.changeValue}>
-                      {displayOrder.newPositionName || displayOrder.newPosition || '—'}
+                    {newPositionName || displayOrder.newPositionName || displayOrder.newPosition || '—'}
                     </Text>
                   </View>
                   <View style={styles.changeBox}>
                     <Text style={styles.changeLabel}>واحد جدید</Text>
                     <Text style={styles.changeValue}>
-                      {displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
+                    {newDepartmentName || displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
                     </Text>
                   </View>
                 </>

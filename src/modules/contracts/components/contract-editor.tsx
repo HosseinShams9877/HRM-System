@@ -16,7 +16,7 @@ import { Textarea } from '@/core/components/ui/textarea'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { ScrollArea } from '@/core/components/ui/scroll-area'
 import { toast } from 'sonner'
-import { toPersianDigits, formatCurrency } from '@/core/lib/utils-fa'
+import { toPersianDigits, formatCurrency ,formatShamsi,convertMiladiToShamsi  } from '@/core/lib/utils-fa'
 
 // ============================================
 // Types
@@ -125,12 +125,15 @@ export function ContractEditor({
           case 'lastName': value = selectedEmployee.lastName || ''; break
           case 'position': value = selectedEmployee.positionName || selectedEmployee.position || ''; break
           case 'department': value = selectedEmployee.departmentName || selectedEmployee.department || ''; break
-          case 'startDate': value = selectedEmployee.hireDate ? formatShamsi(selectedEmployee.hireDate) : ''; break
-          case 'endDate': value = selectedEmployee.contractEndDate ? formatShamsi(selectedEmployee.contractEndDate) : ''; break
+          case 'startDate': value = selectedEmployee.hireDate ? formatShamsi(convertMiladiToShamsi(selectedEmployee.hireDate)) : ''; break
+          case 'endDate': value = selectedEmployee.contractEndDate ? formatShamsi(convertMiladiToShamsi(selectedEmployee.contractEndDate)) : ''; break
           case 'basicSalary': value = selectedEmployee.financial?.baseSalary ? toPersianDigits(selectedEmployee.financial.baseSalary.toLocaleString()) : '۰'; break
           case 'housingAllowance': value = selectedEmployee.financial?.housingAllowance ? toPersianDigits(selectedEmployee.financial.housingAllowance.toLocaleString()) : '۰'; break
           case 'transportationAllowance': value = selectedEmployee.financial?.workAllowance ? toPersianDigits(selectedEmployee.financial.workAllowance.toLocaleString()) : '۰'; break
           case 'mealAllowance': value = selectedEmployee.financial?.otherAllowances ? toPersianDigits(selectedEmployee.financial.otherAllowances.toLocaleString()) : '۰'; break
+          case 'birthDate': 
+          value = selectedEmployee.birthDate ? formatShamsi(convertMiladiToShamsi(selectedEmployee.birthDate)) : ''
+          break
           case 'totalSalary': 
             const total = (selectedEmployee.financial?.baseSalary || 0) + 
                          (selectedEmployee.financial?.housingAllowance || 0) + 
@@ -140,6 +143,7 @@ export function ContractEditor({
             break
           case 'contractDuration': value = selectedEmployee.contractMonths ? toPersianDigits(selectedEmployee.contractMonths.toString()) : '۰'; break
           default: value = `{{${variable}}}`
+        
         }
         
         const newText = before + value + after
@@ -376,6 +380,7 @@ export function ContractEditor({
   { key: 'department', label: 'دپارتمان' },
   { key: 'startDate', label: 'تاریخ شروع' },
   { key: 'endDate', label: 'تاریخ پایان' },
+  { key: 'birthDate', label: 'تاریخ تولد' },
   { key: 'basicSalary', label: 'حقوق پایه' },
   { key: 'housingAllowance', label: 'مسکن' },
   { key: 'transportationAllowance', label: 'ایاب‌ذهاب' },

@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
               firstName: true,
               lastName: true,
               personnelCode: true,
+          
+            
             },
           },
           contract: {

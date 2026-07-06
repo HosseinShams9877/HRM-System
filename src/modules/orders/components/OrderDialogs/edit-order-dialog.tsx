@@ -135,6 +135,8 @@ export function EditOrderDialog({ open, onOpenChange, order, employees, onSubmit
     spouseAllowance: '',
     childAllowance: '',
     yearsOfServiceBase: '',
+    newPositionName: '',    
+  newDepartmentName: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   

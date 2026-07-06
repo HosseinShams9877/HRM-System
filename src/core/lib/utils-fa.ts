@@ -69,8 +69,7 @@
    const { jy, jm, jd } = jalaali.toJalaali(date.getFullYear(), date.getMonth() + 1, date.getDate())
    return `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')}`
  }
- 
- /** فرمت زیبای تاریخ شمسی: ۳ فروردین ۱۴۰۵ */
+ /*
  export function formatShamsi(dateStr: string): string {
    if (!dateStr) return ''
    const parts = dateStr.split('/')
@@ -79,7 +78,66 @@
    const monthName = PERSIAN_MONTHS[m - 1] || ''
    return `${toPersianDigits(d)} ${monthName} ${toPersianDigits(y)}`
  }
- 
+ */
+
+
+/** فرمت زیبای تاریخ شمسی: ۴ خرداد ۱۴۰۴ */
+export function formatShamsi(dateStr: string): string {
+  if (!dateStr) return ''
+
+  let shamsiYear: number, shamsiMonth: number, shamsiDay: number
+
+  // ۱. اگه تاریخ به فرمت میلادی YYYY-MM-DD باشه (مثل 2025-08-26)
+  if (dateStr.includes('-')) {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr
+    const jalaaliDate = jalaali.toJalaali(year, month, day)
+    shamsiYear = jalaaliDate.jy
+    shamsiMonth = jalaaliDate.jm
+    shamsiDay = jalaaliDate.jd
+  }
+  // ۲. اگه تاریخ به فرمت شمسی YYYY/MM/DD باشه (مثل 1404/01/01)
+  else if (dateStr.includes('/')) {
+    const parts = dateStr.split('/')
+    if (parts.length !== 3) return dateStr
+    shamsiYear = parseInt(parts[0])
+    shamsiMonth = parseInt(parts[1])
+    shamsiDay = parseInt(parts[2])
+    if (isNaN(shamsiYear) || isNaN(shamsiMonth) || isNaN(shamsiDay)) return dateStr
+  }
+  // ۳. فرمت دیگه
+  else {
+    return dateStr
+  }
+
+  const monthName = PERSIAN_MONTHS[shamsiMonth - 1] || ''
+  return `${toPersianDigits(shamsiDay)} ${monthName} ${toPersianDigits(shamsiYear)}`
+}
+
+export function convertMiladiToShamsi(dateStr: string): string {
+  if (!dateStr) return ''
+
+  // تبدیل - به / برای یکسان سازی
+  const cleanDate = dateStr.replace(/-/g, '/')
+  const parts = cleanDate.split('/')
+  
+  if (parts.length !== 3) return dateStr
+
+  const year = parseInt(parts[0])
+  const month = parseInt(parts[1])
+  const day = parseInt(parts[2])
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr
+
+  // تبدیل میلادی به شمسی با jalaali-js
+  const jalaaliDate = jalaali.toJalaali(year, month, day)
+  
+  const jy = String(jalaaliDate.jy).padStart(4, '0')
+  const jm = String(jalaaliDate.jm).padStart(2, '0')
+  const jd = String(jalaaliDate.jd).padStart(2, '0')
+
+  return `${jy}/${jm}/${jd}`
+}
  /** فرمت کامل تاریخ شمسی با روز هفته: پنجشنبه ۳ فروردین ۱۴۰۵ */
  export function formatShamsiFull(dateStr: string): string {
    if (!dateStr) return ''

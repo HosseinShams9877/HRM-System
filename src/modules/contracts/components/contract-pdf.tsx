@@ -27,28 +27,22 @@ const cleanAndFormatContent = (text: string): string => {
   if (!text) return ''
   
   let cleaned = text
-    // حذف کاراکترهای اضافی
-    .replace(/[©@ÂZ{}ü‡‰‹•‘ò]/g, '')
+    // فقط کاراکترهای کنترل و غیرقابل چاپ رو حذف کن
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // حذف کاراکترهای خاص غیرضروری (اما نه حروف فارسی)
+    .replace(/[©®™@ÂZ{}ü‡‰‹•‘ò]/g, '')
     // حذف متغیرهای حل نشده
     .replace(/\{\{.*?\}\}/g, '')
-    // اصلاح اعداد
-    .replace(/(\d+)[-–—]\s*/g, '$1- ')
-    // اصلاح فاصله‌ها
-    .replace(/\s+/g, ' ')
-    // اصلاح کلمات
-    .replace(/اده/g, 'ماده')
-    .replace(/ارمند/g, 'کارمند')
-    .replace(/ارفرما/g, 'کارفرما')
-    .replace(/اعات/g, 'ساعات')
-    .replace(/ر/g, 'هر')
-    .replace(/دت/g, 'مدت')
-    .replace(/ایر/g, 'سایر')
-    .replace(/ین/g, 'این')
-    // جدا کردن خطوط
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0 && !line.match(/^[\d\-]+$/))
-    .join('\n\n')
+    // اصلاح فاصله‌های اضافی (اما نه حذف کامل)
+    .replace(/[ ]{2,}/g, ' ')
+    // حفظ خطوط جدید
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+  
+  // حذف خطوط خالی اضافی (اما نه همه)
+  cleaned = cleaned.split('\n')
+    .map(line => line.trimEnd()) // فقط فضای آخر خط رو حذف کن
+    .join('\n')
   
   return cleaned
 }
@@ -124,6 +118,8 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     textAlign: 'right', // راست ← اینجا عوض شد
     direction: 'rtl', // ← اضافه شد
+    whiteSpace: 'pre-wrap', 
+    wordBreak: 'break-word', 
   },
   footer: {
     textAlign: 'center',
@@ -198,7 +194,7 @@ export function ContractPDF({ contract }: ContractPDFProps) {
               <Text>متن قرارداد</Text>
             </View>
             <View style={styles.sectionBody}>
-              <Text style={styles.content}>{contract.content}</Text>
+              <Text style={styles.content}>{cleanAndFormatContent(contract.content)}</Text>
             </View>
           </View>
         )}

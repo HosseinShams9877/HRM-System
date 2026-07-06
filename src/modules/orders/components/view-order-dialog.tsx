@@ -16,7 +16,7 @@ import {
   Briefcase, DollarSign, Calendar, Phone, Building2,
   CheckCircle, AlertCircle
 } from 'lucide-react'
-import { formatShamsi, toPersianDigits } from '@/core/lib/utils-fa'
+import { formatShamsi, toPersianDigits,convertMiladiToShamsi, formatShamsiFull  } from '@/core/lib/utils-fa'
 import { toast } from 'sonner'
 import { useEmployee } from '@/modules/employees/hooks/use-employee'
 import { cn } from '@/core/lib/utils'
@@ -103,6 +103,8 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
   const [fullOrder, setFullOrder] = useState<OrderRecord | null>(null)
   const [loading, setLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [newPositionName, setNewPositionName] = useState<string>('')
+  const [newDepartmentName, setNewDepartmentName] = useState<string>('')
 
   const { data: employeeData, isLoading: employeeLoading } = useEmployee(
     order?.employeeId || null
@@ -114,6 +116,7 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
     }
   }, [open, order])
 
+  // ===== 4. تابع fetchFullOrder =====
   const fetchFullOrder = async (orderId: string) => {
     setLoading(true)
     try {
@@ -132,15 +135,56 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
     }
   }
 
+  // ===== 5. displayOrder رو اینجا تعریف کن =====
+  const displayOrder = fullOrder || order
+
+  // ===== 6. useEffect دوم - گرفتن نام‌ها (بعد از displayOrder) =====
+  useEffect(() => {
+    const fetchNames = async () => {
+      if (!displayOrder) return
+
+      if (displayOrder.newPosition) {
+        try {
+          const res = await fetch(`/api/positions/${displayOrder.newPosition}`)
+          if (res.ok) {
+            const data = await res.json()
+            setNewPositionName(data.title || displayOrder.newPosition)
+          }
+        } catch (error) {
+          console.error('Error fetching new position:', error)
+          setNewPositionName(displayOrder.newPosition || '—')
+        }
+      } else {
+        setNewPositionName('—')
+      }
+
+      if (displayOrder.newDepartment) {
+        try {
+          const res = await fetch(`/api/departments/${displayOrder.newDepartment}`)
+          if (res.ok) {
+            const data = await res.json()
+            setNewDepartmentName(data.name || displayOrder.newDepartment)
+          }
+        } catch (error) {
+          console.error('Error fetching new department:', error)
+          setNewDepartmentName(displayOrder.newDepartment || '—')
+        }
+      } else {
+        setNewDepartmentName('—')
+      }
+    }
+
+    fetchNames()
+  }, [displayOrder?.newPosition, displayOrder?.newDepartment, displayOrder])
+
+  // ===== 7. توابع handleDownloadPDF و handlePrint =====
   const handleDownloadPDF = async () => {
     setIsDownloading(true)
     try {
       const fontKey = Date.now().toString()
       
       await registerFonts(fontKey)
-      // انتخاب PDF مناسب بر اساس تغییرات
       const PDFComponent = OrderPDF
-       
         console.log('PDFComponent:', PDFComponent.name || PDFComponent)
       
       
@@ -156,6 +200,8 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
           formatCurrency={formatCurrency}
           toPersianDigits={toPersianDigits}
           fontKey={fontKey}
+          newPositionName={newPositionName}        
+          newDepartmentName={newDepartmentName} 
         />
       ).toBlob()
       
@@ -356,7 +402,6 @@ const handlePrint = () => {
     )
   }
 
-  const displayOrder = fullOrder || order
   
   const employee = {
     ...(employeeData || displayOrder.employee),
@@ -467,7 +512,7 @@ const handlePrint = () => {
                 </span>
                 <span className="bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-full text-xs sm:text-sm shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-gray-400" />
-                  صدور: <strong>{formatShamsi(displayOrder.issueDate)}</strong>
+                  صدور: <strong>{formatShamsi(order.issueDate)}</strong>
                 </span>
                 <span className="bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-full text-xs sm:text-sm shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-gray-400" />
@@ -512,7 +557,7 @@ const handlePrint = () => {
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">تاریخ تولد</p>
-                  <p className="text-sm font-semibold dark:text-gray-200">{formatShamsi(employee.birthDate || '')}</p>
+                  <p className="text-sm font-semibold dark:text-gray-200">{formatShamsi(convertMiladiToShamsi(employee.birthDate  || ''))}</p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -529,7 +574,7 @@ const handlePrint = () => {
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">تاریخ شروع همکاری</p>
-                  <p className="text-sm font-semibold dark:text-gray-200">{formatShamsi(employee.hireDate || '')}</p>
+                  <p className="text-sm font-semibold dark:text-gray-200">{formatShamsiFull(convertMiladiToShamsi(employee.hireDate || ''))}</p>
                 </div>
               </div>
             </div>
@@ -562,8 +607,8 @@ const handlePrint = () => {
                         سمت جدید
                       </p>
                       <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                        {displayOrder.newPositionName || displayOrder.newPosition || '—'}
-                        <span className="text-[10px] text-amber-600 mr-1">(تغییر)</span>
+                      {newPositionName || displayOrder.newPositionName || displayOrder.newPosition || '—'}
+                       <span className="text-[10px] text-amber-600 mr-1">(تغییر)</span>
                       </p>
                     </div>
                     <div className="col-span-2 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -572,7 +617,7 @@ const handlePrint = () => {
                         واحد جدید
                       </p>
                       <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                        {displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
+                      {newDepartmentName || displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
                         <span className="text-[10px] text-amber-600 mr-1">(تغییر)</span>
                       </p>
                     </div>
@@ -635,19 +680,6 @@ const handlePrint = () => {
                   </p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400">حق جذب</p>
-                  <p className="text-sm font-semibold dark:text-gray-200 truncate">
-                    {hasSalaryChange && displayOrder.attractionAllowance ? (
-                      <span className="text-amber-700 dark:text-amber-400">
-                        {formatCurrency(displayOrder.attractionAllowance)}
-                        <span className="text-[9px] text-gray-400 mr-1">(جدید)</span>
-                      </span>
-                    ) : (
-                      formatCurrency(employee.attractionAllowance || employee.responsibilityAllowance)
-                    )}
-                  </p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">حق مسئولیت</p>
                   <p className="text-sm font-semibold dark:text-gray-200 truncate">
                     {hasSalaryChange && displayOrder.responsibilityAllowance ? (
@@ -691,19 +723,7 @@ const handlePrint = () => {
     {formatCurrency(employee.yearsOfServiceBase)}
   </p>
 </div>
-                <div className="col-span-2 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400">کسورات ثابت</p>
-                  <p className="text-sm font-semibold dark:text-gray-200 truncate">
-                    {hasSalaryChange && displayOrder.fixedDeductions ? (
-                      <span className="text-amber-700 dark:text-amber-400">
-                        {formatCurrency(displayOrder.fixedDeductions)}
-                        <span className="text-[9px] text-gray-400 mr-1">(جدید)</span>
-                      </span>
-                    ) : (
-                      formatCurrency(employee.fixedDeductions)
-                    )}
-                  </p>
-                </div>
+             
               </div>
             </div>
 

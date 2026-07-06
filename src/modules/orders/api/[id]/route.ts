@@ -30,6 +30,7 @@ export async function GET(
             firstName: true,
             lastName: true,
             personnelCode: true,
+      
           },
         },
         contract: {

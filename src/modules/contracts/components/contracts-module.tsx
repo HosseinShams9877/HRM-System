@@ -122,6 +122,7 @@ useEffect(() => {
               const [finRes, contractRes] = await Promise.all([
                 fetch(`/api/employees/${emp.id}/financial`),
                 fetch(`/api/employees/${emp.id}?includeContracts=true`)
+                
               ])
               
               let financial = null
@@ -138,8 +139,36 @@ useEffect(() => {
                 const contractData = await contractRes.json()
                 const empData = contractData.data || contractData
                 contractMonths = empData.contractMonths || null
-                contractEndDate = empData.contractEndDate || null
                 contractType = emp.contractType || null 
+              }
+              if (emp.hireDate && contractMonths && contractMonths > 0) {
+                const startParts = emp.hireDate.split('/')
+                if (startParts.length === 3) {
+                  const year = parseInt(startParts[0])
+                  const month = parseInt(startParts[1])
+                  const day = parseInt(startParts[2])
+                  
+                  let endYear = year
+                  let endMonth = month + contractMonths
+                  let endDay = day
+                  
+                  while (endMonth > 12) {
+                    endMonth -= 12
+                    endYear += 1
+                  }
+                  
+                  const daysInMonth = (y: number, m: number) => {
+                    if (m <= 6) return 31
+                    if (m <= 11) return 30
+                    const isLeap = (y % 33 === 1 || y % 33 === 5 || y % 33 === 9 || y % 33 === 13 || y % 33 === 17 || y % 33 === 21 || y % 33 === 25 || y % 33 === 29)
+                    return isLeap ? 30 : 29
+                  }
+                  
+                  const maxDay = daysInMonth(endYear, endMonth)
+                  if (endDay > maxDay) endDay = maxDay
+                  
+                  contractEndDate = `${endYear}/${String(endMonth).padStart(2, '0')}/${String(endDay).padStart(2, '0')}`
+                }
               }
               
               return { ...emp, financial, contractMonths, contractEndDate, contractType ,positionName: emp.positionName || emp.position,  // ← اضافه کن
@@ -218,7 +247,19 @@ const availableEmployees = useMemo(() => {
         startDate = data.hireDate
       }
     }
-  
+    let birthDate = 'تاریخ تولد'
+    if (data.birthDate) {
+      const date = new Date(data.birthDate)
+      if (!isNaN(date.getTime())) {
+        birthDate = date.toLocaleDateString('fa-IR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      } else {
+        birthDate = data.birthDate
+      }
+    }
     // تاریخ پایان و مدت قرارداد
     let endDate = 'نامحدود'
     let contractDuration = 'دائم'
@@ -256,6 +297,7 @@ const availableEmployees = useMemo(() => {
       lastName: data.lastName || '',
       position: data.positionName || data.position || 'نامشخص',
       department: data.departmentName || data.department || 'نامشخص',
+      birthDate: birthDate,
       startDate: startDate,
       endDate: endDate,
       contractDuration: contractDuration,
@@ -416,6 +458,7 @@ const availableEmployees = useMemo(() => {
       if (res.ok) {
         const data = await res.json()
         const contractData = data.data || data
+        
         
         // اگر قرارداد متن ذخیره شده دارد، آن را نمایش بده
         if (contractData.content) {
