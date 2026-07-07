@@ -56,6 +56,20 @@ export function DaysUntilExpiry({ endDate, status }: { endDate: string | null; s
   if (diff <= 30) return <span className="text-[10px] text-amber-600 font-medium">{toPersianDigits(diff)} روز مانده</span>
   return <span className="text-[10px] text-muted-foreground">{toPersianDigits(diff)} روز مانده</span>
 }
+const getTypeLabel = (type: string): string => {
+  const map: Record<string, string> = {
+    'permanent': 'دائم',
+    'temporary': 'موقت',
+    'official': 'دائم',
+    'contractual': 'قراردادی',
+    'hourly': 'ساعتی',
+    'part_time': 'پاره‌وقت',
+    'full_time': 'تمام‌وقت',
+    'contract': 'قراردادی',
+    'freelance': 'آزاد',
+  }
+  return map[type] || type
+}
 
 // ============================================
 // Contract Detail Dialog
@@ -71,8 +85,7 @@ export function ContractDetailDialog({
   contract: ContractRecord | null
 }) {
 
-  console.log('🔍 Contract in dialog:', contract)
-  console.log('🔍 endDate in dialog:', contract?.endDate)
+ 
   if (!contract) return null
 
   const typeInfo = CONTRACT_TYPES.find(t => t.value === contract.type)
@@ -117,7 +130,7 @@ export function ContractDetailDialog({
               <div className="text-xs text-muted-foreground mb-1">نوع سند</div>
               {typeInfo ? (
                 <Badge className={`text-xs ${typeInfo.color}`}>{typeInfo.label}</Badge>
-              ) : contract.type}
+              ) :  getTypeLabel(contract.type)}
             </div>
             <div className="p-3 rounded-lg border">
               <div className="text-xs text-muted-foreground mb-1">شماره</div>

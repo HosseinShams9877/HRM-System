@@ -356,11 +356,11 @@ export function OrderPDF({
             <View style={styles.grid2}>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>سمت</Text>
-                <Text style={styles.value}>{newPositionName || employee.positionName || employee.position || '—'}</Text>
+                <Text style={styles.value}>{ employee.positionName || employee.position || '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>واحد سازمانی</Text>
-                <Text style={styles.value}>{newDepartmentName || employee.departmentName || employee.department || '—'}</Text>
+                <Text style={styles.value}>{ employee.departmentName || employee.department || '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>نوع حکم</Text>
@@ -402,6 +402,17 @@ export function OrderPDF({
           </View>
           <View style={styles.sectionBody}>
             <View style={styles.grid2}>
+            <View style={styles.gridItem}>
+  <Text style={styles.label}>پایه سنوات</Text>
+  <Text style={styles.value}>
+    {hasSalaryChange && displayOrder.yearsOfServiceBase ? (
+      `${formatCurrency(displayOrder.yearsOfServiceBase)} (جدید)`
+    ) : (
+      formatCurrency(employee.yearsOfServiceBase)
+    )}
+  </Text>
+</View>
+              
               <View style={styles.gridItem}>
                 <Text style={styles.label}>حقوق پایه</Text>
                 <Text style={styles.value}>
@@ -409,16 +420,6 @@ export function OrderPDF({
                     `${formatCurrency(displayOrder.baseSalary)} (جدید)`
                   ) : (
                     formatCurrency(employee.baseSalary)
-                  )}
-                </Text>
-              </View>
-              <View style={styles.gridItem}>
-                <Text style={styles.label}>حق مسکن</Text>
-                <Text style={styles.value}>
-                  {hasSalaryChange && displayOrder.housingAllowance ? (
-                    `${formatCurrency(displayOrder.housingAllowance)} (جدید)`
-                  ) : (
-                    formatCurrency(employee.housingAllowance)
                   )}
                 </Text>
               </View>
@@ -463,15 +464,16 @@ export function OrderPDF({
   </Text>
 </View>
 <View style={styles.gridItem}>
-  <Text style={styles.label}>پایه سنوات</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.yearsOfServiceBase ? (
-      `${formatCurrency(displayOrder.yearsOfServiceBase)} (جدید)`
-    ) : (
-      formatCurrency(employee.yearsOfServiceBase)
-    )}
-  </Text>
-</View>
+                <Text style={styles.label}>حق مسکن</Text>
+                <Text style={styles.value}>
+                  {hasSalaryChange && displayOrder.housingAllowance ? (
+                    `${formatCurrency(displayOrder.housingAllowance)} (جدید)`
+                  ) : (
+                    formatCurrency(employee.housingAllowance)
+                  )}
+                </Text>
+              </View>
+
               <View style={styles.gridItem}>
                 <Text style={styles.label}>سایر مزایا</Text>
                 <Text style={styles.value}>

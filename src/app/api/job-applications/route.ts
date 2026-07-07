@@ -1,0 +1,1 @@
+export { GET ,POST ,PUT } from "@/modules/recruitment/api/job-applications/route"

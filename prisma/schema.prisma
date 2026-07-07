@@ -115,6 +115,204 @@ model Employee {
   shiftAssignments EmployeeShiftAssignment[]
 }
 
+// ============================================
+// مدیریت متقاضیان استخدام (برای پورتال استخدام)
+// ============================================
+
+model Candidate {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  password       String?   // هش شده (برای کاربرانی که حساب دارند)
+  firstName      String
+  lastName       String
+  phone          String?
+  nationalId     String?   // کد ملی
+  gender         String?   // male, female
+  birthDate      String?   // تاریخ تولد شمسی
+  city           String?   // شهر محل سکونت
+  educationLevel String?   // diploma, associate, bachelor, master, phd
+  educationField String?   // رشته تحصیلی
+  university     String?   // دانشگاه
+  experienceYears Int      @default(0)
+  currentCompany String?
+  skills         String?   // مهارت‌ها (به صورت متن یا JSON)
+  linkedinUrl    String?
+  notes         String?
+  portfolioUrl   String?
+  resumeUrl      String?   // لینک رزومه
+  coverLetter    String?
+  status         String    @default("active") // active, inactive, blocked
+  source         String    @default("website") // website, linkedin, referral, other
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  applications   Application[]
+  onboarding     CandidateOnboarding?
+}
+
+model Application {
+  id             String    @id @default(cuid())
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id])
+  jobPostingId   String
+  jobPosting     JobPosting @relation(fields: [jobPostingId], references: [id])
+  status         String    @default("pending") // pending, screening, interview, testing, offer, hired, rejected
+  currentStage   String    @default("applied") // applied, screening, interview, testing, offer, hired, rejected
+  appliedAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  notes          String?
+
+  interviews     Interview[]
+  assessments    Assessment[]  
+  jobOffer       JobOffer?
+  timeline       ApplicationTimeline[]
+}
+
+model ApplicationTimeline {
+  id          String   @id @default(cuid())
+  applicationId String
+  application  Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage        String   // applied, screening, interview, testing, offer, hired, rejected
+  description  String?
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+// ============================================
+// ارزیابی مصاحبه (قبل از Interview)
+// ============================================
+
+model InterviewEvaluation {
+  id              String    @id @default(cuid())
+  interviewId     String
+  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  technicalSkills Float?
+  communication   Float?
+  problemSolving  Float?
+  cultureFit      Float?
+  motivation      Float?
+  experience      Float?
+  overallScore    Float?
+  recommendation  String?
+  strengths       String?
+  weaknesses      String?
+  comments        String?
+  evaluatedAt     DateTime  @default(now())
+}
+
+// ============================================
+// مصاحبه
+// ============================================
+
+
+model Interview {
+  id             String    @id @default(cuid())
+  applicationId  String
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewerId  String?   // آیدی کاربر (HR یا مدیر)
+  type           String    @default("in_person") // in_person, video, phone
+  scheduledAt    DateTime
+  duration       Int?      // دقیقه
+  location       String?   // آدرس یا لینک
+  status         String    @default("scheduled") // scheduled, completed, cancelled, rescheduled
+  feedback       String?
+  score          Float?    // نمره مصاحبه
+  evaluations    InterviewEvaluation[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model JobPosting {
+  id             String    @id @default(cuid())
+  title          String
+  departmentId   String?
+  description    String?   // شرح وظایف
+  requirements   String?   // شرایط احراز
+  responsibilities String? // مسئولیت‌ها
+  qualifications String?   // صلاحیت‌ها
+  benefits       String?   // مزایا
+  salaryMin      Float     @default(0)
+  salaryMax      Float     @default(0)
+  salaryType     String    @default("monthly") // hourly, monthly, yearly, project
+  employmentType String    @default("full-time") // full-time, part-time, contract, internship
+  experienceMin  Int       @default(0)
+  experienceMax  Int       @default(0)
+  educationLevel String?   // diploma, associate, bachelor, master, phd
+  location       String?
+  remoteWork     Boolean   @default(false)
+  deadline       String?   // تاریخ انقضا شمسی
+  views          Int       @default(0)
+  applicationCount    Int       @default(0)
+  status         String    @default("active") // active, paused, closed, draft
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String?   // آیدی کاربر ایجادکننده
+
+  
+  applications   Application[]
+  department     Department? @relation(fields: [departmentId], references: [id])
+}
+
+// ============================================
+// راه‌اندازی کارمند جدید (Onboarding)
+// ============================================
+
+model CandidateOnboarding {
+  id             String    @id @default(cuid())
+  candidateId    String    @unique
+  candidate      Candidate @relation(fields: [candidateId], references: [id])
+  startDate      String?   // تاریخ شروع شمسی
+  status         String    @default("pending") // pending, in_progress, completed, cancelled
+  tasks          String?   // لیست وظایف (JSON)
+  progress       Int       @default(0) // 0-100
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+// ============================================
+// ارزیابی‌ها و آزمون‌ها
+// ============================================
+
+model Assessment {
+  id             String    @id @default(cuid())
+  applicationId  String
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type           String    @default("written_test") // written_test, practical_task, psychological, technical_exam
+  title          String
+  score          Float?
+  evaluatedBy    String?
+  passScore      Float     @default(60)
+  deadline       DateTime?
+  status         String    @default("assigned") // assigned, in_progress, completed, expired
+  result         String?   // passed, failed
+  notes          String?
+  assignedAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+// ============================================
+// پیشنهادات شغلی
+// ============================================
+
+model JobOffer {
+  id              String    @id @default(cuid())
+  applicationId   String    @unique
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  status          String    @default("pending") // pending, accepted, declined, revoked, expired
+  employmentType  String    @default("full_time") // full_time, part_time, contract
+  baseSalary      Float?
+  startDate       DateTime?
+  workLocation    String?   // onsite, remote, hybrid
+  offerExpiryDate DateTime?
+  responseDate   DateTime?
+  responseNote   String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 model Department {
   id        String       @id @default(cuid())
   name      String
@@ -124,9 +322,11 @@ model Department {
   parent    Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
   children  Department[] @relation("DeptHierarchy")
   positions Position[]
+  jobPostings JobPosting[] 
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 }
+
 
 // ============================================
 // پست سازمانی و انتصاب

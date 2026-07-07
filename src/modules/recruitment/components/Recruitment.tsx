@@ -782,7 +782,7 @@ export function Recruitment() {
 
   const handlePublishJob = async (jobId: string, newStatus: string) => {
     try {
-      const response = await fetch('/api/job-postings', {
+      const response = await fetch(`/api/job-postings/${jobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: jobId, status: newStatus }),
@@ -1224,52 +1224,59 @@ export function Recruitment() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <UserPlus className="h-8 w-8 text-emerald-600" />
-            مدیریت استخدام
-          </h1>
-          <p className="text-gray-500 mt-1">مدیریت فرآیند جذب و استخدام نیروی انسانی</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+  <UserPlus className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+  مدیریت استخدام
+</h1>
+<p className="text-gray-500 dark:text-gray-400 mt-1">مدیریت فرآیند جذب و استخدام نیروی انسانی</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            بروزرسانی
-          </Button>
-          <Button size="sm" onClick={() => openJobDialog()}>
-            <Plus className="h-4 w-4 mr-1" />
-            آگهی جدید
-          </Button>
+        <Button variant="outline" size="sm" onClick={fetchData} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
+  <RefreshCw className="h-4 w-4 mr-1" />
+  بروزرسانی
+</Button>
+<Button size="sm" onClick={() => openJobDialog()} className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600">
+  <Plus className="h-4 w-4 mr-1" />
+  آگهی جدید
+</Button>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full flex flex-wrap gap-1 bg-gray-100 p-1 h-auto" dir="rtl">
-          <TabsTrigger value="dashboard" className="flex-1 min-w-[100px]">
+        <TabsList  className="w-full flex flex-wrap gap-1 bg-gray-100 dark:bg-gray-800 p-1 h-auto rounded-xl" dir="rtl">
+          <TabsTrigger value="dashboard" className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <BarChart3 className="h-4 w-4 mr-1 hidden sm:inline-block" />
             داشبورد
           </TabsTrigger>
-          <TabsTrigger value="jobs" className="flex-1 min-w-[100px]">
+          <TabsTrigger value="jobs"  className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <Briefcase className="h-4 w-4 mr-1 hidden sm:inline-block" />
             آگهی‌ها
           </TabsTrigger>
-          <TabsTrigger value="candidates" className="flex-1 min-w-[100px]">
+          <TabsTrigger value="candidates"  className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <Users className="h-4 w-4 mr-1 hidden sm:inline-block" />
             کاندیداها
           </TabsTrigger>
-          <TabsTrigger value="pipeline" className="flex-1 min-w-[100px]">
+          <TabsTrigger value="pipeline"  className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <Activity className="h-4 w-4 mr-1 hidden sm:inline-block" />
             خط فرآیند
           </TabsTrigger>
-          <TabsTrigger value="interviews" className="flex-1 min-w-[100px]">
+          <TabsTrigger value="interviews"  className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <Calendar className="h-4 w-4 mr-1 hidden sm:inline-block" />
             مصاحبه‌ها
           </TabsTrigger>
-          <TabsTrigger value="assessments" className="flex-1 min-w-[100px]">
+          <TabsTrigger value="assessments"  className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <ClipboardCheck className="h-4 w-4 mr-1 hidden sm:inline-block" />
             ارزیابی‌ها
           </TabsTrigger>
-          <TabsTrigger value="reports" className="flex-1 min-w-[100px]">
+          <TabsTrigger value="reports"  className="flex-1 min-w-[100px] data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+  >
             <PieChart className="h-4 w-4 mr-1 hidden sm:inline-block" />
             گزارشات
           </TabsTrigger>
@@ -2168,23 +2175,46 @@ export function Recruitment() {
       {/* DIALOGS                                               */}
       {/* ═══════════════════════════════════════════════════════ */}
 
-      {/* ── Job Create/Edit Dialog ──────────────────────────── */}
-      <Dialog open={jobDialogOpen} onOpenChange={(open) => { setJobDialogOpen(open); if (!open) resetJobForm() }}>
-        <DialogContent className="max-w-2xl max-h-[85vh]" dir="rtl" style={RTL_STYLE}>
-          <DialogHeader>
-            <DialogTitle>{selectedJob ? 'ویرایش آگهی شغلی' : 'ثبت آگهی شغلی جدید'}</DialogTitle>
-            <DialogDescription>اطلاعات آگهی شغلی را وارد کنید</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh] pl-1">
-            <div className="grid grid-cols-2 gap-4 p-1">
-              <div className="col-span-2">
-                <Label>عنوان شغل *</Label>
-                <Input value={jobFormData.title} onChange={(e) => setJobFormData({ ...jobFormData, title: e.target.value })} placeholder="مثلاً: توسعه‌دهنده فرانت‌اند" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <Label>واحد سازمانی *</Label>
+{/* ── Job Create/Edit Dialog ──────────────────────────── */}
+<Dialog open={jobDialogOpen} onOpenChange={(open) => { setJobDialogOpen(open); if (!open) resetJobForm() }}>
+  <DialogContent className="max-w-2xl max-h-[85vh]" dir="rtl" style={RTL_STYLE}>
+    <DialogHeader className="space-y-1.5">
+      <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+        <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+          <Briefcase className="w-4 h-4 text-white" />
+        </div>
+        {selectedJob ? 'ویرایش آگهی شغلی' : 'ثبت آگهی شغلی جدید'}
+      </DialogTitle>
+      <DialogDescription className="text-sm text-muted-foreground">
+        اطلاعات آگهی شغلی را وارد کنید
+      </DialogDescription>
+    </DialogHeader>
+    
+    <ScrollArea className="max-h-[60vh] pr-1">
+      <div className="space-y-5 py-2">
+        {/* بخش اطلاعات پایه */}
+        <div>
+          <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+            <div className="w-1 h-4 rounded-full bg-emerald-500" />
+            اطلاعات پایه
+          </h4>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">عنوان شغل <span className="text-red-500">*</span></Label>
+              <Input
+                value={jobFormData.title}
+                onChange={(e) => setJobFormData({ ...jobFormData, title: e.target.value })}
+                placeholder="مثلاً: توسعه‌دهنده فرانت‌اند"
+                className="h-10 text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">واحد سازمانی <span className="text-red-500">*</span></Label>
                 <Select value={jobFormData.departmentId} onValueChange={(v) => setJobFormData({ ...jobFormData, departmentId: v })}>
-                  <SelectTrigger><SelectValue placeholder="انتخاب واحد" /></SelectTrigger>
+                  <SelectTrigger className="h-10 text-sm">
+                    <SelectValue placeholder="انتخاب واحد" />
+                  </SelectTrigger>
                   <SelectContent>
                     {Array.isArray(departments) && departments.map((d) => (
                       <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
@@ -2192,10 +2222,12 @@ export function Recruitment() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <Label>نوع استخدام</Label>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">نوع استخدام</Label>
                 <Select value={jobFormData.employmentType} onValueChange={(v) => setJobFormData({ ...jobFormData, employmentType: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="full-time">تمام وقت</SelectItem>
                     <SelectItem value="part-time">پاره وقت</SelectItem>
@@ -2204,84 +2236,184 @@ export function Recruitment() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2">
-                <Label>توضیحات شغل *</Label>
-                <Textarea value={jobFormData.description} onChange={(e) => setJobFormData({ ...jobFormData, description: e.target.value })} rows={3} placeholder="شرح وظایف و مسئولیت‌ها" />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* بخش شرح و الزامات */}
+        <div>
+          <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+            <div className="w-1 h-4 rounded-full bg-blue-500" />
+            شرح و الزامات
+          </h4>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">توضیحات شغل <span className="text-red-500">*</span></Label>
+              <Textarea
+                value={jobFormData.description}
+                onChange={(e) => setJobFormData({ ...jobFormData, description: e.target.value })}
+                rows={3}
+                placeholder="شرح وظایف و مسئولیت‌ها"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">الزامات</Label>
+              <Textarea
+                value={jobFormData.requirements}
+                onChange={(e) => setJobFormData({ ...jobFormData, requirements: e.target.value })}
+                rows={2}
+                placeholder="مهارت‌ها و شرایط لازم"
+                className="text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">مسئولیت‌ها</Label>
+                <Textarea
+                  value={jobFormData.responsibilities}
+                  onChange={(e) => setJobFormData({ ...jobFormData, responsibilities: e.target.value })}
+                  rows={2}
+                  placeholder="مسئولیت‌ها"
+                  className="text-sm"
+                />
               </div>
-              <div className="col-span-2">
-                <Label>الزامات</Label>
-                <Textarea value={jobFormData.requirements} onChange={(e) => setJobFormData({ ...jobFormData, requirements: e.target.value })} rows={3} placeholder="مهارت‌ها و شرایط لازم" />
-              </div>
-              <div className="col-span-2">
-                <Label>مسئولیت‌ها</Label>
-                <Textarea value={jobFormData.responsibilities} onChange={(e) => setJobFormData({ ...jobFormData, responsibilities: e.target.value })} rows={2} />
-              </div>
-              <div className="col-span-2">
-                <Label>مزایا</Label>
-                <Textarea value={jobFormData.benefits} onChange={(e) => setJobFormData({ ...jobFormData, benefits: e.target.value })} rows={2} />
-              </div>
-              <div>
-                <Label>حداقل حقوق (ریال)</Label>
-                <Input type="number" value={jobFormData.salaryMin} onChange={(e) => setJobFormData({ ...jobFormData, salaryMin: e.target.value })} />
-              </div>
-              <div>
-                <Label>حداکثر حقوق (ریال)</Label>
-                <Input type="number" value={jobFormData.salaryMax} onChange={(e) => setJobFormData({ ...jobFormData, salaryMax: e.target.value })} />
-              </div>
-              <div>
-                <Label>نوع حقوق</Label>
-                <Select value={jobFormData.salaryType} onValueChange={(v) => setJobFormData({ ...jobFormData, salaryType: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">ماهانه</SelectItem>
-                    <SelectItem value="yearly">سالانه</SelectItem>
-                    <SelectItem value="hourly">ساعتی</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>سطح تحصیلات</Label>
-                <Select value={jobFormData.educationLevel} onValueChange={(v) => setJobFormData({ ...jobFormData, educationLevel: v })}>
-                  <SelectTrigger><SelectValue placeholder="انتخاب" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="diploma">دیپلم</SelectItem>
-                    <SelectItem value="associate">کاردانی</SelectItem>
-                    <SelectItem value="bachelor">کارشناسی</SelectItem>
-                    <SelectItem value="master">کارشناسی ارشد</SelectItem>
-                    <SelectItem value="phd">دکتری</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>حداقل سابقه (سال)</Label>
-                <Input type="number" value={jobFormData.experienceMin} onChange={(e) => setJobFormData({ ...jobFormData, experienceMin: e.target.value })} />
-              </div>
-              <div>
-                <Label>حداکثر سابقه (سال)</Label>
-                <Input type="number" value={jobFormData.experienceMax} onChange={(e) => setJobFormData({ ...jobFormData, experienceMax: e.target.value })} />
-              </div>
-              <div>
-                <Label>محل کار</Label>
-                <Input value={jobFormData.location} onChange={(e) => setJobFormData({ ...jobFormData, location: e.target.value })} placeholder="مثلاً: تهران" />
-              </div>
-              <div>
-                <Label>مهلت ارسال رزومه</Label>
-                <PersianDatePicker value={jobFormData.deadline} onChange={(d) => setJobFormData({ ...jobFormData, deadline: d })} />
-              </div>
-              <div className="col-span-2 flex items-center gap-3">
-                <Switch checked={jobFormData.remoteWork} onCheckedChange={(v) => setJobFormData({ ...jobFormData, remoteWork: v })} />
-                <Label>امکان دورکاری</Label>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">مزایا</Label>
+                <Textarea
+                  value={jobFormData.benefits}
+                  onChange={(e) => setJobFormData({ ...jobFormData, benefits: e.target.value })}
+                  rows={2}
+                  placeholder="مزایا"
+                  className="text-sm"
+                />
               </div>
             </div>
-          </ScrollArea>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setJobDialogOpen(false); resetJobForm() }}>انصراف</Button>
-            <Button onClick={handleSubmitJob} disabled={!jobFormData.title || !jobFormData.departmentId || !jobFormData.description}>
-              {selectedJob ? 'بروزرسانی' : 'ثبت آگهی'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* بخش حقوق و شرایط */}
+        <div>
+          <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-300">
+            <div className="w-1 h-4 rounded-full bg-amber-500" />
+            حقوق و شرایط
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">حداقل حقوق (ریال)</Label>
+              <Input
+                type="number"
+                value={jobFormData.salaryMin}
+                onChange={(e) => setJobFormData({ ...jobFormData, salaryMin: e.target.value })}
+                className="h-10 text-sm"
+                placeholder="۰"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">حداکثر حقوق (ریال)</Label>
+              <Input
+                type="number"
+                value={jobFormData.salaryMax}
+                onChange={(e) => setJobFormData({ ...jobFormData, salaryMax: e.target.value })}
+                className="h-10 text-sm"
+                placeholder="۰"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">نوع حقوق</Label>
+              <Select value={jobFormData.salaryType} onValueChange={(v) => setJobFormData({ ...jobFormData, salaryType: v })}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">ماهانه</SelectItem>
+                  <SelectItem value="yearly">سالانه</SelectItem>
+                  <SelectItem value="hourly">ساعتی</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">سطح تحصیلات</Label>
+              <Select value={jobFormData.educationLevel} onValueChange={(v) => setJobFormData({ ...jobFormData, educationLevel: v })}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="انتخاب" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="diploma">دیپلم</SelectItem>
+                  <SelectItem value="associate">کاردانی</SelectItem>
+                  <SelectItem value="bachelor">کارشناسی</SelectItem>
+                  <SelectItem value="master">کارشناسی ارشد</SelectItem>
+                  <SelectItem value="phd">دکتری</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">حداقل سابقه (سال)</Label>
+              <Input
+                type="number"
+                value={jobFormData.experienceMin}
+                onChange={(e) => setJobFormData({ ...jobFormData, experienceMin: e.target.value })}
+                className="h-10 text-sm"
+                placeholder="۰"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">حداکثر سابقه (سال)</Label>
+              <Input
+                type="number"
+                value={jobFormData.experienceMax}
+                onChange={(e) => setJobFormData({ ...jobFormData, experienceMax: e.target.value })}
+                className="h-10 text-sm"
+                placeholder="۰"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">محل کار</Label>
+              <Input
+                value={jobFormData.location}
+                onChange={(e) => setJobFormData({ ...jobFormData, location: e.target.value })}
+                placeholder="مثلاً: تهران"
+                className="h-10 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">مهلت ارسال رزومه</Label>
+              <PersianDatePicker
+                value={jobFormData.deadline}
+                onChange={(d) => setJobFormData({ ...jobFormData, deadline: d })}
+              />
+            </div>
+            <div className="col-span-2 flex items-center gap-3 pt-2">
+              <Switch
+                checked={jobFormData.remoteWork}
+                onCheckedChange={(v) => setJobFormData({ ...jobFormData, remoteWork: v })}
+              />
+              <Label className="text-sm font-medium">امکان دورکاری</Label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ScrollArea>
+    
+    <DialogFooter className="gap-3 pt-2">
+      <Button variant="outline" onClick={() => { setJobDialogOpen(false); resetJobForm() }} className="h-10 px-6 text-sm">
+        انصراف
+      </Button>
+      <Button
+        onClick={handleSubmitJob}
+        disabled={!jobFormData.title || !jobFormData.departmentId || !jobFormData.description}
+        className="h-10 px-6 text-sm gap-2 bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-sm"
+      >
+        <FileText className="w-4 h-4" />
+        {selectedJob ? 'بروزرسانی' : 'ثبت آگهی'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* ── Candidate Create/Edit Dialog ────────────────────── */}
       <Dialog open={candidateDialogOpen} onOpenChange={(open) => { setCandidateDialogOpen(open); if (!open) resetCandidateForm() }}>

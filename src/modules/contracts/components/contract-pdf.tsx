@@ -3,50 +3,92 @@
 
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
-
+import path from 'path'
 // ===== ثبت فونت =====
-try {
-  const fontRegular = require('../../../../../public/fonts/Vazirmatn-Regular.ttf')
-  Font.register({
-    family: 'Vazirmatn',
-    src: fontRegular,
-    fontWeight: 400,
-  })
+// src/modules/contracts/components/ContractDialogs/contract-pdf.tsx
 
-  const fontBold = require('../../../../../public/fonts/Vazirmatn-Bold.ttf')
-  Font.register({
-    family: 'Vazirmatn',
-    src: fontBold,
-    fontWeight: 700,
-  })
-} catch (error) {
-  console.error('Error loading fonts:', error)
+export const registerFonts = (key?: string) => {
+  try {
+    // از مسیر مطلق با require استفاده کن
+    const fontRegular = require('../../../../public/fonts/Vazirmatn-Regular.ttf')
+    const fontBold = require('../../../../public/fonts/Vazirmatn-Bold.ttf')
+    
+    const familyName = key ? `Vazirmatn-${key}` : 'Vazirmatn'
+    
+    Font.register({
+      family: familyName,
+      src: fontRegular,
+      fontWeight: 400,
+      format: 'truetype'
+    } as any)
+
+    Font.register({
+      family: familyName,
+      src: fontBold,
+      fontWeight: 700,
+      format: 'truetype'
+    } as any)
+    
+    console.log('Fonts registered successfully with family:', familyName)
+    return familyName
+  } catch (error) {
+    console.error('Error registering fonts:', error)
+    return 'Vazirmatn'
+  }
 }
 
-const cleanAndFormatContent = (text: string): string => {
+// ✅ فقط یک بار ثبت کن
+registerFonts()
+
+
+const fixPersianText = (text: string): string => {
   if (!text) return ''
+  // یک دیکشنری کامل از کاراکترهای خراب
+  const map: Record<string, string> = {
+    '©': 'م', '@': 'ک', 'Â': 'ی', 'ò': 'ه', 'ü': 'و',
+    '‡': 'چ', '‰': 'ش', '‹': 'ی', '•': '،', '‘': "'",
+    '˜': '', 'Z': '', '}': '', '{': '', 'í': '',
+    '®': '', '™': '', '†': '', '°': '', '±': '',
+    '§': '', '¶': '', '·': '', '»': '', '¼': '',
+    '½': '', '¾': '', '¿': '', 'À': '', 'Á': '',
+    'Ã': '', 'Ä': '', 'Å': '', 'Æ': '', 'Ç': '',
+    'È': '', 'É': '', 'Ê': '', 'Ë': '', 'Ì': '',
+    'Î': '', 'Ï': '', 'Ð': '', 'Ñ': '', 'Ó': '',
+    'Ô': '', 'Õ': '', 'Ö': '', '×': '', 'Ø': '',
+    'Ù': '', 'Ú': '', 'Û': '', 'Ü': '', 'Ý': '',
+    'Þ': '', 'ß': '', 'à': '', 'á': '', 'â': '',
+    'ã': '', 'ä': '', 'å': '', 'æ': '', 'ç': '',
+    'è': '', 'é': '', 'ê': '', 'ë': '', 'ì': '',
+    'î': '', 'ï': '', 'ð': '', 'ñ': '', 'ó': '',
+    'ô': '', 'õ': '', 'ö': '', '÷': '', 'ø': '',
+    'ù': '', 'ú': '', 'û': '', 'ý': '', 'þ': '',
+    'ÿ': '',
+  }
   
-  let cleaned = text
-    // فقط کاراکترهای کنترل و غیرقابل چاپ رو حذف کن
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    // حذف کاراکترهای خاص غیرضروری (اما نه حروف فارسی)
-    .replace(/[©®™@ÂZ{}ü‡‰‹•‘ò]/g, '')
-    // حذف متغیرهای حل نشده
-    .replace(/\{\{.*?\}\}/g, '')
-    // اصلاح فاصله‌های اضافی (اما نه حذف کامل)
-    .replace(/[ ]{2,}/g, ' ')
-    // حفظ خطوط جدید
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
+  let result = ''
+  for (const char of text) {
+    result += map[char] !== undefined ? map[char] : char
+  }
   
-  // حذف خطوط خالی اضافی (اما نه همه)
-  cleaned = cleaned.split('\n')
-    .map(line => line.trimEnd()) // فقط فضای آخر خط رو حذف کن
-    .join('\n')
-  
-  return cleaned
+  return result
 }
-const styles = StyleSheet.create({
+
+const getTypeLabel = (type: string): string => {
+  const map: Record<string, string> = {
+    'permanent': 'دائم',
+    'temporary': 'موقت',
+    'official': 'دائم',
+    'contractual': 'قراردادی',
+    'hourly': 'ساعتی',
+    'part_time': 'پاره‌وقت',
+    'full_time': 'تمام‌وقت',
+    'contract': 'قراردادی',
+    'freelance': 'آزاد',
+  }
+  return map[type] || type
+}
+
+const createStyles = (fontFamily: string) =>  StyleSheet.create({
   page: {
     padding: 40,
     fontFamily: 'Vazirmatn',
@@ -148,6 +190,8 @@ interface ContractPDFProps {
 }
 
 export function ContractPDF({ contract }: ContractPDFProps) {
+  const fontFamily = 'Vazirmatn' // یا از props بیار
+  const styles = createStyles(fontFamily)  
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -173,7 +217,7 @@ export function ContractPDF({ contract }: ContractPDFProps) {
               <Text style={styles.label}>کارمند</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.value}>{contract.type}</Text>
+              <Text style={styles.value}>{getTypeLabel(contract.type)}</Text>
               <Text style={styles.label}>نوع قرارداد</Text>
             </View>
             <View style={styles.row}>
@@ -194,7 +238,7 @@ export function ContractPDF({ contract }: ContractPDFProps) {
               <Text>متن قرارداد</Text>
             </View>
             <View style={styles.sectionBody}>
-              <Text style={styles.content}>{cleanAndFormatContent(contract.content)}</Text>
+              <Text style={styles.content}>{String(contract.content)}</Text>
             </View>
           </View>
         )}

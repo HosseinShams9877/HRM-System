@@ -799,7 +799,7 @@ function ApplyView({
     setSubmitting(true)
     setError('')
     try {
-      const response = await fetch('/api/public/apply', {
+      const response = await fetch('/api/job-applications',{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1813,7 +1813,7 @@ function CareersContent() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const response = await fetch('/api/public/jobs')
+        const response = await fetch('/api/job-postings?status=open')
         const data = await response.json()
         setJobs(Array.isArray(data) ? data : [])
       } catch (error) {
@@ -1873,7 +1873,7 @@ function CareersContent() {
         >
           <Globe className="w-3.5 h-3.5 text-emerald-400" />
           <span className="hidden sm:inline">لینک انتشار:</span>
-          <span className="font-mono text-emerald-400 group-hover:text-emerald-300 transition-colors" dir="ltr">localhost:3000/careers</span>
+          <span className="font-mono text-emerald-400 group-hover:text-emerald-300 transition-colors" dir="ltr">localhost:4000/careers</span>
           <ExternalLink className="w-3 h-3 text-gray-400 group-hover:text-white transition-colors" />
         </a>
       </div>

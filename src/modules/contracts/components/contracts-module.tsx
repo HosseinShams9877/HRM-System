@@ -229,6 +229,7 @@ const availableEmployees = useMemo(() => {
   // ============================================
   // Replace Variables in Template
   // ============================================
+  
 
   const replaceVariables = (text: string, data: Employee): string => {
     let result = text

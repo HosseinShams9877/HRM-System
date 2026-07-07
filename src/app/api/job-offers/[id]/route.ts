@@ -1,0 +1,1 @@
+export { GET , DELETE  } from "@/modules/recruitment/api/job-offers/[id]/route"
