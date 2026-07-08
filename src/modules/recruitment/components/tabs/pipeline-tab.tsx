@@ -1,14 +1,14 @@
 // src/modules/recruitment/components/tabs/pipeline-tab.tsx
 'use client'
 
-import { Plus, ChevronRight, XCircle, Target, Building2, Briefcase, Users } from 'lucide-react'
+import { Plus, ChevronRight, XCircle, Target, Building2, Briefcase, Users, User } from 'lucide-react'
 import { Card } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { ScrollArea } from '@/core/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { PIPELINE_STAGES, RTL_STYLE } from '../../constants'
-import { toPersianNumber, formatDate } from '../../helpers'
+import { PIPELINE_STAGES } from '../../constants'
+import { toPersianNumber, formatDate, } from '../../helpers'
 import type { JobApplication } from '../../types/type'
 
 interface PipelineTabProps {
@@ -20,6 +20,11 @@ interface PipelineTabProps {
 }
 
 export function PipelineTab({ applications, loading, onAdd, onMoveStage, onReject }: PipelineTabProps) {
+  const safeApplications = Array.isArray(applications) ? applications : []
+
+  // برعکس کردن ترتیب ستون‌ها (از راست به چچپ)
+  const reversedStages = [...PIPELINE_STAGES].reverse()
+
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-4">
@@ -33,18 +38,15 @@ export function PipelineTab({ applications, loading, onAdd, onMoveStage, onRejec
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">در حال بارگذاری...</div>
-      ) : applications.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <span className="text-4xl block mb-3 opacity-30">📊</span>
-          <p className="text-sm">درخواستی برای نمایش پایپ‌لاین وجود ندارد</p>
-        </div>
       ) : (
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-4" style={{ minWidth: `${PIPELINE_STAGES.length * 280}px` }}>
-            {PIPELINE_STAGES.map((stage) => {
-              const stageApps = applications.filter((a) => a.currentStage === stage.id)
+            {reversedStages.map((stage) => {
+              const stageApps = safeApplications.filter((a) => (a.currentStage || a.status) === stage.id)
+              
               return (
                 <div key={stage.id} className={`min-w-[260px] w-[260px] flex-shrink-0 rounded-lg border-t-4 ${stage.border} bg-gray-50 dark:bg-gray-800/50`}>
+                  {/* Column Header */}
                   <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${stage.color}`} />
@@ -55,8 +57,9 @@ export function PipelineTab({ applications, loading, onAdd, onMoveStage, onRejec
                     </Badge>
                   </div>
 
+                  {/* Column Body */}
                   <ScrollArea className="max-h-[500px]">
-                    <div className="p-2 space-y-2">
+                    <div className="p-2 space-y-2 min-h-[200px]">
                       {stageApps.length > 0 ? (
                         stageApps.map((app) => (
                           <Card key={app.id} className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -83,12 +86,12 @@ export function PipelineTab({ applications, loading, onAdd, onMoveStage, onRejec
                               )}
                             </div>
                             <div className="flex gap-1">
-                              {stage.id !== 'hired' && (
+                              {stage.id !== 'hired' && stage.id !== 'rejected' && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="h-7 text-xs flex-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                  onClick={() => onMoveStage(app.id, app.currentStage)}
+                                  onClick={() => onMoveStage(app.id, app.currentStage || app.status)}
                                 >
                                   <ChevronRight className="h-3 w-3 mr-1" />
                                   مرحله بعد
@@ -108,53 +111,19 @@ export function PipelineTab({ applications, loading, onAdd, onMoveStage, onRejec
                           </Card>
                         ))
                       ) : (
-                        <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-xs">بدون درخواست</div>
+                        <div className="p-4 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/30 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <User className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                            <p className="text-xs text-gray-400 dark:text-gray-500">هیچ درخواستی در این مرحله نیست</p>
+                            <p className="text-[10px] text-gray-300 dark:text-gray-600">با ثبت درخواست جدید، اینجا پر می‌شود</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </ScrollArea>
                 </div>
               )
             })}
-
-            {/* Rejected column */}
-            <div className="min-w-[260px] w-[260px] flex-shrink-0 rounded-lg border-t-4 border-red-300 dark:border-red-700 bg-gray-50 dark:bg-gray-800/50">
-              <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <h3 className="font-semibold text-sm text-gray-900 dark:text-white">رد شده</h3>
-                </div>
-                <Badge variant="secondary" className="text-xs dark:bg-gray-700 dark:text-gray-300">
-                  {toPersianNumber(applications.filter((a) => a.currentStage === 'rejected').length)}
-                </Badge>
-              </div>
-              <ScrollArea className="max-h-[500px]">
-                <div className="p-2 space-y-2">
-                  {applications.filter((a) => a.currentStage === 'rejected').length > 0 ? (
-                    applications
-                      .filter((a) => a.currentStage === 'rejected')
-                      .map((app) => (
-                        <Card key={app.id} className="p-3 shadow-sm opacity-70 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-2 flex-row-reverse">
-                            <Avatar className="h-7 w-7">
-                              <AvatarFallback className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 text-xs">
-                                {app.candidate?.firstName?.[0]}{app.candidate?.lastName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="text-right min-w-0">
-                              <p className="text-sm font-medium truncate text-gray-900 dark:text-white">
-                                {app.candidate?.firstName} {app.candidate?.lastName}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{app.job?.title}</p>
-                            </div>
-                          </div>
-                        </Card>
-                      ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-xs">بدون درخواست</div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
           </div>
         </div>
       )}

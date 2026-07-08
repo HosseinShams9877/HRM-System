@@ -856,7 +856,7 @@ function ApplyView({
         resumeUrl: formData.resumeUrl || '',
         coverLetter: formData.coverLetter || '',
         source: 'website',
-        status: 'new',
+        status: 'active',
         appliedAt: new Date().toISOString(),
         synced: false
       }

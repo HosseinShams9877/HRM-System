@@ -136,3 +136,16 @@ export const getStageColor = (stage: string): string => {
   }
   return colors[stage] || 'bg-gray-100 text-gray-800 border-gray-200'
 }
+
+export const getEducationLabel = (level?: string): string => {
+  const map: Record<string, string> = {
+    diploma: 'دیپلم',
+    associate: 'فوق دیپلم',
+    bachelor: 'لیسانس',
+    master: 'فوق لیسانس',
+    phd: 'دکتری',
+    // مقادیر احتمالی دیگه
+    '': '—',
+  }
+  return map[level || ''] || level || '—'
+}

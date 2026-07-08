@@ -13,6 +13,7 @@ import { CandidateDialog } from './dialogs/candidate-dialog'
 import { DeleteConfirmDialog } from './dialogs/delete-confirm-dialog'
 import { DashboardTab } from './tabs/dashboard-tab'
 import { JobsTab } from './tabs/jobs-tab'
+import { useCandidates, useUpdateCandidateStatus } from '../hooks/useCandidates'
 import { CandidatesTab } from './tabs/candidates-tab'
 import { PipelineTab } from './tabs/pipeline-tab'
 import { InterviewsTab } from './tabs/interviews-tab'
@@ -22,7 +23,6 @@ import type { Candidate, JobPosting, JobApplication, Interview, Assessment, JobO
 
 export function Recruitment() {
   const [jobs, setJobs] = useState<JobPosting[]>([])
-  const [candidates, setCandidates] = useState<Candidate[]>([])
   const [applications, setApplications] = useState<JobApplication[]>([])
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
@@ -52,6 +52,19 @@ export function Recruitment() {
   const [sourceFilter, setSourceFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
 
+  // ── React Query برای Candidates ──
+const { 
+  data: candidates = [], 
+  isLoading: candidatesLoading,
+  refetch: refetchCandidates 
+} = useCandidates({
+  status: statusFilter !== 'all' ? statusFilter : undefined,
+  source: sourceFilter !== 'all' ? sourceFilter : undefined,
+  search: searchTerm || undefined,
+})
+
+const updateStatus = useUpdateCandidateStatus()
+
   // ── Sync Portal Submissions ─────────────────────────────────
   const syncPortalSubmissions = useCallback(() => {
     try {
@@ -77,7 +90,7 @@ export function Recruitment() {
         skills: s.skills || '',
         languages: '',
         source: 'website',
-        status: 'new',
+        status: 'active',
         rating: 0,
         notes: '',
         tags: 'سایت_استخدام',
@@ -128,9 +141,9 @@ export function Recruitment() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [jobsRes, candidatesRes, applicationsRes, interviewsRes, assessmentsRes, offersRes, deptsRes] = await Promise.all([
+      const [jobsRes,  applicationsRes, interviewsRes, assessmentsRes, offersRes, deptsRes] = await Promise.all([
         fetch('/api/job-postings'),
-        fetch('/api/candidates'),
+  
         fetch('/api/job-applications'),
         fetch('/api/interviews'),
         fetch('/api/assessments'),
@@ -139,7 +152,6 @@ export function Recruitment() {
       ])
 
       if (jobsRes.ok) setJobs(safeArray(await jobsRes.json()))
-      if (candidatesRes.ok) setCandidates(safeArray(await candidatesRes.json()))
       if (applicationsRes.ok) setApplications(safeArray(await applicationsRes.json()))
       if (interviewsRes.ok) setInterviews(safeArray(await interviewsRes.json()))
       if (assessmentsRes.ok) setAssessments(safeArray(await assessmentsRes.json()))
@@ -266,22 +278,30 @@ export function Recruitment() {
   const handleSaveCandidate = async (data: any) => {
     setSubmitting(true)
     try {
-      const url = selectedCandidate ? `/api/candidates?id=${selectedCandidate.id}` : '/api/candidates'
+      const url = selectedCandidate 
+        ? `/api/candidates/${selectedCandidate.id}`  // ← یا این روش (Route Parameter)
+        : '/api/candidates'                         // ← یا این روش (Query Parameter)
       const method = selectedCandidate ? 'PUT' : 'POST'
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      const res = await fetch(url, { 
+        method, 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(data) 
+      })
       if (res.ok) {
         toast.success(selectedCandidate ? 'کاندیدا ویرایش شد' : 'کاندیدا ثبت شد')
         setCandidateDialogOpen(false)
         setSelectedCandidate(null)
-        fetchData()
+        refetchCandidates()
       } else {
         const err = await res.json()
         toast.error(err.error || 'خطا در ذخیره کاندیدا')
       }
-    } catch { toast.error('خطا در ارتباط با سرور') }
-    finally { setSubmitting(false) }
+    } catch { 
+      toast.error('خطا در ارتباط با سرور') 
+    } finally { 
+      setSubmitting(false) 
+    }
   }
-
   const handleMoveStage = async (applicationId: string, currentStage: string) => {
     const stageOrder = ['applied', 'screening', 'interview', 'testing', 'offer', 'hired']
     const idx = stageOrder.indexOf(currentStage)
@@ -316,6 +336,10 @@ export function Recruitment() {
         toast.error('خطا در رد درخواست')
       }
     } catch { toast.error('خطا در ارتباط با سرور') }
+  }
+
+  const handleStatusChange = (candidateId: string, newStatus: string) => {
+    updateStatus.mutate({ id: candidateId, status: newStatus })
   }
 
   const handleUpdateInterview = async (interviewId: string, data: Record<string, unknown>) => {
@@ -358,10 +382,10 @@ export function Recruitment() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">مدیریت فرآیند جذب و استخدام نیروی انسانی</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
-            <RefreshCw className="h-4 w-4 mr-1" />
-            بروزرسانی
-          </Button>
+        <Button variant="outline" size="sm" onClick={refetchCandidates} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
+  <RefreshCw className="h-4 w-4 mr-1" />
+  بروزرسانی
+</Button>
           <Button size="sm" onClick={() => setJobDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600">
             <Plus className="h-4 w-4 mr-1" />
             آگهی جدید
@@ -432,7 +456,7 @@ export function Recruitment() {
         <TabsContent value="candidates">
           <CandidatesTab
             candidates={candidates}
-            loading={loading}
+            loading={candidatesLoading}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             sourceFilter={sourceFilter}
@@ -441,6 +465,7 @@ export function Recruitment() {
             setStatusFilter={setStatusFilter}
             onAdd={() => setCandidateDialogOpen(true)}
             onEdit={(c) => { setSelectedCandidate(c); setCandidateDialogOpen(true) }}
+            onStatusChange={handleStatusChange}
           />
         </TabsContent>
 

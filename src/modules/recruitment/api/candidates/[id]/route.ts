@@ -77,6 +77,7 @@ export async function PUT(
       coverLetter: body.coverLetter,
       source: body.source || 'website',
       notes: body.notes,
+      status: body.status,
     }
 
     if (body.password) {
