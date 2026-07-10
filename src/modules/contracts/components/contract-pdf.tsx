@@ -1,77 +1,8 @@
 // src/modules/contracts/components/ContractDialogs/contract-pdf.tsx
 'use client'
 
-import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
-import path from 'path'
-// ===== ثبت فونت =====
-// src/modules/contracts/components/ContractDialogs/contract-pdf.tsx
-
-export const registerFonts = (key?: string) => {
-  try {
-    // از مسیر مطلق با require استفاده کن
-    const fontRegular = require('../../../../public/fonts/Vazirmatn-Regular.ttf')
-    const fontBold = require('../../../../public/fonts/Vazirmatn-Bold.ttf')
-    
-    const familyName = key ? `Vazirmatn-${key}` : 'Vazirmatn'
-    
-    Font.register({
-      family: familyName,
-      src: fontRegular,
-      fontWeight: 400,
-      format: 'truetype'
-    } as any)
-
-    Font.register({
-      family: familyName,
-      src: fontBold,
-      fontWeight: 700,
-      format: 'truetype'
-    } as any)
-    
-    console.log('Fonts registered successfully with family:', familyName)
-    return familyName
-  } catch (error) {
-    console.error('Error registering fonts:', error)
-    return 'Vazirmatn'
-  }
-}
-
-// ✅ فقط یک بار ثبت کن
-registerFonts()
-
-
-const fixPersianText = (text: string): string => {
-  if (!text) return ''
-  // یک دیکشنری کامل از کاراکترهای خراب
-  const map: Record<string, string> = {
-    '©': 'م', '@': 'ک', 'Â': 'ی', 'ò': 'ه', 'ü': 'و',
-    '‡': 'چ', '‰': 'ش', '‹': 'ی', '•': '،', '‘': "'",
-    '˜': '', 'Z': '', '}': '', '{': '', 'í': '',
-    '®': '', '™': '', '†': '', '°': '', '±': '',
-    '§': '', '¶': '', '·': '', '»': '', '¼': '',
-    '½': '', '¾': '', '¿': '', 'À': '', 'Á': '',
-    'Ã': '', 'Ä': '', 'Å': '', 'Æ': '', 'Ç': '',
-    'È': '', 'É': '', 'Ê': '', 'Ë': '', 'Ì': '',
-    'Î': '', 'Ï': '', 'Ð': '', 'Ñ': '', 'Ó': '',
-    'Ô': '', 'Õ': '', 'Ö': '', '×': '', 'Ø': '',
-    'Ù': '', 'Ú': '', 'Û': '', 'Ü': '', 'Ý': '',
-    'Þ': '', 'ß': '', 'à': '', 'á': '', 'â': '',
-    'ã': '', 'ä': '', 'å': '', 'æ': '', 'ç': '',
-    'è': '', 'é': '', 'ê': '', 'ë': '', 'ì': '',
-    'î': '', 'ï': '', 'ð': '', 'ñ': '', 'ó': '',
-    'ô': '', 'õ': '', 'ö': '', '÷': '', 'ø': '',
-    'ù': '', 'ú': '', 'û': '', 'ý': '', 'þ': '',
-    'ÿ': '',
-  }
-  
-  let result = ''
-  for (const char of text) {
-    result += map[char] !== undefined ? map[char] : char
-  }
-  
-  return result
-}
+import { PDFDocument, rgb } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 
 const getTypeLabel = (type: string): string => {
   const map: Record<string, string> = {
@@ -88,189 +19,284 @@ const getTypeLabel = (type: string): string => {
   return map[type] || type
 }
 
-const createStyles = (fontFamily: string) =>  StyleSheet.create({
-  page: {
-    padding: 40,
-    fontFamily: 'Vazirmatn',
-    direction: 'rtl', // ← راست‌چین اصلی
-  },
-  header: {
-    textAlign: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: '#059669',
-    borderBottomStyle: 'solid',
-    paddingBottom: 10,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 700,
-    color: '#065f46',
-    textAlign: 'center',
-  },
-  headerSub: {
-    fontSize: 10,
-    color: '#6b7280',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  section: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderStyle: 'solid',
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  sectionHeader: {
-    backgroundColor: '#ecfdf5',
-    padding: 8,
-    fontWeight: 700,
-    fontSize: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    borderBottomStyle: 'solid',
-    textAlign: 'center', // تیتر وسط
-  },
-  sectionBody: {
-    padding: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    borderBottomStyle: 'solid',
-  },
-  value: {
-    fontSize: 11,
-    color: '#111827',
-    fontWeight: 600,
-    textAlign: 'right', 
-  },
-  label: {
-    fontSize: 11,
-    color: '#6b7280',
-    textAlign: 'right', 
-  },
-  content: {
-    fontSize: 11,
-    lineHeight: 1.8,
-    color: '#1a1a1a',
-    textAlign: 'right', // راست ← اینجا عوض شد
-    direction: 'rtl', // ← اضافه شد
-    whiteSpace: 'pre-wrap', 
-    wordBreak: 'break-word', 
-  },
-  footer: {
-    textAlign: 'center',
-    fontSize: 8,
-    color: '#9ca3af',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    borderTopStyle: 'solid',
-    marginTop: 16,
-  },
-})
-
-interface ContractPDFProps {
-  contract: {
-    contractNumber?: string
-    type: string
-    startDate: string
-    endDate?: string
-    content?: string
-    employee: {
-      firstName: string
-      lastName: string
-    }
-  }
+const toPersianDigits = (num: number): string => {
+  const persianDigits = '۰۱۲۳۴۵۶۷۸۹'
+  return String(num).replace(/\d/g, (d) => persianDigits[parseInt(d)])
 }
 
-export function ContractPDF({ contract }: ContractPDFProps) {
-  const fontFamily = 'Vazirmatn' // یا از props بیار
-  const styles = createStyles(fontFamily)  
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        {/* هدر */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>قرارداد</Text>
-          <Text style={styles.headerSub}>سازمان مدیریت منابع انسانی</Text>
-        </View>
+const formatShamsi = (date: string): string => {
+  if (!date) return ''
+  const parts = date.split('/')
+  if (parts.length === 3) {
+    const year = toPersianDigits(parseInt(parts[0]))
+    const month = toPersianDigits(parseInt(parts[1]))
+    const day = toPersianDigits(parseInt(parts[2]))
+    return `${year}/${month}/${day}`
+  }
+  return date
+}
 
-        {/* اطلاعات قرارداد */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text>اطلاعات قرارداد</Text>
-          </View>
-          <View style={styles.sectionBody}>
-            <View style={styles.row}>
-            <Text style={styles.value}>{contract.contractNumber || '-'}</Text>
-              <Text style={styles.label}>شماره قرارداد</Text>
-              
-            </View>
-            <View style={styles.row}>
-            <Text style={styles.value}>{contract.employee.firstName} {contract.employee.lastName}</Text>
-              <Text style={styles.label}>کارمند</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.value}>{getTypeLabel(contract.type)}</Text>
-              <Text style={styles.label}>نوع قرارداد</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.value}>{contract.startDate}</Text>
-              <Text style={styles.label}>تاریخ شروع</Text>
-            </View>
-            <View style={styles.row}>
-            <Text style={styles.value}>{contract.endDate || 'نامحدود'}</Text>
-              <Text style={styles.label}>تاریخ پایان</Text>
-            </View>
-          </View>
-        </View>
+export async function generateContractPDF(contract: any) {
+  const pdfDoc = await PDFDocument.create()
+  pdfDoc.registerFontkit(fontkit)
 
-        {/* متن قرارداد */}
-        {contract.content && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text>متن قرارداد</Text>
-            </View>
-            <View style={styles.sectionBody}>
-              <Text style={styles.content}>{String(contract.content)}</Text>
-            </View>
-          </View>
-        )}
+  const fontBytes = await fetch('/fonts/Vazirmatn-Regular.ttf').then(res => res.arrayBuffer())
+  const font = await pdfDoc.embedFont(fontBytes)
 
-        {/* امضاها */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16, marginTop: 20 }}>
-          <View style={{ textAlign: 'center', padding: 12, backgroundColor: '#f9fafb', borderRadius: 8, flex: 1 }}>
-            <Text style={{ fontWeight: 700, marginBottom: 16, fontSize: 12, textAlign: 'center' }}>کارمند</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>نام: ....................</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>امضاء: ....................</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>تاریخ: ....../....../......</Text>
-          </View>
-          <View style={{ textAlign: 'center', padding: 12, backgroundColor: '#f9fafb', borderRadius: 8, flex: 1 }}>
-            <Text style={{ fontWeight: 700, marginBottom: 16, fontSize: 12, textAlign: 'center' }}>مدیر واحد</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>نام: ....................</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>امضاء: ....................</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>تاریخ: ....../....../......</Text>
-          </View>
-          <View style={{ textAlign: 'center', padding: 12, backgroundColor: '#f9fafb', borderRadius: 8, flex: 1 }}>
-            <Text style={{ fontWeight: 700, marginBottom: 16, fontSize: 12, textAlign: 'center' }}>مدیر منابع انسانی</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>نام: ....................</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>امضاء: ....................</Text>
-            <Text style={{ fontSize: 10, color: '#4b5563', marginVertical: 2, textAlign: 'center' }}>تاریخ: ....../....../......</Text>
-          </View>
-        </View>
+  // ===== تابع برای صفحه جدید =====
+  const addNewPage = () => {
+    const newPage = pdfDoc.addPage([595, 842])
+    const { height } = newPage.getSize()
+    return { page: newPage, y: height - 50 }
+  }
 
-        {/* فوتر */}
-        <View style={styles.footer}>
-          <Text>این سند به صورت دیجیتال صادر شده و بدون مهر و امضاء معتبر می‌باشد.</Text>
-          <Text style={{ marginTop: 4 }}>کد پیگیری: {contract.contractNumber || 'unknown'}</Text>
-        </View>
-      </Page>
-    </Document>
-  )
-} 
+  let { page, y } = addNewPage()
+  const { width, height } = page.getSize()
+  const margin = 50
+
+  // ============================================
+  // هدر
+  // ============================================
+  page.drawText('قرارداد', {
+    x: width / 2 - 40,
+    y,
+    size: 20,
+    font,
+    color: rgb(0.03, 0.4, 0.27),
+  })
+  y -= 28
+
+  page.drawText('سازمان مدیریت منابع انسانی', {
+    x: width / 2 - 70,
+    y,
+    size: 10,
+    font,
+    color: rgb(0.4, 0.4, 0.4),
+  })
+  y -= 35
+
+  // خط جداکننده
+  page.drawLine({
+    start: { x: margin, y: y + 5 },
+    end: { x: width - margin, y: y + 5 },
+    color: rgb(0.03, 0.4, 0.27),
+    thickness: 2,
+  })
+  y -= 20
+
+  // ============================================
+  // اطلاعات قرارداد
+  // ============================================
+  page.drawText('اطلاعات قرارداد', {
+    x: margin,
+    y,
+    size: 12,
+    font,
+    color: rgb(0.03, 0.4, 0.27),
+  })
+  y -= 15
+
+  const infoStartY = y
+  const infoHeight = 110
+
+  // پس‌زمینه
+  page.drawRectangle({
+    x: margin,
+    y: infoStartY - infoHeight,
+    width: width - margin * 2,
+    height: infoHeight,
+    color: rgb(0.95, 0.98, 0.96),
+  })
+  page.drawRectangle({
+    x: margin,
+    y: infoStartY - infoHeight,
+    width: width - margin * 2,
+    height: infoHeight,
+    borderColor: rgb(0.8, 0.8, 0.8),
+    borderWidth: 1,
+  })
+
+  const infoData = [
+    { label: 'شماره قرارداد:', value: contract.contractNumber || '-' },
+    { label: 'کارمند:', value: `${contract.employee.firstName} ${contract.employee.lastName}` },
+    { label: 'نوع قرارداد:', value: getTypeLabel(contract.type) },
+    { label: 'تاریخ شروع:', value: formatShamsi(contract.startDate) },
+    { label: 'تاریخ پایان:', value: contract.endDate ? formatShamsi(contract.endDate) : 'نامحدود' },
+  ]
+
+  let infoY = infoStartY - 12
+  for (const item of infoData) {
+    // برچسب (سمت راست)
+    page.drawText(item.label, {
+      x: margin + 10,
+      y: infoY,
+      size: 10,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    })
+    // مقدار (سمت چپ)
+    const labelWidth = 70
+    page.drawText(item.value, {
+      x: margin + labelWidth + 10,
+      y: infoY,
+      size: 10,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    })
+    infoY -= 20
+  }
+
+  y = infoStartY - infoHeight - 25
+
+  // ============================================
+  // متن قرارداد - با راست‌چین و استایل درست
+  // ============================================
+  page.drawText('متن قرارداد', {
+    x: margin,
+    y,
+    size: 12,
+    font,
+    color: rgb(0.03, 0.4, 0.27),
+  })
+  y -= 15
+
+  const textStartY = y
+  const textHeight = 200
+
+  // پس‌زمینه متن
+  page.drawRectangle({
+    x: margin,
+    y: textStartY - textHeight,
+    width: width - margin * 2,
+    height: textHeight,
+    color: rgb(0.95, 0.98, 0.96),
+  })
+  page.drawRectangle({
+    x: margin,
+    y: textStartY - textHeight,
+    width: width - margin * 2,
+    height: textHeight,
+    borderColor: rgb(0.8, 0.8, 0.8),
+    borderWidth: 1,
+  })
+
+  let textY = textStartY - 12
+  const minTextY = textStartY - textHeight + 10
+
+  if (contract.content) {
+    const lines = contract.content.split('\n')
+    let isFirstPage = true
+
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      if (!trimmedLine) {
+        textY -= 8
+        continue
+      }
+
+      // اگه فضا تموم شد، صفحه جدید
+      if (textY < minTextY) {
+        const newPageData = addNewPage()
+        page = newPageData.page
+        y = newPageData.y
+        textY = y - 12
+        isFirstPage = false
+
+        // عنوان ادامه در صفحه جدید
+        page.drawText('ادامه متن قرارداد', {
+          x: margin,
+          y: y + 10,
+          size: 10,
+          font,
+          color: rgb(0.03, 0.4, 0.27),
+        })
+        textY -= 15
+      }
+
+      // نمایش خط با راست‌چین
+      page.drawText(trimmedLine, {
+        x: margin + 10,
+        y: textY,
+        size: 9,
+        font,
+        color: rgb(0.1, 0.1, 0.1),
+      })
+      textY -= 16
+    }
+  }
+
+  y = textY - 20
+
+  // ============================================
+  // امضاها
+  // ============================================
+  // اگه جا نیست، صفحه جدید
+  if (y < 150) {
+    const newPageData = addNewPage()
+    page = newPageData.page
+    y = newPageData.y
+  }
+
+  // خط بالای امضاها
+  page.drawLine({
+    start: { x: margin, y: y + 30 },
+    end: { x: width - margin, y: y + 30 },
+    color: rgb(0.8, 0.8, 0.8),
+    thickness: 1,
+  })
+
+  const signWidth = (width - margin * 2 - 40) / 3
+  const signatures = ['کارمند', 'مدیر واحد', 'مدیر منابع انسانی']
+
+  for (let i = 0; i < 3; i++) {
+    const x = margin + i * signWidth + (i === 2 ? 20 : 10)
+    const signY = y
+
+    // عنوان امضا
+    page.drawText(signatures[i], {
+      x: x + signWidth / 2 - 20,
+      y: signY + 10,
+      size: 11,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    })
+
+    // فیلدهای امضا
+    const fields = ['نام: ....................', 'امضاء: ....................', 'تاریخ: ....../....../......']
+    let fieldY = signY - 10
+    for (const field of fields) {
+      page.drawText(field, {
+        x: x + signWidth / 2 - 30,
+        y: fieldY,
+        size: 9,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      })
+      fieldY -= 16
+    }
+  }
+
+  // ============================================
+  // فوتر
+  // ============================================
+  const footerY = 50
+  page.drawText('این سند به صورت دیجیتال صادر شده و بدون مهر و امضاء معتبر می‌باشد.', {
+    x: width / 2 - 140,
+    y: footerY,
+    size: 8,
+    font,
+    color: rgb(0.6, 0.6, 0.6),
+  })
+
+  const contractNumber = contract.contractNumber || 'unknown'
+  const persianNumber = contractNumber.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)])
+  page.drawText(`کد پیگیری: ${persianNumber}`, {
+    x: width / 2 - 50,
+    y: footerY - 12,
+    size: 8,
+    font,
+    color: rgb(0.6, 0.6, 0.6),
+  })
+
+  return await pdfDoc.save()
+}

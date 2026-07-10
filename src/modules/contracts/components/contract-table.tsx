@@ -12,7 +12,7 @@ import { ContractDetailDialog } from './contract-detail-dialog'
 import { Input } from '@/core/components/ui/input'
 import { TerminateDialog } from './contract-form-dialog'
 import { pdf } from '@react-pdf/renderer'
-import { ContractPDF } from './contract-pdf'
+import { generateContractPDF } from './contract-pdf'
 import {
   Dialog,
   DialogContent,
@@ -239,24 +239,36 @@ export function ContractTable({
   }
   const handleDownloadContract = async (contract: Contract) => {
     try {
-      // ===== گرفتن قرارداد کامل با content =====
+      console.log('1️⃣ شروع دانلود برای قرارداد:', contract.id)
+      
       const res = await fetch(`/api/contracts/${contract.id}`)
+      console.log('2️⃣ پاسخ API:', res.status)
       
       if (!res.ok) {
+        const errorText = await res.text()
+        console.error('❌ خطای API:', errorText)
         toast.error('خطا در دریافت اطلاعات قرارداد')
         return
       }
       
       const data = await res.json()
+      console.log('3️⃣ داده دریافت شد:', data)
+      
       const fullContract = data.data || data
+      console.log('4️⃣ قرارداد کامل:', fullContract)
       
-      console.log('📄 Contract content:', fullContract.content)
+      console.log('5️⃣ در حال تولید PDF...')
+      const pdfBytes = await generateContractPDF(fullContract)
+      console.log('6️⃣ PDF تولید شد، حجم:', pdfBytes.length, 'بایت')
       
-      const blob = await pdf(
-        <ContractPDF contract={fullContract} />
-      ).toBlob()
+      if (!pdfBytes || pdfBytes.length === 0) {
+        toast.error('فایل PDF تولید نشد')
+        return
+      }
       
-      // ===== دانلود فایل =====
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+      console.log('7️⃣ Blob ساخته شد، حجم:', blob.size)
+      
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
       link.download = `قرارداد_${fullContract.contractNumber || fullContract.id}.pdf`
@@ -267,11 +279,10 @@ export function ContractTable({
       
       toast.success('قرارداد با موفقیت دانلود شد')
     } catch (error) {
-      console.error('Error:', error)
+      console.error('❌ خطای کامل:', error)
       toast.error('خطا در دانلود قرارداد')
     }
   }
-
   const handleDelete = async (contract: Contract) => {
     try {
       const res = await fetch(`/api/contracts/${contract.id}`, {
