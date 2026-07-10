@@ -1,0 +1,1 @@
+export { GET, PUT , DELETE } from '@/modules/employees/api/[id]/work-history/[historyId]/route'

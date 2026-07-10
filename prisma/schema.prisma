@@ -9,6 +9,45 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+// ============================================
+// سوابق شغلی (Work History)
+// ============================================
+
+model WorkHistory {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  position     String   // سمت در این بازه زمانی
+  department   String   // دپارتمان در این بازه زمانی
+  startDate    DateTime // تاریخ شروع
+  endDate      DateTime? // تاریخ پایان (null = تا الان)
+  description  String?  // توضیحات
+  isCurrent    Boolean  @default(false) // آیا سمت فعلی است؟
+  
+  source       String   @default("MANUAL") 
+  // MANUAL - دستی وارد شده
+  // HIRE - استخدام
+  // PROMOTION - ارتقا شغلی
+  // DEMOTION - تنزل مقام
+  // TRANSFER - انتقال
+  // REACTIVATION - بازگشت به کار
+  // TERMINATION - پایان همکاری
+  // CONTRACT - از قرارداد
+  // SYSTEM - سیستمی
+  
+  sourceId     String?  // ارجاع به Contract.id یا Order.id یا Event.id
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([isCurrent])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([source])
+}
+
 
 // ============================================
 // احراز هویت و حساب کاربری
@@ -69,9 +108,11 @@ model Employee {
   bloodType      String? // A+, B+, O+, AB+
   medicalInfo    String? // بیماری خاص
   orders         Order[]    @relation("EmployeeOrders") // احکام صادر شده برای این کارمند
+  workHistory  WorkHistory[]
   managedOrders  Order[]    @relation("OrderManager")
   address        String? // آدرس منزل
   postalCode     String?
+  exitReason     String?  // resignation, retirement, contract_end, termination, death, other
   homePhone      String? // تلفن ثابت
   contractEndDate  String? 
   education      String? // دیپلم/کارشناسی/ارشد/دکتری

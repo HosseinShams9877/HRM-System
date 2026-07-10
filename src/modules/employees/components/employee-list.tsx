@@ -10,10 +10,11 @@ import { Button } from '@/core/components/ui/button'
 import { Skeleton } from '@/core/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/core/components/ui/dialog'
 import { useToast } from '@/core/hooks/use-toast'
+import { Label } from '@/core/components/ui/label'
+import { Input } from '@/core/components/ui/input'
 import { toast as sonnerToast } from 'sonner'
 import { toPersianDigits } from '@/core/lib/utils-fa'
 import { exportToCSV } from '../lib/export-utils'
-import { ConfirmDialog } from '@/shared/components/confirm-dialog'
 import { EmployeeProfile } from './employee-profile'
 import type { Employee, NewAccountInfo, PaginationInfo } from '../index'
 import { CSV_COLUMNS, getEmployeeCSVData } from '../constants'
@@ -21,6 +22,7 @@ import { EmployeeFilters } from './employee-filters'
 import { EmployeeTable } from './employee-table'
 import { EmployeeWizard } from './employee-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select'
 
 
 interface EmployeesModuleProps {
@@ -198,11 +200,14 @@ export function EmployeesModule({ onNavigate }: EmployeesModuleProps) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [deleteConfirm, setDeleteConfirm] = useState<Employee | null>(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [exitReason, setExitReason] = useState('')  
+  const [isDeleting, setIsDeleting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [showProfile, setShowProfile] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState<Employee | null>(null)
   const [accountInfo, setAccountInfo] = useState<NewAccountInfo | null>(null)
   const [showAccountDialog, setShowAccountDialog] = useState(false)
   const [page, setPage] = useState(1)
@@ -269,19 +274,34 @@ const handleEditEmployee = (emp: Employee) => {
   sessionStorage.setItem('editEmployee', JSON.stringify(emp))
   onNavigate?.(`employee-edit/${emp.id}`)
 }
-  // Delete employee
-  const handleDeleteEmployee = async (emp: Employee) => {
-    try {
-      const res = await fetch(`/api/employees/${emp.id}`, { method: 'DELETE' })
-      if (res.ok) {
-        sonnerToast.success(`${emp.firstName} ${emp.lastName} غیرفعال شد`)
-        queryClient.invalidateQueries({ queryKey: ['employees'] })
-      }
-    } catch (err) {
-      sonnerToast.error('خطا در حذف کارمند')
+  
+
+const handleDeleteEmployee = async (emp: Employee) => {
+  setIsDeleting(true)
+  try {
+    const res = await fetch(`/api/employees/${emp.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: deleteReason || '',
+      exitReason: exitReason || 'other'  })
+    })
+    
+    if (res.ok) {
+      sonnerToast.success(`${emp.firstName} ${emp.lastName} غیرفعال شد`)
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    } else {
+      const error = await res.json()
+      sonnerToast.error(error.error || 'خطا در غیرفعال کردن کارمند')
     }
+  } catch (err) {
+    sonnerToast.error('خطا در غیرفعال کردن کارمند')
+  } finally {
+    setIsDeleting(false)
     setDeleteConfirm(null)
+    setDeleteReason('')
+    setExitReason('') 
   }
+}
 
 
   // Summary stats
@@ -530,15 +550,97 @@ const handleEditEmployee = (emp: Employee) => {
 )}
 
       {/* Delete Confirm Dialog */}
-      <ConfirmDialog
-        open={!!deleteConfirm}
-        onOpenChange={(open) => !open && setDeleteConfirm(null)}
-        title="تایید حذف"
-        description={`آیا از غیرفعال کردن ${deleteConfirm?.firstName} ${deleteConfirm?.lastName} اطمینان دارید؟ این عمل قابل بازگشت نیست.`}
-        confirmText="غیرفعال کردن"
+      <Dialog open={!!deleteConfirm}
+      onOpenChange={(open) => {
+        if (!open) {
+          setDeleteConfirm(null)
+          setDeleteReason('')
+          setExitReason('')
+        }
+      }}>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2 text-rose-600">
+        <AlertTriangle className="w-5 h-5" />
+        تایید غیرفعال کردن
+      </DialogTitle>
+      <DialogDescription>
+        آیا از غیرفعال کردن <span className="font-bold text-foreground">{deleteConfirm?.firstName} {deleteConfirm?.lastName}</span> اطمینان دارید؟
+        <br />
+        <span className="text-xs text-muted-foreground mt-1 block">
+          این عمل قابل بازگشت نیست و سوابق شغلی کارمند بسته خواهد شد.
+        </span>
+      </DialogDescription>
+    </DialogHeader>
+    <div className="space-y-2">
+        <Label className="text-sm">
+          دلیل خروج <span className="text-muted-foreground">(اختیاری)</span>
+        </Label>
+        <Select value={exitReason} onValueChange={setExitReason}>
+          <SelectTrigger>
+            <SelectValue placeholder="انتخاب دلیل خروج..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="resignation">📝 استعفا</SelectItem>
+            <SelectItem value="retirement">🎂 بازنشستگی</SelectItem>
+            <SelectItem value="contract_end">📄 پایان قرارداد</SelectItem>
+            <SelectItem value="termination">⚠️ اخراج</SelectItem>
+            <SelectItem value="death">🕊️ فوت</SelectItem>
+            <SelectItem value="other">📌 سایر</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="delete-reason" className="text-sm">
+          دلیل غیرفعال کردن <span className="text-muted-foreground">(اختیاری)</span>
+        </Label>
+        <Input
+          id="delete-reason"
+          placeholder="مثال: اخراج، استعفا، پایان قرارداد..."
+          value={deleteReason}
+          onChange={(e) => setDeleteReason(e.target.value)}
+          disabled={isDeleting}
+        />
+        <p className="text-xs text-muted-foreground">
+          این توضیح در سوابق شغلی کارمند ذخیره خواهد شد
+        </p>
+      </div>
+    </div>
+
+    <DialogFooter>
+      <Button
+        variant="outline"
+        onClick={() => {
+          setDeleteConfirm(null)
+          setDeleteReason('')
+        }}
+        disabled={isDeleting}
+      >
+        انصراف
+      </Button>
+      <Button
         variant="destructive"
-        onConfirm={() => deleteConfirm && handleDeleteEmployee(deleteConfirm)}
-      />
+        onClick={() => deleteConfirm && handleDeleteEmployee(deleteConfirm)}
+        disabled={isDeleting}
+        className="gap-2"
+      >
+        {isDeleting ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            در حال غیرفعال کردن...
+          </>
+        ) : (
+          <>
+            <AlertTriangle className="w-4 h-4" />
+            غیرفعال کردن
+          </>
+        )}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* Account Created Dialog */}
       <AccountCreatedDialog

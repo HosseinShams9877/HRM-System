@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const sessionUser = await getSessionUser()
-    console.log("user" , sessionUser)
+    console.log("user", sessionUser)
 
     if (!sessionUser) {
       return NextResponse.json({ error: 'دسترسی غیرمجاز' }, { status: 401 })
@@ -156,48 +156,68 @@ export async function POST(req: NextRequest) {
     // ساخت ایمیل سازمانی اگر نداشت
     const orgEmail = data.email || `${data.personnelCode.toLowerCase()}@company.ir`
 
-    // ---- ۱. ثبت کارمند ----
-    const employee = await db.employee.create({
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        nationalCode: data.nationalCode,
-        personnelCode: data.personnelCode,
-        email: orgEmail,
-        phone: data.phone || null,
-        avatar: null,
-        birthDate: data.birthDate || null,
-        birthPlace: data.birthPlace || null,
-        gender: data.gender || null,
-        maritalStatus: data.maritalStatus || null,
-        marriageDate: data.marriageDate || null,
-        childrenCount: data.childrenCount || 0,
-        bloodType: data.bloodType || null,
-        medicalInfo: data.medicalInfo || null,
-        address: data.address || null,
-        homePhone: data.homePhone || null,
-        education: data.education || null,
-        fieldOfStudy: data.fieldOfStudy || null,
-        university: data.university || null,
-        militaryStatus: data.militaryStatus || null,
-        hireDate: data.hireDate,
-        fatherName: body.fatherName,
-        status: data.status || 'active',
-        contractType: data.contractType || null,
-        probationEnd: data.probationEnd || null,
-        position: data.position || null,
-        department: data.department || null,
-        jobGrade: data.jobGrade || null,
-        workLocation: data.workLocation || null,
-        accessCardNo: data.accessCardNo || null,
-        managerId: null,
-        birthCertificateNo: data.birthCertificateNo || null,   
-        issuePlace: data.issuePlace || null,                   
-        secondaryPhone: data.secondaryPhone || null,         
-        postalCode: data.postalCode || null,                  
-        contractMonths: data.contractMonths || null,          
-        contractEndDate: data.contractEndDate || null,
-      },
+    // ---- ۱. ثبت کارمند + سابقه شغلی (با تراکنش) ----
+    const employee = await db.$transaction(async (tx) => {
+      
+      // 1.1. ایجاد کارمند
+      const newEmployee = await tx.employee.create({
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          nationalCode: data.nationalCode,
+          personnelCode: data.personnelCode,
+          email: orgEmail,
+          phone: data.phone || null,
+          avatar: null,
+          birthDate: data.birthDate || null,
+          birthPlace: data.birthPlace || null,
+          gender: data.gender || null,
+          maritalStatus: data.maritalStatus || null,
+          marriageDate: data.marriageDate || null,
+          childrenCount: data.childrenCount || 0,
+          bloodType: data.bloodType || null,
+          medicalInfo: data.medicalInfo || null,
+          address: data.address || null,
+          homePhone: data.homePhone || null,
+          education: data.education || null,
+          fieldOfStudy: data.fieldOfStudy || null,
+          university: data.university || null,
+          militaryStatus: data.militaryStatus || null,
+          hireDate: data.hireDate,
+          fatherName: body.fatherName,
+          status: data.status || 'active',
+          contractType: data.contractType || null,
+          probationEnd: data.probationEnd || null,
+          position: data.position || null,
+          department: data.department || null,
+          jobGrade: data.jobGrade || null,
+          workLocation: data.workLocation || null,
+          accessCardNo: data.accessCardNo || null,
+          managerId: null,
+          birthCertificateNo: data.birthCertificateNo || null,   
+          issuePlace: data.issuePlace || null,                   
+          secondaryPhone: data.secondaryPhone || null,         
+          postalCode: data.postalCode || null,                  
+          contractMonths: data.contractMonths || null,          
+          contractEndDate: data.contractEndDate || null,
+        },
+      })
+
+      // 1.2. ایجاد اولین سابقه شغلی
+      await tx.workHistory.create({
+        data: {
+          employeeId: newEmployee.id,
+          position: data.position || 'نامشخص',
+          department: data.department || 'نامشخص',
+          startDate: new Date(data.hireDate),
+          endDate: null,
+          isCurrent: true,
+          source: 'HIRE',
+          description: `شروع به کار در تاریخ ${data.hireDate}`
+        }
+      })
+
+      return newEmployee
     })
 
     const username = data.phone
@@ -228,17 +248,16 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // SECURITY: Return password only ONCE and never store it in plain text
-    // The frontend should display this to the admin once and then it's gone
     return NextResponse.json({
       employee,
       account: {
         email: orgEmail,
-        temporaryPassword: rawPassword,  // Only shown once!
+        temporaryPassword: rawPassword,
         role: user.role,
         message: 'حساب کاربری ایجاد شد. رمز عبور موقت فقط یکبار نمایش داده می‌شود.',
       },
     }, { status: 201 })
+
   } catch (error) {
     console.error('Create employee error:', error)
     return NextResponse.json({ error: 'خطا در ثبت کارمند' }, { status: 500 })

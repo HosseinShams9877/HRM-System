@@ -4,6 +4,7 @@
  */
 
  import jalaali from 'jalaali-js'
+ import moment from 'moment-jalaali'
 
  // ============================================
  // اعداد فارسی
@@ -16,7 +17,65 @@
  export function toPersianDigits(num: number | string): string {
    return String(num).replace(/[0-9]/g, (d) => PERSIAN_DIGITS[parseInt(d)])
  }
- 
+
+ export function convertPersianToGregorian(persianDate: string): Date | null {
+  if (!persianDate) return null
+  
+  // تنظیم moment برای تقویم جلالی
+  moment.loadPersian({ usePersianDigits: false })
+  
+  // پشتیبانی از فرمت‌های مختلف
+  let m = moment(persianDate, 'jYYYY/jMM/jDD')
+  
+  // اگر با / کار نکرد، با - تست کن
+  if (!m.isValid()) {
+    m = moment(persianDate, 'jYYYY-jMM-jDD')
+  }
+  
+  // اگر باز هم کار نکرد
+  if (!m.isValid()) {
+    // ممکنه تاریخ میلادی باشه
+    try {
+      const date = new Date(persianDate)
+      if (!isNaN(date.getTime())) return date
+    } catch {
+      return null
+    }
+    return null
+  }
+  
+  // تبدیل به Date میلادی
+  return m.toDate()
+}
+
+// src/modules/employees/components/EmployeeArchive.tsx
+
+// ============================================
+// Helper Functions
+// ============================================
+
+// تبدیل تاریخ میلادی به شمسی با اعداد فارسی
+ export const convertToPersianDate = (dateString: string | Date): string => {
+  if (!dateString) return ''
+  
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString
+  if (isNaN(date.getTime())) return ''
+  
+  const persianDate = new Intl.DateTimeFormat('fa-IR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+  
+  // ✅ تبدیل اعداد انگلیسی به فارسی
+  return toPersianDigits(persianDate)
+}
+
+// فرمت تاریخ برای نمایش
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '—'
+  return convertToPersianDate(dateStr)
+}
  /** تبدیل ارقام فارسی به انگلیسی */
  export function toEnglishDigits(str: string): string {
    return str.replace(/[۰-۹]/g, (d) =>

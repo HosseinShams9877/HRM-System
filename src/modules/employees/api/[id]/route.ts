@@ -111,7 +111,134 @@ export async function PUT(
     } else if (body.contractMonths !== undefined) {
       cleanedData.contractMonths = body.contractMonths
     }
+    const positionChanged = body.position !== undefined && body.position !== existing.position
+    const departmentChanged = body.department !== undefined && body.department !== existing.department
+    const newHireDate = body.hireDate !== undefined ? body.hireDate : existing.hireDate
 
+    if (positionChanged || departmentChanged) {
+      const employee = await db.$transaction(async (tx) => {
+
+        // ✅ دریافت نام سمت و دپارتمان قبلی و جدید (داخل تراکنش)
+        let oldPositionName = existing.position || 'نامشخص'
+        let oldDepartmentName = existing.department || 'نامشخص'
+        let newPositionName = body.position || 'نامشخص'
+        let newDepartmentName = body.department || 'نامشخص'
+
+        // اگر position ID بود، نامش رو از جدول Position بگیر
+        if (existing.position) {
+          const oldPos = await tx.position.findUnique({
+            where: { id: existing.position },
+            select: { title: true }
+          })
+          if (oldPos) oldPositionName = oldPos.title
+        }
+
+        if (body.position) {
+          const newPos = await tx.position.findUnique({
+            where: { id: body.position },
+            select: { title: true }
+          })
+          if (newPos) newPositionName = newPos.title
+        }
+
+        if (existing.department) {
+          const oldDept = await tx.department.findUnique({
+            where: { id: existing.department },
+            select: { name: true }
+          })
+          if (oldDept) oldDepartmentName = oldDept.name
+        }
+
+        if (body.department) {
+          const newDept = await tx.department.findUnique({
+            where: { id: body.department },
+            select: { name: true }
+          })
+          if (newDept) newDepartmentName = newDept.name
+        }
+
+        // ساخت description با نام‌ها
+        let description = ''
+        if (positionChanged && departmentChanged) {
+          description = `تغییر سمت از ${oldPositionName} به ${newPositionName} و تغییر دپارتمان از ${oldDepartmentName} به ${newDepartmentName}`
+        } else if (positionChanged) {
+          description = `تغییر سمت از ${oldPositionName} به ${newPositionName}`
+        } else if (departmentChanged) {
+          description = `تغییر دپارتمان از ${oldDepartmentName} به ${newDepartmentName}`
+        }
+
+        let currentHistory = await tx.workHistory.findFirst({
+          where: {
+            employeeId: id,
+            isCurrent: true
+          }
+        })
+        
+        // اگر سابقه جاری وجود نداشت، یکی بساز
+        if (!currentHistory) {
+          currentHistory = await tx.workHistory.create({
+            data: {
+              employeeId: id,
+              position: existing.position || 'نامشخص',
+              department: existing.department || 'نامشخص',
+              startDate: new Date(newHireDate),
+              endDate: null,
+              isCurrent: true,
+              source: 'SYSTEM',
+              description: description
+            }
+          })
+        }
+
+        // 2. بستن سابقه فعلی (اگر وجود داشته باشد)
+        if (currentHistory) {
+          await tx.workHistory.update({
+            where: { id: currentHistory.id },
+            data: {
+              endDate: new Date(),
+              isCurrent: false
+            }
+          })
+        }
+
+        // 3. ایجاد سابقه جدید با سمت جدید
+        const newPosition = body.position !== undefined ? body.position : existing.position
+        const newDepartment = body.department !== undefined ? body.department : existing.department
+        
+        await tx.workHistory.create({
+          data: {
+            employeeId: id,
+            position: newPosition,
+            department: newDepartment,
+            startDate: new Date(newHireDate),
+            endDate: null,
+            isCurrent: true,
+            source: 'SYSTEM',
+            description: description  // ✅ استفاده از description با نام‌ها
+          }
+        })
+        
+        const updated = await tx.employee.update({
+          where: { id },
+          data: cleanedData,
+        })
+
+        return updated
+      })
+
+      // بروزرسانی نقش کاربر (اگر نیاز باشد)
+      if (userRole) {
+        await db.user.updateMany({
+          where: { employeeId: id },
+          data: { role: userRole },
+        })
+      }
+
+      return NextResponse.json({ 
+        data: employee,
+        message: 'اطلاعات کارمند و سوابق شغلی با موفقیت به‌روز شد'
+      })
+    }
     const employee = await db.employee.update({
       where: { id },
       data: cleanedData,
@@ -130,7 +257,7 @@ export async function PUT(
     return NextResponse.json({ error: 'خطا در بروزرسانی اطلاعات کارمند' }, { status: 500 })
   }
 }
-// DELETE /api/employees/[id] — حذف کارمند
+// DELETE /api/employees/[id] — غیرفعال کردن کارمند
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -145,8 +272,10 @@ export async function DELETE(
     }
 
     const { id } = await params
+    
+    const body = await req.json()
+    const { reason, exitReason  } = body
 
-    // بررسی وجود کارمند
     const existing = await db.employee.findUnique({ 
       where: { id },
       include: { user: true }
@@ -156,21 +285,62 @@ export async function DELETE(
       return NextResponse.json({ error: 'کارمند یافت نشد' }, { status: 404 })
     }
 
-    // فقط وضعیت رو به غیرفعال تغییر بده (حذف نکن!)
-    await db.employee.update({
-      where: { id },
-      data: {
-        status: 'inactive',  // ← فقط همین
-      },
-    })
-
-    // غیرفعال کردن کاربر مرتبط (اگه وجود داشته باشه)
-    if (existing.user) {
-      await db.user.update({
-        where: { id: existing.user.id },
-        data: { isActive: false },
+    // ---- شروع تراکنش ----
+    await db.$transaction(async (tx) => {
+      
+      // 1. پیدا کردن سابقه جاری
+      let currentHistory = await tx.workHistory.findFirst({
+        where: {
+          employeeId: id,
+          isCurrent: true
+        }
       })
-    }
+
+      // ✅ اگر سابقه جاری وجود نداشت، یکی بساز
+      if (!currentHistory) {
+        currentHistory = await tx.workHistory.create({
+          data: {
+            employeeId: id,
+            position: existing.position || 'نامشخص',
+            department: existing.department || 'نامشخص',
+            startDate: existing.hireDate ? new Date(existing.hireDate) : new Date(),
+            endDate: null,
+            isCurrent: true,
+            source: 'SYSTEM',
+            description: ''
+          }
+        })
+      }
+
+      // 2. بستن سابقه جاری
+      await tx.workHistory.update({
+        where: { id: currentHistory.id },
+        data: {
+          endDate: new Date(),
+          isCurrent: false,
+          description: reason 
+            ? `${currentHistory.description || ''} - غیرفعال شد: ${reason}`.trim()
+            : `${currentHistory.description || ''} - غیرفعال شد`.trim()
+        }
+      })
+
+      // 3. غیرفعال کردن کارمند
+      await tx.employee.update({
+        where: { id },
+        data: {
+          status: 'inactive',
+          exitReason: exitReason || 'other', 
+        },
+      })
+
+      // 4. غیرفعال کردن کاربر مرتبط
+      if (existing.user) {
+        await tx.user.update({
+          where: { id: existing.user.id },
+          data: { isActive: false },
+        })
+      }
+    })
 
     return NextResponse.json({ 
       success: true, 
