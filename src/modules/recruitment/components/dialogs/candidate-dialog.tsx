@@ -1,4 +1,5 @@
 // src/modules/recruitment/components/dialogs/candidate-dialog.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -19,9 +20,17 @@ interface CandidateDialogProps {
   onSubmit: (data: any) => void
   initialData?: any
   submitting?: boolean
+  jobs?: any[]  // ← اضافه شد
 }
 
-export function CandidateDialog({ open, onClose, onSubmit, initialData, submitting = false }: CandidateDialogProps) {
+export function CandidateDialog({ 
+  open, 
+  onClose, 
+  onSubmit, 
+  initialData, 
+  submitting = false,
+  jobs = []  // ← اضافه شد
+}: CandidateDialogProps) {
   const isEdit = !!initialData
   const [form, setForm] = useState({
     firstName: '',
@@ -45,15 +54,16 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
     linkedinUrl: '',
     portfolioUrl: '',
     notes: '',
+    jobId: '',  // ← اضافه شد
   })
 
   useEffect(() => {
     if (open && initialData) {
       setForm({
-        firstName: initialData.firstName,
-        lastName: initialData.lastName,
-        email: initialData.email,
-        phone: initialData.phone,
+        firstName: initialData.firstName || '',
+        lastName: initialData.lastName || '',
+        email: initialData.email || '',
+        phone: initialData.phone || '',
         nationalId: initialData.nationalId || '',
         birthDate: initialData.birthDate ? new Date(initialData.birthDate) : null,
         gender: initialData.gender || '',
@@ -71,6 +81,7 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
         linkedinUrl: initialData.linkedinUrl || '',
         portfolioUrl: initialData.portfolioUrl || '',
         notes: initialData.notes || '',
+        jobId: initialData.jobId || '',  // ← اضافه شد
       })
     } else if (open) {
       setForm({
@@ -95,6 +106,7 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
         linkedinUrl: '',
         portfolioUrl: '',
         notes: '',
+        jobId: '',  // ← اضافه شد
       })
     }
   }, [open, initialData])
@@ -105,8 +117,12 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
       birthDate: form.birthDate ? form.birthDate.toISOString() : null,
       experienceYears: parseInt(form.experienceYears) || 0,
       expectedSalary: parseFloat(form.expectedSalary) || null,
+      jobId: form.jobId,  // ← ارسال jobId
     })
   }
+
+  // ✅ آگهی‌های فعال
+  const activeJobs = jobs.filter(job => job.status === 'active' || job.status === 'open')
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -130,7 +146,6 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
                 <div className="w-1 h-4 rounded-full bg-emerald-500" />
               </h4>
               <div className="space-y-3">
-                {/* نام - در موبایل زیر هم */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">نام *</Label>
@@ -150,7 +165,6 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
                   </div>
                 </div>
 
-                {/* ایمیل و تلفن */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">ایمیل *</Label>
@@ -173,7 +187,6 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
                   </div>
                 </div>
 
-                {/* کد ملی و تاریخ تولد */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">کد ملی</Label>
@@ -193,7 +206,39 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
                   </div>
                 </div>
 
-                {/* جنسیت و شهر */}
+                {/* ✅ آگهی شغلی */}
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">
+                    آگهی شغلی <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={form.jobId} onValueChange={(v) => setForm({ ...form, jobId: v })}>
+                    <SelectTrigger className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-right h-10">
+                      <SelectValue placeholder="انتخاب آگهی شغلی..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      {activeJobs.length === 0 ? (
+                        <div className="px-2 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+                          هیچ آگهی فعالی وجود ندارد
+                          <br />
+                          <span className="text-xs">لطفاً ابتدا یک آگهی شغلی ایجاد کنید</span>
+                        </div>
+                      ) : (
+                        activeJobs.map((job) => (
+                          <SelectItem key={job.id} value={job.id} className="text-gray-900 dark:text-white text-right">
+                            <div className="flex flex-col items-start">
+                              <span>{job.title}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{job.department?.name || 'بدون دپارتمان'}</span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    کاندیدا برای کدام آگهی شغلی درخواست میدهد؟
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">جنسیت</Label>
@@ -396,7 +441,7 @@ export function CandidateDialog({ open, onClose, onSubmit, initialData, submitti
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={submitting || !form.firstName || !form.lastName || !form.email || !form.phone}
+            disabled={submitting || !form.firstName || !form.lastName || !form.email || !form.phone || !form.jobId}
             className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 h-10"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <UserPlus className="w-4 h-4 ml-2" />}

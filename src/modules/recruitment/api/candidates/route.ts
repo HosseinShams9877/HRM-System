@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/candidates - ایجاد کاندیدا
+// POST /api/candidates - ایجاد کاندیدا + درخواست شغلی
 export async function POST(req: NextRequest) {
   try {
     const sessionUser = await getSessionUser()
@@ -69,34 +69,65 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const candidate = await db.candidate.create({
-      data: {
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        password: body.password ? await bcrypt.hash(body.password, 10) : null,
-        phone: body.phone,
-        nationalId: body.nationalId,
-        gender: body.gender,
-        birthDate: body.birthDate,
-        city: body.city,
-        educationLevel: body.educationLevel,
-        educationField: body.educationField,
-        university: body.university,
-        experienceYears: parseInt(body.experienceYears) || 0,
-        currentCompany: body.currentCompany,
-        skills: body.skills,
-        linkedinUrl: body.linkedinUrl,
-        portfolioUrl: body.portfolioUrl,
-        resumeUrl: body.resumeUrl,
-        coverLetter: body.coverLetter,
-        source: body.source || 'website',
-        status: 'active',
-        notes: body.notes,
-      },
+    // ── شروع تراکنش ──
+    const result = await db.$transaction(async (tx) => {
+      
+      // 1️⃣ ایجاد کاندیدا
+      const candidate = await tx.candidate.create({
+        data: {
+          firstName: body.firstName,
+          lastName: body.lastName,
+          email: body.email,
+          password: body.password ? await bcrypt.hash(body.password, 10) : null,
+          phone: body.phone,
+          nationalId: body.nationalId,
+          gender: body.gender,
+          birthDate: body.birthDate,
+          city: body.city,
+          educationLevel: body.educationLevel,
+          educationField: body.educationField,
+          university: body.university,
+          experienceYears: parseInt(body.experienceYears) || 0,
+          currentCompany: body.currentCompany,
+          skills: body.skills,
+          linkedinUrl: body.linkedinUrl,
+          portfolioUrl: body.portfolioUrl,
+          resumeUrl: body.resumeUrl,
+          coverLetter: body.coverLetter,
+          source: body.source || 'website',
+          status: 'active',
+          notes: body.notes,
+        },
+      })
+
+      // 2️⃣ ✅ ایجاد Application (درخواست شغلی)
+      // اگر jobId در body ارسال شده باشه
+      if (body.jobId) {
+        // چک کن که آگهی وجود داشته باشه
+        const jobExists = await tx.jobPosting.findUnique({
+          where: { id: body.jobId },
+          select: { id: true }
+        })
+
+        if (jobExists) {
+          await tx.application.create({
+            data: {
+              candidateId: candidate.id,
+              jobPostingId: body.jobId,
+              status: 'pending',
+              currentStage: 'applied',
+              appliedAt: new Date(),
+              notes: body.applicationNotes || '',
+            }
+          })
+        }
+      }
+
+      return candidate
     })
 
-    return NextResponse.json(candidate, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
+    
   } catch (error) {
     console.error('POST /api/candidates error:', error)
     return NextResponse.json({ error: 'خطا در ایجاد کاندیدا' }, { status: 500 })

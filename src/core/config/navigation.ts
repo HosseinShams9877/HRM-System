@@ -82,7 +82,7 @@ export const NAV_ITEMS: NavItem[] = [
       { id: 'contract-view', label: 'قرارداد', icon: 'FileBadge' },
       { id: 'contract-order', label: 'حکم کاری', icon: 'UserCheck' },
       { id: 'work-history', label: 'سوابق شغلی', icon: 'Briefcase' },
-      { id: 'employee-documents', label: 'مدارک پرسنلی', icon: 'FileText' },
+      //{ id: 'employee-documents', label: 'مدارک پرسنلی', icon: 'FileText' },
       { id: 'employee-archive', label: 'آرشیو کارکنان', icon: 'Archive' },
       { id: 'hr-settings', label: 'تنظیمات منابع انسانی', icon: 'Settings' },
     ],

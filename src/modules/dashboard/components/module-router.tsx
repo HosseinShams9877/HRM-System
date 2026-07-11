@@ -181,10 +181,11 @@ export function ModuleRouter({
   }
   if (activeModule === 'welfare' || activeModule === 'welfare-rewards' || activeModule === 'welfare-loans') return <WelfareModule />
   if (activeModule === 'settings' || activeModule === 'settings-general' || activeModule === 'settings-access') return <SettingsModule />
-
+/*
   if (activeModule === 'employee-documents') {
     return <EmployeeDocuments onNavigate={onNavigate} currentUser={user} />
   }
+  */
   if (activeModule === 'dashboard') {
     const ADMIN_ROLES = ['admin', 'hr_manager', 'department_manager']
     const isAdminUser = user && ADMIN_ROLES.includes(user.role)

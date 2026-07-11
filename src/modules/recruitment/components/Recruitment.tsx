@@ -531,6 +531,7 @@ const updateStatus = useUpdateCandidateStatus()
         onSubmit={handleSaveCandidate}
         initialData={selectedCandidate}
         submitting={submitting}
+        jobs={jobs}
       />
 
       <DeleteConfirmDialog

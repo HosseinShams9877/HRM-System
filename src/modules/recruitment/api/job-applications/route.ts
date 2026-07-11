@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           portfolioUrl: body.portfolioUrl || '',
           resumeUrl: body.resumeUrl || '',
           source: 'website',
-          status: 'new',
+          status: 'active',
         }
       })
     }
@@ -101,12 +101,10 @@ export async function POST(req: NextRequest) {
       data: {
         jobPostingId: body.jobId,
         candidateId: candidate.id,
-        coverLetter: body.coverLetter || '',
-        status: 'new',
+        notes: body.coverLetter || '',
+        status: 'pending',
         currentStage: 'applied',
         appliedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
       include: {
         candidate: true,
@@ -132,7 +130,7 @@ export async function POST(req: NextRequest) {
     await db.jobPosting.update({
       where: { id: body.jobId },
       data: {
-        applications: {
+        applicationCount: {
           increment: 1,
         },
       },
