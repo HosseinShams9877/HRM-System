@@ -166,33 +166,108 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'شناسه درخواست الزامی است' }, { status: 400 })
     }
 
-    const application = await db.application.update({
-      where: { id },
-      data: {
-        status: status,
-        currentStage: currentStage,
-        notes: notes,
-        updatedAt: new Date(),
-      },
-      include: {
-        candidate: true,
-        jobPosting: true,
-      },
-    })
+    // ── شروع تراکنش ──
+    const result = await db.$transaction(async (tx) => {
+      
+      // 1️⃣ به‌روزرسانی Application
+      const application = await tx.application.update({
+        where: { id },
+        data: {
+          status: status || 'pending',
+          currentStage: currentStage || 'applied',
+          notes: notes,
+          updatedAt: new Date(),
+        },
+        include: {
+          candidate: true,
+          jobPosting: true,
+        },
+      })
 
-    // ثبت تایم‌لاین
-    if (currentStage) {
-      await db.applicationTimeline.create({
+      // 2️⃣ ✅ اگر مرحله به 'interview' تغییر کرد، مصاحبه بساز
+      if (currentStage === 'interview') {
+        const existingInterview = await tx.interview.findFirst({
+          where: { applicationId: id }
+        })
+
+        if (!existingInterview) {
+          await tx.interview.create({
+            data: {
+              applicationId: id,
+              status: 'scheduled',
+              type: 'in_person',
+              scheduledAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              duration: 60,
+              location: 'دفتر مرکزی',
+            }
+          })
+        }
+      }
+
+      // 3️⃣ ✅ اگر مرحله به 'testing' تغییر کرد، ارزیابی بساز
+      if (currentStage === 'testing') {
+        const existingAssessment = await tx.assessment.findFirst({
+          where: { applicationId: id }
+        })
+
+        if (!existingAssessment) {
+          await tx.assessment.create({
+            data: {
+              applicationId: id,
+              type: 'written_test',
+              title: `آزمون ${application.candidate?.firstName || ''} ${application.candidate?.lastName || ''}`,
+              status: 'assigned',
+              passScore: 60,
+              deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // ۱۴ روز بعد
+              assignedAt: new Date(),
+            }
+          })
+        }
+      }
+
+      // 4️⃣ ✅ اگر مرحله از 'interview' به چیز دیگه‌ای تغییر کرد، مصاحبه رو ببند
+      if (currentStage && currentStage !== 'interview' && currentStage !== 'applied' && currentStage !== 'screening') {
+        await tx.interview.updateMany({
+          where: {
+            applicationId: id,
+            status: 'scheduled'
+          },
+          data: {
+            status: 'cancelled',
+            updatedAt: new Date(),
+          }
+        })
+      }
+
+      // 5️⃣ ✅ اگر مرحله از 'testing' به چیز دیگه‌ای تغییر کرد، ارزیابی رو ببند
+      if (currentStage && currentStage !== 'testing' && currentStage !== 'interview' && currentStage !== 'applied' && currentStage !== 'screening') {
+        await tx.assessment.updateMany({
+          where: {
+            applicationId: id,
+            status: 'assigned'
+          },
+          data: {
+            status: 'expired',
+            updatedAt: new Date(),
+          }
+        })
+      }
+
+      // 6️⃣ ثبت تایم‌لاین
+      await tx.applicationTimeline.create({
         data: {
           applicationId: id,
-          stage: currentStage,
-          description: `مرحله به "${currentStage}" تغییر کرد`,
+          stage: currentStage || status || 'applied',
+          description: `مرحله به "${currentStage || status}" تغییر کرد`,
           date: new Date(),
         },
       })
-    }
 
-    return NextResponse.json(application)
+      return application
+    })
+
+    return NextResponse.json(result)
+    
   } catch (error) {
     console.error('PUT /api/job-applications error:', error)
     return NextResponse.json({ error: 'خطا در بروزرسانی درخواست' }, { status: 500 })
