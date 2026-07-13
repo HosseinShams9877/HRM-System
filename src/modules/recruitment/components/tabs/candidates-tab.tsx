@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Input } from '@/core/components/ui/input'
+import { CandidatePDF } from '../candidate-pdf'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select'
 import {
   DropdownMenu,
@@ -13,10 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/core/components/ui/dropdown-menu'
+import { pdf } from '@react-pdf/renderer'
+import { toast } from 'sonner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/core/components/ui/table'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { getStatusBadge, getSourceLabel, getEducationLabel, toPersianNumber } from '../../helpers'
 import type { Candidate } from '../../types/type'
+import { useState } from 'react'
 
 // وضعیت‌های کاندیدا
 const CANDIDATE_STATUSES = [
@@ -72,13 +76,34 @@ export function CandidatesTab({
     setStatusFilter('all')
     setSearchTerm('')
   }
-
+const [resumeDialogOpen, setResumeDialogOpen] = useState(false)
+const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   // تابع برای دریافت رنگ وضعیت
   const getStatusColor = (status: string) => {
     const found = CANDIDATE_STATUSES.find(s => s.value === status)
     return found?.color || 'text-gray-600 dark:text-gray-400'
   }
 
+const handleDownloadResume = async (candidate: Candidate) => {
+  try {
+    const pdfDoc = <CandidatePDF candidate={candidate} />
+    const blob = await pdf(pdfDoc).toBlob()
+    
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `رزومه-${candidate.firstName}-${candidate.lastName}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    toast.success('رزومه با موفقیت دانلود شد')
+  } catch (error) {
+    console.error('Error downloading resume:', error)
+    toast.error('خطا در دانلود رزومه')
+  }
+}
   return (
     <div className="space-y-4 mt-6">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -211,20 +236,20 @@ export function CandidatesTab({
                         </span>
                       </TableCell>
                       <TableCell className="text-right hidden lg:table-cell">
-                        {c.resumeUrl ? (
-                          <a 
-                            href={c.resumeUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-xs font-medium"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            مشاهده
-                          </a>
-                        ) : (
-                          <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                        )}
-                      </TableCell>
+  {c.resumeUrl ? (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 px-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+      onClick={() => handleDownloadResume(c)}
+    >
+      <Download className="w-3.5 h-3.5 ml-1" />
+      دانلود
+    </Button>
+  ) : (
+    <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+  )}
+</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1">
                           <Button 
