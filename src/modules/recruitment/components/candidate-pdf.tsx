@@ -10,6 +10,7 @@ import { toPersianNumber } from '../helpers'
 // ثبت فونت
 // ============================================
 export const registerFonts = (key?: string) => {
+  
   try {
     const fontRegular = require('../../../../public/fonts/Vazirmatn-Regular.ttf')
     const fontBold = require('../../../../public/fonts/Vazirmatn-Bold.ttf')
@@ -32,6 +33,28 @@ export const registerFonts = (key?: string) => {
   } catch (error) {
     console.error('Error registering fonts:', error)
     return 'Vazirmatn'
+  }
+}
+const toPersianDigits = (str: string): string => {
+  const persianDigits = '۰۱۲۳۴۵۶۷۸۹'
+  return str.replace(/\d/g, (digit) => persianDigits[parseInt(digit)])
+}
+const convertToPersianDate = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return '—'
+  
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString
+    if (isNaN(date.getTime())) return '—'
+    
+    const persianDate = new Intl.DateTimeFormat('fa-IR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date)
+    
+    return toPersianDigits(persianDate)
+  } catch (error) {
+    return '—'
   }
 }
 
@@ -94,7 +117,7 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     gap: 4,
   },
   gridItem: {
-    width: '48%',
+    width: '49.5%',
     backgroundColor: '#f9fafb',
     padding: 4,
     borderRadius: 3,
@@ -132,7 +155,7 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     width: '100%',
   },
   skillsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     gap: 3,
     marginTop: 3,
@@ -144,6 +167,8 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     borderRadius: 10,
     fontSize: 7,
     color: '#065f46',
+    direction: 'rtl', 
+    textAlign: 'right',
   },
   coverLetter: {
     fontSize: 8,
@@ -279,7 +304,7 @@ export function CandidatePDF({ candidate, fontKey }: CandidatePDFProps) {
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>شماره تماس</Text>
-                <Text style={styles.value}>{candidate.phone || '—'}</Text>
+                <Text style={styles.value}>{candidate.phone ? toPersianNumber(candidate.phone) : '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>کد ملی</Text>
@@ -291,7 +316,7 @@ export function CandidatePDF({ candidate, fontKey }: CandidatePDFProps) {
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ تولد</Text>
-                <Text style={styles.value}>{candidate.birthDate || '—'}</Text>
+                <Text style={styles.value}>{convertToPersianDate(candidate.birthDate)}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>شهر</Text>
@@ -342,21 +367,29 @@ export function CandidatePDF({ candidate, fontKey }: CandidatePDFProps) {
 
         {/* مهارت‌ها */}
         {skillsArray.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text>مهارت‌ها</Text>
-            </View>
-            <View style={styles.sectionBody}>
-              <View style={styles.skillsContainer}>
-                {skillsArray.map((skill, index) => (
-                  <Text key={index} style={styles.skillTag}>
-                    {skill}
-                  </Text>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
+  <View style={styles.section}>
+    <View style={styles.sectionHeader}>
+      <Text>مهارت‌ها</Text>
+    </View>
+    <View style={styles.sectionBody}>
+      <View style={{
+        ...styles.skillsContainer,
+        direction: 'rtl',
+        justifyContent: 'flex-start',
+      }}>
+        {skillsArray.map((skill, index) => (
+          <Text key={index} style={{
+            ...styles.skillTag,
+            direction: 'rtl',
+            textAlign: 'right',
+          }}>
+            {skill}
+          </Text>
+        ))}
+      </View>
+    </View>
+  </View>
+)}
 
         {/* لینک‌ها */}
         {(candidate.linkedinUrl || candidate.portfolioUrl) && (

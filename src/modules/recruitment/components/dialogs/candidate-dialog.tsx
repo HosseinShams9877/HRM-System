@@ -20,7 +20,7 @@ interface CandidateDialogProps {
   onSubmit: (data: any) => void
   initialData?: any
   submitting?: boolean
-  jobs?: any[]  // ← اضافه شد
+  jobs?: any[]
 }
 
 export function CandidateDialog({ 
@@ -29,7 +29,7 @@ export function CandidateDialog({
   onSubmit, 
   initialData, 
   submitting = false,
-  jobs = []  // ← اضافه شد
+  jobs = []
 }: CandidateDialogProps) {
   const isEdit = !!initialData
   const [form, setForm] = useState({
@@ -53,8 +53,10 @@ export function CandidateDialog({
     skills: '',
     linkedinUrl: '',
     portfolioUrl: '',
+    resumeUrl: '',      // ← اضافه شد
+    coverLetter: '',    // ← اضافه شد
     notes: '',
-    jobId: '',  // ← اضافه شد
+    jobId: '',
   })
 
   useEffect(() => {
@@ -75,13 +77,15 @@ export function CandidateDialog({
         currentCompany: initialData.currentCompany || '',
         currentPosition: initialData.currentPosition || '',
         experienceYears: initialData.experienceYears?.toString() || '',
-        expectedSalary: '',
+        expectedSalary: initialData.expectedSalary?.toString() || '',
         source: initialData.source || 'website',
         skills: initialData.skills || '',
         linkedinUrl: initialData.linkedinUrl || '',
         portfolioUrl: initialData.portfolioUrl || '',
+        resumeUrl: initialData.resumeUrl || '',        // ← اضافه شد
+        coverLetter: initialData.coverLetter || '',    // ← اضافه شد
         notes: initialData.notes || '',
-        jobId: initialData.jobId || '',  // ← اضافه شد
+        jobId: initialData.jobId || '',
       })
     } else if (open) {
       setForm({
@@ -105,8 +109,10 @@ export function CandidateDialog({
         skills: '',
         linkedinUrl: '',
         portfolioUrl: '',
+        resumeUrl: '',      // ← اضافه شد
+        coverLetter: '',    // ← اضافه شد
         notes: '',
-        jobId: '',  // ← اضافه شد
+        jobId: '',
       })
     }
   }, [open, initialData])
@@ -117,11 +123,12 @@ export function CandidateDialog({
       birthDate: form.birthDate ? form.birthDate.toISOString() : null,
       experienceYears: parseInt(form.experienceYears) || 0,
       expectedSalary: parseFloat(form.expectedSalary) || null,
-      jobId: form.jobId,  // ← ارسال jobId
+      jobId: form.jobId,
+      resumeUrl: form.resumeUrl || '',      // ← ارسال resumeUrl
+      coverLetter: form.coverLetter || '',  // ← ارسال coverLetter
     })
   }
 
-  // ✅ آگهی‌های فعال
   const activeJobs = jobs.filter(job => job.status === 'active' || job.status === 'open')
 
   return (
@@ -206,7 +213,7 @@ export function CandidateDialog({
                   </div>
                 </div>
 
-                {/* ✅ آگهی شغلی */}
+                {/* آگهی شغلی */}
                 <div className="space-y-1.5">
                   <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">
                     آگهی شغلی <span className="text-red-500">*</span>
@@ -372,6 +379,42 @@ export function CandidateDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator className="dark:bg-gray-700" />
+
+            {/* رزومه و متن معرفی - جدید */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300 justify-end">
+                <span>رزومه و متن معرفی</span>
+                <div className="w-1 h-4 rounded-full bg-emerald-500" />
+              </h4>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">لینک رزومه</Label>
+                  <Input
+                    value={form.resumeUrl}
+                    onChange={(e) => setForm({ ...form, resumeUrl: e.target.value })}
+                    placeholder="https://example.com/resume.pdf"
+                    dir="ltr"
+                    className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 h-10"
+                  />
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    لینک فایل رزومه (Google Drive، Dropbox و ...)
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 dark:text-gray-300 block text-right text-sm">متن معرفی (Cover Letter)</Label>
+                  <Textarea
+                    value={form.coverLetter}
+                    onChange={(e) => setForm({ ...form, coverLetter: e.target.value })}
+                    rows={3}
+                    placeholder="متن معرفی و توضیحات..."
+                    className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-right"
+                  />
                 </div>
               </div>
             </div>

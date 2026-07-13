@@ -1,7 +1,8 @@
 // src/modules/recruitment/components/tabs/candidates-tab.tsx
+
 'use client'
 
-import { Search, Plus, Edit, Download, Star, FilterX, ChevronDown } from 'lucide-react'
+import { Search, Plus, Edit, Download, Star, FilterX, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
@@ -20,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { getStatusBadge, getSourceLabel, getEducationLabel, toPersianNumber } from '../../helpers'
 import type { Candidate } from '../../types/type'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 // وضعیت‌های کاندیدا
 const CANDIDATE_STATUSES = [
@@ -40,7 +41,7 @@ interface CandidatesTabProps {
   setStatusFilter: (v: string) => void
   onAdd: () => void
   onEdit: (candidate: Candidate) => void
-  onStatusChange: (candidateId: string, newStatus: string) => void  // ← اضافه شد
+  onStatusChange: (candidateId: string, newStatus: string) => void
 }
 
 export function CandidatesTab({
@@ -54,8 +55,17 @@ export function CandidatesTab({
   setStatusFilter,
   onAdd,
   onEdit,
-  onStatusChange,  // ← اضافه شد
+  onStatusChange,
 }: CandidatesTabProps) {
+  // ============================================
+  // Pagination State
+  // ============================================
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
+
+  // ============================================
+  // Filter Candidates
+  // ============================================
   const filteredCandidates = candidates.filter((c) => {
     if (sourceFilter !== 'all' && c.source !== sourceFilter) return false
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
@@ -65,45 +75,73 @@ export function CandidatesTab({
         c.firstName.toLowerCase().includes(s) ||
         c.lastName.toLowerCase().includes(s) ||
         c.email.toLowerCase().includes(s) ||
-        c.phone.includes(s)
+        c.phone?.includes(s)
       )
     }
     return true
   })
 
+  // ============================================
+  // Pagination Logic
+  // ============================================
+  const totalItems = filteredCandidates.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  // Reset to first page when filters change
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [searchTerm, sourceFilter, statusFilter])
+
+  const paginatedCandidates = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredCandidates.slice(startIndex, endIndex)
+  }, [filteredCandidates, currentPage, itemsPerPage])
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
   const resetFilters = () => {
     setSourceFilter('all')
     setStatusFilter('all')
     setSearchTerm('')
+    setCurrentPage(1)
   }
-const [resumeDialogOpen, setResumeDialogOpen] = useState(false)
-const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
-  // تابع برای دریافت رنگ وضعیت
+
   const getStatusColor = (status: string) => {
     const found = CANDIDATE_STATUSES.find(s => s.value === status)
     return found?.color || 'text-gray-600 dark:text-gray-400'
   }
 
-const handleDownloadResume = async (candidate: Candidate) => {
-  try {
-    const pdfDoc = <CandidatePDF candidate={candidate} />
-    const blob = await pdf(pdfDoc).toBlob()
-    
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `رزومه-${candidate.firstName}-${candidate.lastName}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    
-    toast.success('رزومه با موفقیت دانلود شد')
-  } catch (error) {
-    console.error('Error downloading resume:', error)
-    toast.error('خطا در دانلود رزومه')
+  // ============================================
+  // ✅ تابع دانلود رزومه - برای همه کاندیداها
+  // ============================================
+  const handleDownloadResume = async (candidate: Candidate) => {
+    try {
+      // ایجاد PDF از اطلاعات کاندیدا
+      const pdfDoc = <CandidatePDF candidate={candidate} />
+      const blob = await pdf(pdfDoc).toBlob()
+      
+      // ایجاد لینک دانلود
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `رزومه-${candidate.firstName}-${candidate.lastName}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.success('رزومه با موفقیت دانلود شد')
+    } catch (error) {
+      console.error('Error downloading resume:', error)
+      toast.error('خطا در دانلود رزومه')
+    }
   }
-}
+
   return (
     <div className="space-y-4 mt-6">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -175,7 +213,7 @@ const handleDownloadResume = async (candidate: Candidate) => {
                   <TableHead className="text-right text-gray-600 dark:text-gray-400 hidden xl:table-cell">تحصیلات</TableHead>
                   <TableHead className="text-right text-gray-600 dark:text-gray-400 hidden 2xl:table-cell">سابقه</TableHead>
                   <TableHead className="text-right text-gray-600 dark:text-gray-400">وضعیت</TableHead>
-                  <TableHead className="text-right text-gray-600 dark:text-gray-400 hidden lg:table-cell">رزومه</TableHead>
+                  <TableHead className="text-right text-gray-600 dark:text-gray-400">رزومه</TableHead>
                   <TableHead className="text-right text-gray-600 dark:text-gray-400">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,8 +224,8 @@ const handleDownloadResume = async (candidate: Candidate) => {
                       در حال بارگذاری...
                     </TableCell>
                   </TableRow>
-                ) : filteredCandidates.length > 0 ? (
-                  filteredCandidates.map((c) => (
+                ) : paginatedCandidates.length > 0 ? (
+                  paginatedCandidates.map((c) => (
                     <TableRow key={c.id} className="border-b border-gray-200 dark:border-gray-700">
                       <TableCell className="text-right">
                         <div className="flex items-center gap-2 flex-row-reverse">
@@ -204,7 +242,7 @@ const handleDownloadResume = async (candidate: Candidate) => {
                               {Array.from({ length: 5 }).map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`h-3 w-3 ${i < c.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 dark:text-gray-600'}`}
+                                  className={`h-3 w-3 ${i < (c.rating || 0) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 dark:text-gray-600'}`}
                                 />
                               ))}
                             </div>
@@ -215,7 +253,7 @@ const handleDownloadResume = async (candidate: Candidate) => {
                         {c.email}
                       </TableCell>
                       <TableCell className="text-right text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell" dir="ltr">
-                        {c.phone}
+                        {c.phone || '—'}
                       </TableCell>
                       <TableCell className="text-right hidden lg:table-cell">
                         <Badge variant="outline" className="dark:border-gray-600 dark:text-gray-300">
@@ -235,21 +273,20 @@ const handleDownloadResume = async (candidate: Candidate) => {
                            c.status === 'blocked' ? 'مسدود' : c.status}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right hidden lg:table-cell">
-  {c.resumeUrl ? (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-7 px-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-      onClick={() => handleDownloadResume(c)}
-    >
-      <Download className="w-3.5 h-3.5 ml-1" />
-      دانلود
-    </Button>
-  ) : (
-    <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-  )}
-</TableCell>
+                      
+                      {/* ✅ ستون رزومه - برای همه کاندیداها */}
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                          onClick={() => handleDownloadResume(c)}
+                        >
+                          <Download className="w-3.5 h-3.5 ml-1" />
+                          دانلود
+                        </Button>
+                      </TableCell>
+                      
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1">
                           <Button 
@@ -262,7 +299,6 @@ const handleDownloadResume = async (candidate: Candidate) => {
                             <Edit className="h-4 w-4" />
                           </Button>
                           
-                          {/* Dropdown تغییر وضعیت */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button 
@@ -302,6 +338,70 @@ const handleDownloadResume = async (candidate: Candidate) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* ✅ Pagination - کاملاً راست‌چین و وسط */}
+      {totalItems > 0 && (
+        <div className="flex items-center justify-center gap-4 px-2 py-3">
+          {/* سمت راست - دکمه‌های صفحه‌بندی */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum
+                if (totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i
+                } else {
+                  pageNum = currentPage - 2 + i
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => goToPage(pageNum)}
+                    className={`h-8 w-8 p-0 text-sm ${
+                      currentPage === pageNum 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                        : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {toPersianNumber(pageNum)}
+                  </Button>
+                )
+              }).reverse()}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {/* سمت چپ - اطلاعات تعداد */}
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            نمایش {toPersianNumber(paginatedCandidates.length)} از {toPersianNumber(totalItems)} کاندیدا
+          </p>
+        </div>
+      )}
     </div>
   )
 }
