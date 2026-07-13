@@ -1,1 +1,1 @@
-export { PUT } from "@/modules/recruitment/api/interviews/[id]/route"
+export { PUT , DELETE} from "@/modules/recruitment/api/interviews/[id]/route"

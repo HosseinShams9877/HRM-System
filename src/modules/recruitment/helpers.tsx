@@ -67,16 +67,19 @@ export const getStageLabel = (stage: string): string => {
   return stages[stage] || stage
 }
 
+
 export const getInterviewTypeLabel = (type: string): string => {
-  const types: Record<string, string> = {
-    phone: 'تلفنی',
-    video: 'تصویری',
-    onsite: 'حضوری',
-    technical: 'فنی',
-    hr: 'منابع انسانی',
-    manager: 'مدیریتی',
+  const map: Record<string, string> = {
+    'in_person': 'حضوری',
+    'video': 'آنلاین',
+    'phone': 'تلفنی',
+    'onsite': 'حضوری',
+    'remote': 'دورکاری',
+    'technical': 'تخصصی',
+    'hr': 'منابع انسانی',
+    'panel': 'گروهی',
   }
-  return types[type] || type
+  return map[type] || type
 }
 
 export const getAssessmentTypeLabel = (type: string): string => {
@@ -117,6 +120,7 @@ export const getStatusBadge = (status: string): ReactNode => {
     declined: { label: 'رد شده', cls: 'bg-red-500' },
     revoked: { label: 'ابطال شده', cls: 'bg-gray-500' },
     assigned: { label: 'تعیین شده', cls: 'bg-blue-500' },
+    expired: { label: 'منقضی شده', cls: 'bg-gray-500' },
     in_progress: { label: 'در حال انجام', cls: 'bg-amber-500' },
   }
   const info = map[status]

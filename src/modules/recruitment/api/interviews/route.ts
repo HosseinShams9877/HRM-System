@@ -68,7 +68,6 @@ export async function POST(req: NextRequest) {
         applicationId: body.applicationId,
         interviewerId: body.interviewerId || null,
         type: body.type || 'onsite',
-        round: parseInt(body.round) || 1,
         scheduledAt: new Date(body.scheduledAt),
         duration: parseInt(body.duration) || 60,
         location: body.location,

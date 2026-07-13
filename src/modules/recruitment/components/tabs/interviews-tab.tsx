@@ -8,7 +8,7 @@ import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/core/components/ui/table'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { getStatusBadge, getInterviewTypeLabel, toPersianNumber, formatDateTime } from '../../helpers'
+import { getStatusBadge, getInterviewTypeLabel, toPersianNumber } from '../../helpers'
 import type { Interview } from '../../types/type'
 
 interface InterviewsTabProps {
@@ -17,6 +17,36 @@ interface InterviewsTabProps {
   onAdd: () => void
   onUpdate: (id: string, data: Record<string, unknown>) => void
 }
+
+
+export const formatDateTime = (date: string | Date): string => {
+  if (!date) return '—'
+  
+  const d = typeof date === 'string' ? new Date(date) : date
+  
+  const persianDate = new Intl.DateTimeFormat('fa-IR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d)
+  
+  const toPersianNumber = (str: string) => {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+    return str.replace(/\d/g, (d) => persianDigits[parseInt(d)])
+  }
+  
+  const parts = persianDate.split('،')
+  if (parts.length === 2) {
+    // ✅ ساعت اول، تاریخ دوم: "۲۰:۳۰ - ۱۴۰۵/۱۲/۲۹"
+    return `${toPersianNumber(parts[1].trim())} - ${toPersianNumber(parts[0].trim())}`
+  }
+  
+  return toPersianNumber(persianDate)
+}
+
 
 export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: InterviewsTabProps) {
   return (

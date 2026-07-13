@@ -257,6 +257,8 @@ model Interview {
   location       String?   // آدرس یا لینک
   status         String    @default("scheduled") // scheduled, completed, cancelled, rescheduled
   feedback       String?
+  notes          String?
+  result         String? 
   score          Float?    // نمره مصاحبه
   evaluations    InterviewEvaluation[]
   createdAt      DateTime  @default(now())

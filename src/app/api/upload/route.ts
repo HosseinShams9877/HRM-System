@@ -1,0 +1,1 @@
+export {  POST } from "@/modules/recruitment/api/candidates/upload/route"

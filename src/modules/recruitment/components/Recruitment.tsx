@@ -18,7 +18,11 @@ import { CandidatesTab } from './tabs/candidates-tab'
 import { PipelineTab } from './tabs/pipeline-tab'
 import { InterviewsTab } from './tabs/interviews-tab'
 import { AssessmentsTab } from './tabs/assessments-tab'
+import { InterviewDialog } from './dialogs/interview-dialog' 
 import { ReportsTab } from './tabs/reports-tab'
+import { ScoreDialog } from './dialogs/score-dialog'
+import { AssessmentDialog } from './dialogs/assessment-dialog'  
+import { OfferDialog } from './dialogs/offer-dialog'
 import type { Candidate, JobPosting, JobApplication, Interview, Assessment, JobOffer, Department } from '../types/type'
 
 export function Recruitment() {
@@ -37,6 +41,13 @@ export function Recruitment() {
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false)
   const [assessmentDialogOpen, setAssessmentDialogOpen] = useState(false)
   const [applicationDetailOpen, setApplicationDetailOpen] = useState(false)
+  const [submittingAssessment, setSubmittingAssessment] = useState(false)
+  const [offerDialogOpen, setOfferDialogOpen] = useState(false)
+const [submittingOffer, setSubmittingOffer] = useState(false)
+ 
+const [scoreDialogOpen, setScoreDialogOpen] = useState(false)        
+const [submittingInterview, setSubmittingInterview] = useState(false) 
+const [submittingScore, setSubmittingScore] = useState(false)         
 
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
@@ -341,10 +352,58 @@ const updateStatus = useUpdateCandidateStatus()
   const handleStatusChange = (candidateId: string, newStatus: string) => {
     updateStatus.mutate({ id: candidateId, status: newStatus })
   }
-
+  // ✅ جدید: ایجاد ارزیابی
+const handleCreateAssessment = async (data: any) => {
+  setSubmittingAssessment(true)
+  try {
+    const res = await fetch('/api/assessments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      toast.success('ارزیابی با موفقیت ایجاد شد')
+      setAssessmentDialogOpen(false)
+      fetchData()
+    } else {
+      const error = await res.json()
+      toast.error(error.error || 'خطا در ایجاد ارزیابی')
+    }
+  } catch {
+    toast.error('خطا در ارتباط با سرور')
+  } finally {
+    setSubmittingAssessment(false)
+  }
+}
+const handleCreateOffer = async (data: any) => {
+  setSubmittingOffer(true)
+  try {
+    const res = await fetch('/api/job-offers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      toast.success('پیشنهاد شغلی با موفقیت ایجاد شد')
+      setOfferDialogOpen(false)
+      fetchData()
+    } else {
+      const error = await res.json()
+      toast.error(error.error || 'خطا در ایجاد پیشنهاد')
+    }
+  } catch {
+    toast.error('خطا در ارتباط با سرور')
+  } finally {
+    setSubmittingOffer(false)
+  }
+}
+const handleOpenOfferDialog = (application: JobApplication) => {
+  setSelectedApplication(application)
+  setOfferDialogOpen(true)
+}
   const handleUpdateInterview = async (interviewId: string, data: Record<string, unknown>) => {
     try {
-      const res = await fetch(`/api/interviews?id=${interviewId}`, {
+      const res = await fetch(`/api/interviews/${interviewId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: interviewId, ...data }),
@@ -357,6 +416,54 @@ const updateStatus = useUpdateCandidateStatus()
       }
     } catch { toast.error('خطا در ارتباط با سرور') }
   }
+ 
+const handleCreateInterview = async (data: any) => {
+  setSubmittingInterview(true)
+  try {
+    const res = await fetch('/api/interviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      toast.success('مصاحبه با موفقیت زمان‌بندی شد')
+      setInterviewDialogOpen(false)
+      fetchData()
+    } else {
+      const error = await res.json()
+      toast.error(error.error || 'خطا در زمان‌بندی مصاحبه')
+    }
+  } catch {
+    toast.error('خطا در ارتباط با سرور')
+  } finally {
+    setSubmittingInterview(false)
+  }
+}
+
+
+const handleSaveScore = async (data: any) => {
+  setSubmittingScore(true)
+  try {
+    const res = await fetch('/api/assessments', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      toast.success('نمره با موفقیت ثبت شد')
+      setScoreDialogOpen(false)
+      setSelectedAssessment(null)
+      fetchData()
+    } else {
+      const error = await res.json()
+      toast.error(error.error || 'خطا در ثبت نمره')
+    }
+  } catch {
+    toast.error('خطا در ارتباط با سرور')
+  } finally {
+    setSubmittingScore(false)
+  }
+}
 
   // ── Render ───────────────────────────────────────────────────
   if (loading) {
@@ -476,6 +583,7 @@ const updateStatus = useUpdateCandidateStatus()
             onAdd={() => setJobDialogOpen(true)}
             onMoveStage={handleMoveStage}
             onReject={handleRejectApplication}
+            onCreateOffer={handleOpenOfferDialog}
           />
         </TabsContent>
 
@@ -493,7 +601,9 @@ const updateStatus = useUpdateCandidateStatus()
             assessments={assessments}
             loading={loading}
             onAdd={() => setAssessmentDialogOpen(true)}
-            onScore={(a) => { setSelectedAssessment(a); /* open score dialog */ }}
+            onScore={(a) => { setSelectedAssessment(a)
+              setScoreDialogOpen(true) 
+            }}
           />
         </TabsContent>
 
@@ -545,6 +655,38 @@ const updateStatus = useUpdateCandidateStatus()
         }}
         title={deleteItem?.title || ''}
       />
+
+      <InterviewDialog
+  open={interviewDialogOpen}
+  onClose={() => setInterviewDialogOpen(false)}
+  onSubmit={handleCreateInterview}
+  applications={applications}
+  submitting={submittingInterview}
+/>
+<ScoreDialog
+  open={scoreDialogOpen}
+  onClose={() => { 
+    setScoreDialogOpen(false)
+    setSelectedAssessment(null)
+  }}
+  onSubmit={handleSaveScore}
+  assessment={selectedAssessment}
+  submitting={submittingScore}
+/>
+<AssessmentDialog
+  open={assessmentDialogOpen}
+  onClose={() => setAssessmentDialogOpen(false)}
+  onSubmit={handleCreateAssessment}
+  applications={applications}
+  submitting={submittingAssessment}
+/>
+<OfferDialog
+  open={offerDialogOpen}
+  onClose={() => setOfferDialogOpen(false)}
+  onSubmit={handleCreateOffer}
+  applications={applications}
+  submitting={submittingOffer}
+/>
     </div>
   )
 }

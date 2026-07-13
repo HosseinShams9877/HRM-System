@@ -1,9 +1,9 @@
-// src/app/api/interviews/[id]/route.ts
+// src/modules/recruitment/api/interviews/[id]/route.ts
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
 import { getSessionUser } from '@/core/lib/auth'
 
-// PUT /api/interviews/[id] - بروزرسانی مصاحبه
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,9 +39,12 @@ export async function PUT(
       },
     })
 
-    // اگر مصاحبه کامل شد و نتیجه ثبت شد
+    // ✅ اگر مصاحبه کامل شد و نتیجه داشت
     if (body.status === 'completed' && body.result) {
-      const nextStage = body.result === 'passed' ? 'offer' : 'rejected'
+      const passed = body.result === 'passed'
+      const nextStage = passed ? 'testing' : 'rejected'
+      
+      // 1️⃣ بروزرسانی Application
       await db.application.update({
         where: { id: interview.applicationId },
         data: {
@@ -51,19 +54,80 @@ export async function PUT(
         },
       })
 
+      // 2️⃣ ثبت تایم‌لاین
       await db.applicationTimeline.create({
         data: {
           applicationId: interview.applicationId,
           stage: nextStage,
-          description: `مصاحبه ${body.result === 'passed' ? 'قبول' : 'رد'} شد`,
+          description: passed ? 'مصاحبه قبول شد - منتظر آزمون' : 'مصاحبه رد شد',
           date: new Date(),
         },
       })
+
+      // 3️⃣ ✅ اگر قبول شد، خودکار آزمون بساز
+      if (passed) {
+        // چک کن که قبلاً آزمونی برای این درخواست ساخته نشده باشه
+        const existingAssessment = await db.assessment.findFirst({
+          where: { applicationId: interview.applicationId }
+        })
+
+        if (!existingAssessment) {
+          const assessment = await db.assessment.create({
+            data: {
+              applicationId: interview.applicationId,
+              type: 'technical_exam',
+              title: `آزمون تخصصی - ${interview.application.candidate?.firstName || ''} ${interview.application.candidate?.lastName || ''}`,
+              status: 'assigned',
+              passScore: 60,
+              deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // ۱۴ روز بعد
+              assignedAt: new Date(),
+            },
+          })
+
+          console.log('✅ آزمون خودکار ساخته شد:', assessment.id)
+        }
+      }
     }
 
     return NextResponse.json(interview)
   } catch (error) {
     console.error('PUT /api/interviews/[id] error:', error)
     return NextResponse.json({ error: 'خطا در بروزرسانی مصاحبه' }, { status: 500 })
+  }
+}
+
+
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const sessionUser = await getSessionUser()
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'دسترسی غیرمجاز' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const existing = await db.interview.findUnique({
+      where: { id },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'مصاحبه یافت نشد' }, { status: 404 })
+    }
+
+    await db.interview.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'مصاحبه با موفقیت حذف شد' 
+    })
+  } catch (error) {
+    console.error('DELETE /api/interviews/[id] error:', error)
+    return NextResponse.json({ error: 'خطا در حذف مصاحبه' }, { status: 500 })
   }
 }
