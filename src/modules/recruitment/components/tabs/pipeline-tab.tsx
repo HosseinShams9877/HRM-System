@@ -50,9 +50,13 @@ export function PipelineTab({
       ) : (
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-4" style={{ minWidth: `${PIPELINE_STAGES.length * 280}px` }}>
-            {reversedStages.map((stage) => {
-              const stageApps = safeApplications.filter((a) => (a.currentStage || a.status) === stage.id)
-              
+          {reversedStages.map((stage) => {
+            const stageApps = safeApplications.filter((a) => {
+            const isInStage = (a.currentStage || a.status) === stage.id
+            const isCandidateActive = a.candidate?.status === 'active'
+            return isInStage && isCandidateActive
+                })
+            
               return (
                 <div key={stage.id} className={`min-w-[260px] w-[260px] flex-shrink-0 rounded-lg border-t-4 ${stage.border} bg-gray-50 dark:bg-gray-800/50`}>
                   <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">

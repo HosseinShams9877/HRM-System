@@ -9,6 +9,7 @@ import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/core/components/ui/avatar'
 import { Checkbox } from '@/core/components/ui/checkbox'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/core/components/ui/dropdown-menu'
 import {
   Pagination,
@@ -316,56 +317,69 @@ export function EmployeeTable({
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center pt-4">
-          <Pagination dir="ltr">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => onPageChange(Math.max(1, page - 1))}
-                  className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                />
+  <div className="flex items-center justify-center pt-4">
+    <Pagination dir="rtl">
+      <PaginationContent>
+        <PaginationItem>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page <= 1}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </PaginationItem>
+        
+        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+          .filter(p => {
+            if (p === 1 || p === pagination.totalPages) return true
+            if (Math.abs(p - page) <= 1) return true
+            return false
+          })
+          .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+            if (idx > 0) {
+              const prev = arr[idx - 1]
+              if (p - prev > 1) acc.push('ellipsis')
+            }
+            acc.push(p)
+            return acc
+          }, [])
+          .map((p, idx) =>
+            p === 'ellipsis' ? (
+              <PaginationItem key={`ellipsis-${idx}`}>
+                <PaginationEllipsis />
               </PaginationItem>
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                .filter(p => {
-                  if (p === 1 || p === pagination.totalPages) return true
-                  if (Math.abs(p - page) <= 1) return true
-                  return false
-                })
-                .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
-                  if (idx > 0) {
-                    const prev = arr[idx - 1]
-                    if (p - prev > 1) acc.push('ellipsis')
-                  }
-                  acc.push(p)
-                  return acc
-                }, [])
-                .map((p, idx) =>
-                  p === 'ellipsis' ? (
-                    <PaginationItem key={`ellipsis-${idx}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={p}>
-                      <PaginationLink
-                        isActive={p === page}
-                        onClick={() => onPageChange(p)}
-                        className="cursor-pointer"
-                      >
-                        {toPersianDigits(p)}
-                      </PaginationLink>
-                    </PaginationItem>
-                  )
-                )}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => onPageChange(Math.min(pagination.totalPages, page + 1))}
-                  className={page >= pagination.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                />
+            ) : (
+              <PaginationItem key={p}>
+                <Button
+                  variant={p === page ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 w-8 p-0 text-sm"
+                  onClick={() => onPageChange(p)}
+                >
+                  {toPersianDigits(p)}
+                </Button>
               </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+            )
+          )}
+          
+        <PaginationItem>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(Math.min(pagination.totalPages, page + 1))}
+            disabled={page >= pagination.totalPages}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  </div>
+)}
     </>
   )
 }
