@@ -7,7 +7,7 @@ import {
   Phone, MapPin, Calendar, Heart, Users, Edit, 
   CheckCircle2, XCircle, AlertCircle,
   File, CreditCard, PhoneCall, Droplets,
-  BookOpen, ShieldCheck, Building2
+  BookOpen, ShieldCheck, Building2,Loader2 
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
@@ -15,10 +15,12 @@ import { Badge } from '@/core/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/core/components/ui/tabs'
 import { Separator } from '@/core/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/core/components/ui/avatar'
+import { useWorkHistory } from '../hooks/use-work-history'
 import {
-  toPersianDigits, formatCurrency, formatShamsi,
+  toPersianDigits, formatCurrency, formatShamsi,convertToPersianDate
 } from '@/core/lib/utils-fa'
 import { DocumentManager } from './document-manager'
+import { WorkHistoryList } from './work-history-list'
 
 // ============================================
 // Types
@@ -123,7 +125,7 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
   const [documents, setDocuments] = useState(employee.documents || [])
   const [loadingDocs, setLoadingDocs] = useState(false)
   const [departmentName, setDepartmentName] = useState('')
-
+const { data: workHistory = [], isLoading: isLoadingHistory } = useWorkHistory(employee.id)
   const initials = employee?.firstName?.[0] + employee?.lastName?.[0] || '?'
 
   const genderLabel = employee.gender === 'male' ? 'مرد' : employee.gender === 'female' ? 'زن' : '—'
@@ -382,8 +384,62 @@ function EmployeeProfileInner({ employee, onRefresh, onNavigate }: EmployeeProfi
         </TabsContent>
 
         <TabsContent value="job" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><Briefcase className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">اطلاعات شغلی تکمیلی</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+  <Card className="border-0 shadow-sm">
+    <CardHeader>
+      <CardTitle className="text-sm flex items-center gap-2 justify-end">
+        اطلاعات شغلی
+        <Briefcase className="w-4 h-4 text-emerald-600 order-2" />
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      {/* موقعیت فعلی */}
+      <div className="mb-6 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800">
+        <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-3 text-right">موقعیت فعلی</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="text-right">
+            <span className="text-muted-foreground">سمت:</span>
+            <span className="font-medium mr-2">{employee.positionName || employee.position || '—'}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-muted-foreground">دپارتمان:</span>
+            <span className="font-medium mr-2">{displayDepartment || '—'}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-muted-foreground">تاریخ شروع:</span>
+            <span className="font-medium mr-2">{employee.hireDate ? convertToPersianDate(employee.hireDate) : '—'}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-muted-foreground">نوع قرارداد:</span>
+            <span className="font-medium mr-2">
+              {employee.contractType === 'official' ? 'رسمی' :
+               employee.contractType === 'contractual' ? 'قراردادی' :
+               employee.contractType === 'probation' ? 'آزمایشی' :
+               employee.contractType === 'temporary' ? 'موقت' : '—'}
+            </span>
+          </div>
+          {employee.jobGrade && (
+            <div className="text-right">
+              <span className="text-muted-foreground">گروه شغلی:</span>
+              <span className="font-medium mr-2">{employee.jobGrade}</span>
+            </div>
+          )}
+          {employee.workLocation && (
+            <div className="text-right">
+              <span className="text-muted-foreground">محل کار:</span>
+              <span className="font-medium mr-2">{employee.workLocation}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* سوابق شغلی */}
+      <div>
+        <h4 className="text-sm font-semibold mb-3 text-right">سوابق شغلی</h4>
+        <WorkHistoryList employeeId={employee.id} />
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
       </Tabs>
     </div>
   )
