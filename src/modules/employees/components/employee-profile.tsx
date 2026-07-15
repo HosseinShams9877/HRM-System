@@ -21,6 +21,7 @@ import {
 } from '@/core/lib/utils-fa'
 import { DocumentManager } from './document-manager'
 import { WorkHistoryList } from './work-history-list'
+import { EmployeeContracts } from './employee-contracts'
 
 // ============================================
 // Types
@@ -380,8 +381,21 @@ const { data: workHistory = [], isLoading: isLoadingHistory } = useWorkHistory(e
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">قراردادهای کارمند</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+  <Card className="border-0 shadow-sm">
+    <CardHeader>
+      <CardTitle className="text-sm flex items-center gap-2 justify-end">
+        قراردادها
+        <FileText className="w-4 h-4 text-emerald-600 order-2" />
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <EmployeeContracts 
+        employeeId={employee.id} 
+        employeeName={`${employee.firstName} ${employee.lastName}`}
+      />
+    </CardContent>
+  </Card>
+</TabsContent>
 
         <TabsContent value="job" className="mt-4">
   <Card className="border-0 shadow-sm">

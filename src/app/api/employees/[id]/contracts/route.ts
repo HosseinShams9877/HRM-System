@@ -1,0 +1,1 @@
+export { GET } from '@/modules/employees/api/[id]/contracts/route'
