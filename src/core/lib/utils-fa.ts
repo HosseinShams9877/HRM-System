@@ -17,6 +17,21 @@
  export function toPersianDigits(num: number | string): string {
    return String(num).replace(/[0-9]/g, (d) => PERSIAN_DIGITS[parseInt(d)])
  }
+// فرمت کردن description با تاریخ شمسی
+ export const formatDescriptionDate = (description: string): string => {
+  if (!description) return description
+  
+  const datePattern = /\d{4}\/\d{2}\/\d{2}/
+  const match = description.match(datePattern)
+  
+  if (match) {
+    const miladiDate = match[0]
+    const persianDate = convertToPersianDate(miladiDate)
+    return description.replace(miladiDate, persianDate)
+  }
+  
+  return description
+}
 
  export function convertPersianToGregorian(persianDate: string): Date | null {
   if (!persianDate) return null

@@ -1,10 +1,11 @@
 // src/modules/employees/components/WorkHistoryList.tsx
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Building2, Calendar as CalendarIcon, Briefcase, Loader2 } from 'lucide-react'
 import { Badge } from '@/core/components/ui/badge'
 import { useWorkHistory } from '../hooks/use-work-history'
-import { toPersianDigits } from '@/core/lib/utils-fa'
+import { toPersianDigits, formatDescriptionDate } from '@/core/lib/utils-fa'
 
 interface WorkHistoryListProps {
   employeeId: string
@@ -22,20 +23,65 @@ const convertToPersianDate = (dateString: string | Date): string => {
     day: '2-digit',
   }).format(date)
   
-  // ✅ تبدیل اعداد انگلیسی به فارسی
   return toPersianDigits(persianDate)
 }
+
 export function WorkHistoryList({ employeeId }: WorkHistoryListProps) {
   const { data: workHistory = [], isLoading, error } = useWorkHistory(employeeId)
+  
+  // State برای نگهداری نام سمت و دپارتمان (مثل EmployeeWorkHistory)
+  const [positionNames, setPositionNames] = useState<Record<string, string>>({})
+  const [departmentNames, setDepartmentNames] = useState<Record<string, string>>({})
 
-  // فیلتر کردن سوابق غیرجاری (فعلی در بخش بالا نمایش داده میشه)
+  // گرفتن نام سمت‌ها (مثل EmployeeWorkHistory)
+  useEffect(() => {
+    const fetchPositionNames = async () => {
+      try {
+        const res = await fetch('/api/positions?status=active')
+        if (res.ok) {
+          const data = await res.json()
+          const positions = data.data || data
+          
+          const namesMap: Record<string, string> = {}
+          if (Array.isArray(positions)) {
+            positions.forEach((pos: any) => {
+              namesMap[pos.id] = pos.title || pos.name || pos.id
+            })
+          }
+          setPositionNames(namesMap)
+        }
+      } catch (error) {
+        console.error('Error fetching positions:', error)
+      }
+    }
+    fetchPositionNames()
+  }, [])
+
+  // گرفتن نام دپارتمان‌ها (مثل EmployeeWorkHistory)
+  useEffect(() => {
+    const fetchDepartmentNames = async () => {
+      try {
+        const res = await fetch('/api/departments?status=active')
+        if (res.ok) {
+          const data = await res.json()
+          const departments = data.data || data
+          
+          const namesMap: Record<string, string> = {}
+          if (Array.isArray(departments)) {
+            departments.forEach((dept: any) => {
+              namesMap[dept.id] = dept.name || dept.title || dept.id
+            })
+          }
+          setDepartmentNames(namesMap)
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error)
+      }
+    }
+    fetchDepartmentNames()
+  }, [])
+
   const pastWorkHistory = workHistory
-
-  // دیباگ
-  console.log('WorkHistoryList - employeeId:', employeeId)
-  console.log('WorkHistoryList - data:', workHistory)
-  console.log('WorkHistoryList - isLoading:', isLoading)
-  console.log('WorkHistoryList - error:', error)
 
   if (isLoading) {
     return (
@@ -64,6 +110,13 @@ export function WorkHistoryList({ employeeId }: WorkHistoryListProps) {
     )
   }
 
+  // تابع دریافت نام (مثل EmployeeWorkHistory)
+  const getDisplayName = (id: string, namesMap: Record<string, string>, fallback?: string): string => {
+    if (!id) return fallback || 'نامشخص'
+    if (namesMap[id]) return namesMap[id]
+    return id
+  }
+
   return (
     <div className="space-y-3">
       {pastWorkHistory.map((item) => (
@@ -71,9 +124,13 @@ export function WorkHistoryList({ employeeId }: WorkHistoryListProps) {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 text-right">
               <div className="flex items-center gap-2 mb-1 justify-end">
-                <h5 className="font-medium">{item.position}</h5>
+                {/* ✅ استفاده از getDisplayName برای نمایش نام سمت */}
+                <h5 className="font-medium">
+                  {getDisplayName(item.position, positionNames, item.position)}
+                </h5>
+                {/* ✅ استفاده از getDisplayName برای نمایش نام دپارتمان */}
                 <Badge variant="outline" className="text-[10px]">
-                  {item.department}
+                  {getDisplayName(item.department, departmentNames, item.department)}
                 </Badge>
                 {item.source && (
                   <Badge variant="secondary" className="text-[9px]">
@@ -85,15 +142,16 @@ export function WorkHistoryList({ employeeId }: WorkHistoryListProps) {
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground justify-end">
-                <span className="flex items-center gap-1">
-                  <CalendarIcon className="w-3 h-3" />
-                  {convertToPersianDate(item.startDate)} - 
-                  {item.endDate ? convertToPersianDate(item.endDate) : 'اکنون'}
-                </span>
-              </div>
+          <div className="flex items-center gap-2 text-gray-500 text-xs justify-end ">
+  <CalendarIcon className="w-3.5 h-3.5" />
+  <span  dir="rtl">
+      {convertToPersianDate(item.startDate)} - {item.endDate ? convertToPersianDate(item.endDate) : 'اکنون'}
+  </span>
+</div>
               {item.description && (
-                <p className="text-xs text-muted-foreground mt-2 text-right">{item.description}</p>
+                <p className="text-xs text-muted-foreground mt-2 text-right">
+                  {formatDescriptionDate(item.description)}
+                </p>
               )}
             </div>
           </div>
