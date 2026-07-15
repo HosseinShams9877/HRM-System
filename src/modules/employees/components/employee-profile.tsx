@@ -416,7 +416,7 @@ const { data: workHistory = [], isLoading: isLoadingHistory } = useWorkHistory(e
           </div>
           <div className="text-right">
             <span className="text-muted-foreground">دپارتمان:</span>
-            <span className="font-medium mr-2">{displayDepartment || '—'}</span>
+            <span className="font-medium mr-2">{displayDepartment ||employee.departmentName || employee.department || '—'}</span>
           </div>
           <div className="text-right">
             <span className="text-muted-foreground">تاریخ شروع:</span>

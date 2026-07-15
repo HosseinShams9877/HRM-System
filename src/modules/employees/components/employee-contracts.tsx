@@ -15,7 +15,22 @@ interface EmployeeContractsProps {
   employeeId: string
   employeeName?: string
 }
-
+const formatDateShort = (dateStr: string): string => {
+  if (!dateStr) return '—'
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '—'
+    const persian = new Intl.DateTimeFormat('fa-IR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date)
+    // تبدیل اعداد به فارسی
+    return persian.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)])
+  } catch {
+    return '—'
+  }
+}
 const getTypeLabel = (type: string): string => {
   const map: Record<string, string> = {
     'permanent': 'دائم',
@@ -109,13 +124,13 @@ export function EmployeeContracts({ employeeId, employeeName }: EmployeeContract
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground justify-end flex-wrap">
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1" dir='rtl'>
                       <Calendar className="w-3 h-3" />
-                      {formatShamsi(contract.startDate)} - 
-                      {contract.endDate ? formatShamsi(contract.endDate) : 'نامحدود'}
+                      {toPersianDigits(contract.startDate)} - 
+                      {contract.endDate ? toPersianDigits(contract.endDate) : 'نامحدود'}
                     </span>
                     {contract.contractNumber && (
-                      <span>شماره: {contract.contractNumber}</span>
+                      <span dir='rtl'>شماره: {contract.contractNumber}</span>
                     )}
                     {contract.amount && (
                       <span>مبلغ: {toPersianDigits(contract.amount.toLocaleString())} ریال</span>
@@ -123,7 +138,7 @@ export function EmployeeContracts({ employeeId, employeeName }: EmployeeContract
                   </div>
 
                   {contract.notes && (
-                    <p className="text-xs text-muted-foreground mt-2">{contract.notes}</p>
+                    <p className="text-xs text-muted-foreground mt-2" dir='rtl'>{contract.notes}</p>
                   )}
                 </div>
 
