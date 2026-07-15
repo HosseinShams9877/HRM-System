@@ -326,7 +326,7 @@ export function CandidatePDF({ candidate, fontKey }: CandidatePDFProps) {
                 <Text style={styles.label}>وضعیت</Text>
                 <Text style={styles.value}>{getStatusLabel(candidate.status)}</Text>
               </View>
-              <View style={styles.gridItem}>
+              <View style={styles.gridItemFull}>
                 <Text style={styles.label}>منبع</Text>
                 <Text style={styles.value}>{getSourceLabel(candidate.source)}</Text>
               </View>

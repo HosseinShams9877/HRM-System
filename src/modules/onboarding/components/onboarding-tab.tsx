@@ -136,43 +136,24 @@ export function OnboardingTab({
           ))}
         </div>
       ) : (
-        <Card className="border-0 shadow-sm">
+       <Card className="border-0 shadow-sm">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">کارمند</TableHead>
-                  <TableHead className="text-xs">تاریخ شروع</TableHead>
-                  <TableHead className="text-xs">تاریخ پایان</TableHead>
-                  <TableHead className="text-xs">پیشرفت</TableHead>
-                  <TableHead className="text-xs">وضعیت</TableHead>
-                  <TableHead className="text-xs">اقدامات</TableHead>
+                  <TableHead className="text-xs text-center">اقدامات</TableHead>
+                  <TableHead className="text-xs text-center">وضعیت</TableHead>
+                  <TableHead className="text-xs text-center">پیشرفت</TableHead>
+                  <TableHead className="text-xs text-center">تاریخ پایان</TableHead>
+                  <TableHead className="text-xs text-center">تاریخ شروع</TableHead>
+                  <TableHead className="text-xs text-center">کارمند</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map(item => (
                   <TableRow key={item.id}>
-                    <TableCell className="text-xs font-medium">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
-                          <User className="w-3 h-3 text-teal-600" />
-                        </div>
-                        {item.employee?.firstName} {item.employee?.lastName}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{item.startDate || '—'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{item.endDate || '—'}</TableCell>
-                    <TableCell className="text-xs">
-                      <div className="flex items-center gap-2 min-w-[120px]">
-                        <Progress value={item.progress} className="h-1.5 flex-1" />
-                        <span className="w-8 text-left">{toPersianDigits(item.progress)}٪</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusBadgeVariant(item.status)} className="text-[10px]">{statusLabel(item.status)}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onDetail(item)}>
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
@@ -182,6 +163,25 @@ export function OnboardingTab({
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" onClick={() => onDelete(item.id)}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={statusBadgeVariant(item.status)} className="text-[10px]">{statusLabel(item.status)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      <div className="flex items-center justify-center gap-2 min-w-[120px] mx-auto">
+                        <Progress value={item.progress} className="h-1.5 flex-1" />
+                        <span className="w-8 text-left">{toPersianDigits(item.progress)}٪</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground text-center">{item.endDate || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground text-center">{item.startDate || '—'}</TableCell>
+                    <TableCell className="text-xs font-medium text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                          <User className="w-3 h-3 text-teal-600" />
+                        </div>
+                        {item.employee?.firstName} {item.employee?.lastName}
                       </div>
                     </TableCell>
                   </TableRow>
