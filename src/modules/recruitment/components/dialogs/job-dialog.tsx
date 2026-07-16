@@ -99,7 +99,7 @@ export function JobDialog({ open, onClose, onSubmit, initialData, departments, s
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] w-[95vw] md:w-full p-4 md:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+     <DialogContent className="max-w-2xl max-h-[85vh] w-[95vw] md:w-full p-4 md:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base md:text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
             <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex-shrink-0">
@@ -112,7 +112,7 @@ export function JobDialog({ open, onClose, onSubmit, initialData, departments, s
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[55vh] md:max-h-[60vh] pr-1 [&>div]:block [&>div]:text-right">
+        
           <div className="space-y-4 md:space-y-5 py-2">
             {/* بخش اطلاعات پایه */}
             <div>
@@ -320,8 +320,7 @@ export function JobDialog({ open, onClose, onSubmit, initialData, departments, s
               </div>
             </div>
           </div>
-        </ScrollArea>
-
+        
         <DialogFooter className="gap-2 md:gap-3 pt-2 flex-col-reverse sm:flex-row">
           <Button 
             variant="outline" 

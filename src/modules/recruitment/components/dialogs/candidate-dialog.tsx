@@ -133,18 +133,18 @@ export function CandidateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] w-[95vw] md:w-full p-4 md:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white text-base md:text-lg">
-            <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            {isEdit ? 'ویرایش کاندیدا' : 'ثبت کاندیدای جدید'}
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 dark:text-gray-400 text-right text-xs md:text-sm">
-            اطلاعات کاندیدا را وارد کنید
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] w-[95vw] md:w-full p-4 md:p-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-y-auto">
+  <DialogHeader>
+    <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white text-base md:text-lg">
+      <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+      {isEdit ? 'ویرایش کاندیدا' : 'ثبت کاندیدای جدید'}
+    </DialogTitle>
+    <DialogDescription className="text-gray-500 dark:text-gray-400 text-right text-xs md:text-sm">
+      اطلاعات کاندیدا را وارد کنید
+    </DialogDescription>
+  </DialogHeader>
 
-        <ScrollArea className="max-h-[55vh] md:max-h-[60vh] pr-1">
+       
           <div className="space-y-4 p-1">
             {/* اطلاعات شخصی */}
             <div>
@@ -472,7 +472,7 @@ export function CandidateDialog({
               </div>
             </div>
           </div>
-        </ScrollArea>
+       
 
         <DialogFooter className="gap-2 flex-col sm:flex-row pt-2">
           <Button 
