@@ -406,7 +406,7 @@ export function OrderPDF({
   <Text style={styles.label}>پایه سنوات</Text>
   <Text style={styles.value}>
     {hasSalaryChange && displayOrder.yearsOfServiceBase ? (
-      `${formatCurrency(displayOrder.yearsOfServiceBase)} (جدید)`
+      `${formatCurrency(displayOrder.yearsOfServiceBase)} `
     ) : (
       formatCurrency(employee.yearsOfServiceBase)
     )}
@@ -417,7 +417,7 @@ export function OrderPDF({
                 <Text style={styles.label}>حقوق پایه</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.baseSalary ? (
-                    `${formatCurrency(displayOrder.baseSalary)} (جدید)`
+                    `${formatCurrency(displayOrder.baseSalary)}`
                   ) : (
                     formatCurrency(employee.baseSalary)
                   )}
@@ -427,7 +427,7 @@ export function OrderPDF({
                 <Text style={styles.label}>بن کارگری</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.foodAllowance ? (
-                    `${formatCurrency(displayOrder.foodAllowance)} (جدید)`
+                    `${formatCurrency(displayOrder.foodAllowance)} `
                   ) : (
                     formatCurrency(employee.foodAllowance || employee.workAllowance)
                   )}
@@ -437,7 +437,7 @@ export function OrderPDF({
                 <Text style={styles.label}>حق مسئولیت</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.responsibilityAllowance ? (
-                    `${formatCurrency(displayOrder.responsibilityAllowance)} (جدید)`
+                    `${formatCurrency(displayOrder.responsibilityAllowance)} `
                   ) : (
                     formatCurrency(employee.responsibilityAllowance)
                   )}
@@ -447,7 +447,7 @@ export function OrderPDF({
   <Text style={styles.label}>حق تاهل</Text>
   <Text style={styles.value}>
     {hasSalaryChange && displayOrder.spouseAllowance ? (
-      `${formatCurrency(displayOrder.spouseAllowance)} (جدید)`
+      `${formatCurrency(displayOrder.spouseAllowance)} `
     ) : (
       formatCurrency(employee.spouseAllowance)
     )}
@@ -467,7 +467,7 @@ export function OrderPDF({
                 <Text style={styles.label}>حق مسکن</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.housingAllowance ? (
-                    `${formatCurrency(displayOrder.housingAllowance)} (جدید)`
+                    `${formatCurrency(displayOrder.housingAllowance)} `
                   ) : (
                     formatCurrency(employee.housingAllowance)
                   )}
@@ -478,7 +478,7 @@ export function OrderPDF({
                 <Text style={styles.label}>سایر مزایا</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.otherAllowances ? (
-                    `${formatCurrency(displayOrder.otherAllowances)} (جدید)`
+                    `${formatCurrency(displayOrder.otherAllowances)} `
                   ) : (
                     formatCurrency(employee.otherAllowances)
                   )}

@@ -95,6 +95,10 @@ export async function PUT(
     const otherAllowances = formData.get('otherAllowances') as string || null
     const fixedDeductions = formData.get('fixedDeductions') as string || null
     const contractId = formData.get('contractId') as string || null
+    const spouseAllowance = formData.get('spouseAllowance') as string || null
+const childAllowance = formData.get('childAllowance') as string || null
+const yearsOfServiceBase = formData.get('yearsOfServiceBase') as string || null
+
 
     // چک کردن وجود حکم
     const existingOrder = await db.order.findUnique({
@@ -175,6 +179,9 @@ export async function PUT(
         otherAllowances: otherAllowances ? parseFloat(otherAllowances) : null,
         fixedDeductions: fixedDeductions ? parseFloat(fixedDeductions) : null,
         contractId: contractId || null,
+        spouseAllowance: spouseAllowance ? parseFloat(spouseAllowance) : null,
+  childAllowance: childAllowance ? parseFloat(childAllowance) : null,
+  yearsOfServiceBase: yearsOfServiceBase ? parseFloat(yearsOfServiceBase) : null,
         fileUrl,
         fileName,
       },

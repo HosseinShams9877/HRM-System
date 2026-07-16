@@ -25,6 +25,9 @@ export interface Employee {
     housingAllowance?: number
     foodAllowance?: number
     attractionAllowance?: number
+    spouseAllowance?: number
+  childAllowance?: number
+  yearsOfServiceBase?: number
     responsibilityAllowance?: number
     otherAllowances?: number
     fixedDeductions?: number
