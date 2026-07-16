@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      orderBy: { scheduledAt: 'asc' },
+      orderBy: { scheduledAt: 'desc' },
     })
 
     const formatted = interviews.map((i) => ({
