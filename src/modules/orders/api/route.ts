@@ -147,6 +147,9 @@ export async function POST(req: NextRequest) {
     const otherAllowances = formData.get('otherAllowances') as string || null
     const fixedDeductions = formData.get('fixedDeductions') as string || null
     const contractId = formData.get('contractId') as string || null
+    const spouseAllowance = formData.get('spouseAllowance') as string || null
+const childAllowance = formData.get('childAllowance') as string || null
+const yearsOfServiceBase = formData.get('yearsOfServiceBase') as string || null
 
     // اعتبارسنجی
     if (!orderType || !employeeId || !title || !orderNumber || !issueDate || !effectiveDate) {
@@ -221,6 +224,9 @@ export async function POST(req: NextRequest) {
         otherAllowances: otherAllowances ? parseFloat(otherAllowances) : null,
         fixedDeductions: fixedDeductions ? parseFloat(fixedDeductions) : null,
         contractId: contractId || null,
+        spouseAllowance: spouseAllowance ? parseFloat(spouseAllowance) : null,
+  childAllowance: childAllowance ? parseFloat(childAllowance) : null,
+  yearsOfServiceBase: yearsOfServiceBase ? parseFloat(yearsOfServiceBase) : null,
         fileUrl,
         fileName,
       },
