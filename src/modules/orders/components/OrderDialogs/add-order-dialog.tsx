@@ -354,7 +354,7 @@ export function AddOrderDialog({ open, onOpenChange, employees, onSubmit, submit
                       {filteredEmployees.slice(0, 50).map((emp) => (
                         <CommandItem
                           key={emp.id}
-                          value={emp.id}
+                          value={`${emp.firstName} ${emp.lastName} ${emp.personnelCode}`} 
                           onSelect={() => {
                             setFormData({ ...formData, employeeId: emp.id })
                             setEmployeeSearch('')
