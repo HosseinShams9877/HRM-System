@@ -197,8 +197,6 @@ export function ViewOrderDialog({ open, onOpenChange, order }: ViewOrderDialogPr
           hasSalaryChange={hasSalaryChange}
           orderTypeLabels={orderTypeLabels}
           formatShamsi={formatShamsi}
-          formatCurrency={formatCurrency}
-          toPersianDigits={toPersianDigits}
           fontKey={fontKey}
           newPositionName={newPositionName}        
           newDepartmentName={newDepartmentName} 

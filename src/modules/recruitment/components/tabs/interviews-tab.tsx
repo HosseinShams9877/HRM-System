@@ -2,13 +2,14 @@
 
 'use client'
 
-import { Plus, Calendar, CheckCircle, XCircle, User, Loader2 } from 'lucide-react'
+import { Plus, Calendar, CheckCircle, XCircle, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/core/components/ui/table'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { getStatusBadge, getInterviewTypeLabel, toPersianNumber } from '../../helpers'
+import { useState, useMemo } from 'react'
 import type { Interview } from '../../types/type'
 
 interface InterviewsTabProps {
@@ -49,6 +50,30 @@ export const formatDateTime = (date: string | Date): string => {
 
 
 export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: InterviewsTabProps) {
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
+
+  const totalItems = interviews.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  const paginatedInterviews = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return interviews.slice(startIndex, endIndex)
+  }, [interviews, currentPage, itemsPerPage])
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  // Reset to first page when interviews change (filtering)
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [interviews.length])
+
   return (
     <div className="space-y-4 mt-6">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -91,8 +116,8 @@ export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: Intervie
                       <p className="text-gray-400 text-sm mt-2">در حال بارگذاری...</p>
                     </TableCell>
                   </TableRow>
-                ) : interviews.length > 0 ? (
-                  interviews.map((interview) => (
+                ) : paginatedInterviews.length > 0 ? (
+                  paginatedInterviews.map((interview) => (
                     <TableRow key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <TableCell className="text-right">
                         <div className="flex items-center gap-2 flex-row-reverse">
@@ -222,6 +247,67 @@ export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: Intervie
           </div>
         </CardContent>
       </Card>
+      {/* ✅ Pagination - کاملاً راست‌چین و وسط */}
+{totalItems > 0 && (
+  <div className="flex items-center justify-center gap-4 px-2 py-3">
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let pageNum
+          if (totalPages <= 5) {
+            pageNum = i + 1
+          } else if (currentPage <= 3) {
+            pageNum = i + 1
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i
+          } else {
+            pageNum = currentPage - 2 + i
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={currentPage === pageNum ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => goToPage(pageNum)}
+              className={`h-8 w-8 p-0 text-sm ${
+                currentPage === pageNum 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                        : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              {toPersianNumber(pageNum)}
+            </Button>
+          )
+        }).reverse()}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      نمایش {toPersianNumber(paginatedInterviews.length)} از {toPersianNumber(totalItems)} مصاحبه
+    </p>
+  </div>
+)}
     </div>
   )
 }

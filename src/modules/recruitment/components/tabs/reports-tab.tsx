@@ -158,30 +158,30 @@ export function ReportsTab({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2 justify-end">
             <Award className="h-5 w-5 text-teal-500" />
             خلاصه پیشنهادات شغلی
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-            <div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center  ">
+            <div className="order-5">
               <p className="text-2xl font-bold text-gray-900">{toPersianNumber(jobOffers.length)}</p>
               <p className="text-xs text-gray-500">کل پیشنهادات</p>
             </div>
-            <div>
+            <div className="order-4">
               <p className="text-2xl font-bold text-blue-600">{toPersianNumber(jobOffers.filter((o) => o.status === 'draft' || o.status === 'pending').length)}</p>
               <p className="text-xs text-gray-500">در انتظار</p>
             </div>
-            <div>
+            <div className="order-3">
               <p className="text-2xl font-bold text-emerald-600">{toPersianNumber(jobOffers.filter((o) => o.status === 'accepted').length)}</p>
               <p className="text-xs text-gray-500">پذیرفته شده</p>
             </div>
-            <div>
+            <div className="order-2">
               <p className="text-2xl font-bold text-red-600">{toPersianNumber(jobOffers.filter((o) => o.status === 'declined').length)}</p>
               <p className="text-xs text-gray-500">رد شده</p>
             </div>
-            <div>
+            <div className="order-1">
               <p className="text-2xl font-bold text-gray-600">{toPersianNumber(jobOffers.filter((o) => o.status === 'revoked').length)}</p>
               <p className="text-xs text-gray-500">ابطال شده</p>
             </div>

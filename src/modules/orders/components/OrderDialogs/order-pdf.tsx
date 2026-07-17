@@ -3,8 +3,8 @@
 
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
-import { convertMiladiToShamsi  } from '@/core/lib/utils-fa'
-
+import { convertMiladiToShamsi,toPersianDigits,convertToPersianDate  } from '@/core/lib/utils-fa'
+import {OrderRecord} from '../../types/index'
 
 // ===== تابع برای ثبت فونت با کلید جدید =====
 export const registerFonts = (key?: string) => {
@@ -33,6 +33,28 @@ export const registerFonts = (key?: string) => {
     return 'Vazirmatn'
   }
 }
+const formatCurrency = (amount: number | undefined): string => {
+  if (!amount) return '—'
+  // ریال اول میاد، بعد عدد (برای RTL)
+  return  toPersianDigits(amount.toLocaleString())
+}
+const getContractTypeLabel = (type: string | undefined): string => {
+  if (!type) return '—'
+  const map: Record<string, string> = {
+    'official': 'رسمی',
+    'contractual': 'قراردادی',
+    'probation': 'آزمایشی',
+    'temporary': 'موقت',
+    'permanent': 'دائم',
+    'full_time': 'تمام وقت',
+    'part_time': 'پاره وقت',
+    'contract': 'قراردادی',
+    'freelance': 'آزاد',
+    'hourly': 'ساعتی',
+  }
+  return map[type] || type
+}
+
 
 // ===== ثبت اولیه فونت =====
 registerFonts()
@@ -242,6 +264,21 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     textAlign: 'right',
     direction: 'rtl',
   },
+  currencyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 2,
+  },
+  currencyValue: {
+    fontSize: 7.5,
+    fontWeight: 600,
+    color: '#111827',
+  },
+  currencyLabel: {
+    fontSize: 6,
+    color: '#6b7280',
+  },
 })
 
 interface OrderPDFProps {
@@ -252,8 +289,6 @@ interface OrderPDFProps {
   hasSalaryChange: boolean
   orderTypeLabels: Record<string, string>
   formatShamsi: (date: string) => string
-  formatCurrency: (amount: number) => string
-  toPersianDigits: (num: string) => string
   fontKey?: string
   newPositionName?: string   
   newDepartmentName?: string 
@@ -267,8 +302,6 @@ export function OrderPDF({
   hasSalaryChange,
   orderTypeLabels,
   formatShamsi,
-  formatCurrency,
-  toPersianDigits,
   fontKey,
   newPositionName,
   newDepartmentName
@@ -329,7 +362,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ تولد</Text>
-                <Text style={styles.value}>{convertMiladiToShamsi(employee.birthDate || '')}</Text>
+                <Text style={styles.value}>{convertToPersianDate(employee.birthDate || '')}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>شماره موبایل</Text>
@@ -341,7 +374,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ شروع همکاری</Text>
-                <Text style={styles.value}>{convertMiladiToShamsi(employee.hireDate || '')}</Text>
+                <Text style={styles.value}>{convertToPersianDate(employee.hireDate || '')}</Text>
               </View>
             </View>
           </View>
@@ -368,7 +401,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>نوع قرارداد</Text>
-                <Text style={styles.value}>{employee.contractType || '—'}</Text>
+                <Text style={styles.value}>    {getContractTypeLabel(employee.contractType)}</Text>
               </View>
               {hasPositionChange && (
                 <>
@@ -411,6 +444,7 @@ export function OrderPDF({
       formatCurrency(employee.yearsOfServiceBase)
     )}
   </Text>
+  <Text style={styles.currencyLabel}>ریال</Text>
 </View>
               
               <View style={styles.gridItem}>
@@ -422,6 +456,7 @@ export function OrderPDF({
                     formatCurrency(employee.baseSalary)
                   )}
                 </Text>
+                <Text style={styles.currencyLabel}>ریال</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>بن کارگری</Text>
@@ -432,6 +467,7 @@ export function OrderPDF({
                     formatCurrency(employee.foodAllowance || employee.workAllowance)
                   )}
                 </Text>
+                <Text style={styles.currencyLabel}>ریال</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>حق مسئولیت</Text>
@@ -442,6 +478,7 @@ export function OrderPDF({
                     formatCurrency(employee.responsibilityAllowance)
                   )}
                 </Text>
+                <Text style={styles.currencyLabel}>ریال</Text>
               </View>
               <View style={styles.gridItem}>
   <Text style={styles.label}>حق تاهل</Text>
@@ -452,6 +489,7 @@ export function OrderPDF({
       formatCurrency(employee.spouseAllowance)
     )}
   </Text>
+  <Text style={styles.currencyLabel}>ریال</Text>
 </View>
 <View style={styles.gridItem}>
   <Text style={styles.label}>حق اولاد</Text>
@@ -462,6 +500,7 @@ export function OrderPDF({
       formatCurrency(employee.childAllowance)
     )}
   </Text>
+  <Text style={styles.currencyLabel}>ریال</Text>
 </View>
 <View style={styles.gridItem}>
                 <Text style={styles.label}>حق مسکن</Text>
@@ -472,6 +511,7 @@ export function OrderPDF({
                     formatCurrency(employee.housingAllowance)
                   )}
                 </Text>
+                <Text style={styles.currencyLabel}>ریال</Text>
               </View>
 
               <View style={styles.gridItem}>
@@ -483,6 +523,7 @@ export function OrderPDF({
                     formatCurrency(employee.otherAllowances)
                   )}
                 </Text>
+                <Text style={styles.currencyLabel}>ریال</Text>
               </View>
             </View>
           </View>

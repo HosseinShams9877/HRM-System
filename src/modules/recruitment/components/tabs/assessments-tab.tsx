@@ -2,12 +2,13 @@
 
 'use client'
 
-import { Plus, Edit, ClipboardCheck, Loader2 } from 'lucide-react'
+import { Plus, Edit, ClipboardCheck, Loader2,ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/core/components/ui/table'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
+import { useState, useMemo } from 'react'
 import { getStatusBadge, getAssessmentTypeLabel, toPersianNumber, formatDate } from '../../helpers'
 import type { Assessment } from '../../types/type'
 
@@ -19,6 +20,31 @@ interface AssessmentsTabProps {
 }
 
 export function AssessmentsTab({ assessments, loading, onAdd, onScore }: AssessmentsTabProps) {
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
+  
+  // Pagination Logic
+  const totalItems = assessments.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  
+  const paginatedAssessments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return assessments.slice(startIndex, endIndex)
+  }, [assessments, currentPage, itemsPerPage])
+  
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+  
+  // Reset to first page when assessments change
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [assessments.length])
+
   return (
     <div className="space-y-4 mt-6">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -62,8 +88,8 @@ export function AssessmentsTab({ assessments, loading, onAdd, onScore }: Assessm
                       <p className="text-gray-400 text-sm mt-2">در حال بارگذاری...</p>
                     </TableCell>
                   </TableRow>
-                ) : assessments.length > 0 ? (
-                  assessments.map((assessment) => (
+                ) : paginatedAssessments.length > 0 ? (
+                  paginatedAssessments.map((assessment) => (
                     <TableRow key={assessment.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <TableCell className="text-right">
                         <div className="flex items-center gap-2 flex-row-reverse">
@@ -155,6 +181,66 @@ export function AssessmentsTab({ assessments, loading, onAdd, onScore }: Assessm
           </div>
         </CardContent>
       </Card>
+      {totalItems > 0 && (
+  <div className="flex items-center justify-center gap-4 px-2 py-3">
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let pageNum
+          if (totalPages <= 5) {
+            pageNum = i + 1
+          } else if (currentPage <= 3) {
+            pageNum = i + 1
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i
+          } else {
+            pageNum = currentPage - 2 + i
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={currentPage === pageNum ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => goToPage(pageNum)}
+              className={`h-8 w-8 p-0 text-sm ${
+                currentPage === pageNum 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              {toPersianNumber(pageNum)}
+            </Button>
+          )
+        }).reverse()}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      نمایش {toPersianNumber(paginatedAssessments.length)} از {toPersianNumber(totalItems)} ارزیابی
+    </p>
+  </div>
+)}
     </div>
   )
 }
