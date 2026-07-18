@@ -198,48 +198,57 @@ export function CheckInDialog({
             </div>
             <div className="space-y-2">
   <Label>ساعت</Label>
-  <Input 
-    type="text"
-    value={form.time}
-    onChange={(e) => {
-      // ۱. فقط اعداد رو بگیر (انگلیسی)
-      let val = e.target.value.replace(/\D/g, '')
-      
-      // ۲. محدود به ۴ عدد (ساعت و دقیقه)
-      if (val.length > 4) val = val.slice(0, 4)
-      
-      // ۳. ساختار ساعت:دقیقه
-      let hours = val.slice(0, 2)
-      let minutes = val.slice(2, 4)
-      
-      // ۴. محدود کردن ساعت (۰-۲۳)
-      if (hours.length === 2 && parseInt(hours) > 23) hours = '23'
-      
-      // ۵. محدود کردن دقیقه (۰-۵۹)
-      if (minutes.length === 2 && parseInt(minutes) > 59) minutes = '59'
-      
-      // ۶. ساخت مقدار نهایی
-      let result = hours
-      if (minutes) {
-        result += ':' + minutes
-      } else if (hours.length === 2) {
-        result += ':'
-      }
-      
-      // ۷. تبدیل به فارسی
-      const persianVal = result.replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)])
-      setForm({ ...form, time: persianVal })
-    }}
-    onKeyDown={(e) => {
-      // فقط اعداد و Backspace مجاز
-      if (!/[\d]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Tab') {
-        e.preventDefault()
-      }
-    }}
-    placeholder="۲۲:۳۰"
-    dir="ltr"
-    className="font-mono text-lg tracking-wider text-center"
-  />
+  <div className="flex items-center gap-3">
+    <Input 
+      type="text"
+      value={form.time}
+      onChange={(e) => {
+        // ۱. فقط اعداد رو بگیر (انگلیسی)
+        let val = e.target.value.replace(/\D/g, '')
+        
+        // ۲. محدود به ۴ عدد (ساعت و دقیقه)
+        if (val.length > 4) val = val.slice(0, 4)
+        
+        // ۳. ساختار ساعت:دقیقه
+        let hours = val.slice(0, 2)
+        let minutes = val.slice(2, 4)
+        
+        // ۴. محدود کردن ساعت (۰-۲۳)
+        if (hours.length === 2 && parseInt(hours) > 23) hours = '23'
+        
+        // ۵. محدود کردن دقیقه (۰-۵۹)
+        if (minutes.length === 2 && parseInt(minutes) > 59) minutes = '59'
+        
+        // ۶. ساخت مقدار نهایی
+        let result = hours
+        if (minutes) {
+          result += ':' + minutes
+        } else if (hours.length === 2) {
+          result += ':'
+        }
+        
+        setForm({ ...form, time: result })
+      }}
+      onKeyDown={(e) => {
+        if (!/[\d]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Tab') {
+          e.preventDefault()
+        }
+      }}
+      placeholder="22:30"
+      dir="ltr"
+      className="font-mono text-lg tracking-wider text-center flex-1"
+    />
+    
+    {/* ✅ نمایش فارسی در کنار */}
+    {form.time && (
+      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 min-w-[60px]">
+        {form.time.replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)])}
+      </span>
+    )}
+  </div>
+  <p className="text-xs text-muted-foreground text-right">
+    زمان را به صورت {form.time ? 'انگلیسی' : '۲۴:۳۰'} وارد کنید
+  </p>
 </div>
           </div>
         </div>

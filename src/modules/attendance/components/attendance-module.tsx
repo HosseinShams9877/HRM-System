@@ -6,6 +6,7 @@ import {
   LogIn, LogOut, Users, LayoutGrid, List,
   TrendingUp, BarChart3,
 } from 'lucide-react'
+import { PersianDatePicker } from '@/core/components/ui/persian-date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
@@ -23,6 +24,8 @@ import type { EmployeeBasic, AttendanceRecord, AttendanceStats, TrendDataPoint }
 import { STATUS_CONFIG } from '../attendance/constants'
 import { CheckInDialog } from '../attendance/components/attendance-form-dialog'
 import { StatisticsTab } from '../attendance/components/statistics-tab'
+import moment from 'moment-jalaali'
+
 
 // ============================================
 // Status Badge Component
@@ -38,7 +41,49 @@ function AttendanceStatusBadge({ status }: { status: string }) {
     </Badge>
   )
 }
+// ============================================
+// توابع تبدیل تاریخ (مثل دیالوگ)
+// ============================================
+const toPersianNumber = (num: number | string): string => {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+  return num.toString().replace(/\d/g, (d) => persianDigits[parseInt(d)])
+}
 
+const toEnglishNumber = (str: string): string => {
+  const map: Record<string, string> = {
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+  }
+  return str.replace(/[۰-۹]/g, (d) => map[d] || d)
+}
+
+// تبدیل تاریخ شمسی به میلادی (Date)
+const toMiladi = (shamsiDate: string): Date | null => {
+  if (!shamsiDate) return null
+  try {
+    const englishDate = toEnglishNumber(shamsiDate)
+    const parts = englishDate.split('/').map(Number)
+    if (parts.length !== 3) return null
+    // استفاده از moment-jalaali
+    const m = moment(`${parts[0]}/${parts[1]}/${parts[2]}`, 'jYYYY/jMM/jDD')
+    if (!m.isValid()) return null
+    return m.toDate()
+  } catch {
+    return null
+  }
+}
+
+// تبدیل تاریخ میلادی به شمسی (رشته)
+const toShamsi = (date: Date): string => {
+  if (!date) return ''
+  try {
+    const m = moment(date)
+    const shamsiStr = m.format('jYYYY/jMM/jDD')
+    return toPersianNumber(shamsiStr)
+  } catch {
+    return ''
+  }
+}
 // ============================================
 // Stat Card Component
 // ============================================
@@ -79,6 +124,46 @@ function StatCard({
 // ============================================
 // Employee Card (Card View)
 // ============================================
+// ============================================
+// توابع محاسبه کارکرد
+// ============================================
+
+// تبدیل ساعت به دقیقه
+const timeToMinutes = (time: string): number => {
+  if (!time || !time.includes(':')) return 0
+  const [hours, minutes] = time.split(':').map(Number)
+  return (hours || 0) * 60 + (minutes || 0)
+}
+
+// تبدیل دقیقه به ساعت
+const minutesToTime = (totalMinutes: number): string => {
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+// محاسبه کارکرد و اضافه کار
+const calculateWorkAndOvertime = (checkIn: string, checkOut: string) => {
+  if (!checkIn || !checkOut) {
+    return { work: '00:00', overtime: '00:00', total: '00:00' }
+  }
+  
+  const inMinutes = timeToMinutes(checkIn)
+  const outMinutes = timeToMinutes(checkOut)
+  
+  let diff = outMinutes - inMinutes
+  if (diff < 0) diff += 24 * 60 // شیفت شب
+  
+  const normalWork = Math.min(diff, 8 * 60) // حداکثر ۸ ساعت
+  const overtime = Math.max(0, diff - 8 * 60)
+  
+  return {
+    work: minutesToTime(normalWork),
+    overtime: minutesToTime(overtime),
+    total: minutesToTime(diff)
+  }
+}
+
 
 function EmployeeCard({
   record,
@@ -120,38 +205,50 @@ function EmployeeCard({
                 <LogIn className="w-3.5 h-3.5 text-emerald-500" />
                 <span className="text-muted-foreground">ورود:</span>
                 <span className="font-mono font-medium" dir="ltr">
-                  {record.checkIn ? <span className="text-emerald-600">{record.checkIn}</span> : <span className="text-muted-foreground">—</span>}
+                  {record.checkIn ? <span className="text-emerald-600">{toPersianDigits(record.checkIn)}</span> : <span className="text-muted-foreground">—</span>}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <LogOut className="w-3.5 h-3.5 text-sky-500" />
                 <span className="text-muted-foreground">خروج:</span>
                 <span className="font-mono font-medium" dir="ltr">
-                  {record.checkOut ? <span className="text-sky-600">{record.checkOut}</span> : <span className="text-muted-foreground">—</span>}
+                  {record.checkOut ? <span className="text-sky-600">{toPersianDigits(record.checkOut)}</span> : <span className="text-muted-foreground">—</span>}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-violet-500" />
-                <span className="text-muted-foreground">کارکرد:</span>
-                {record.workHours ? (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
-                    {toPersianDigits(record.workHours)} ساعت
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-muted-foreground">اضافه‌کاری:</span>
-                {record.overtime && record.overtime > 0 ? (
-                  <Badge className="text-[10px] px-1.5 py-0 h-5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                    {toPersianDigits(record.overtime)} ساعت
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </div>
+  <Clock className="w-3.5 h-3.5 text-violet-500" />
+  <span className="text-muted-foreground">کارکرد:</span>
+  {record.checkIn && record.checkOut ? (
+    (() => {
+      const result = calculateWorkAndOvertime(record.checkIn, record.checkOut)
+      return (
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+          {toPersianDigits(result.total)} ساعت
+        </Badge>
+      )
+    })()
+  ) : (
+    <span className="text-muted-foreground">—</span>
+  )}
+</div>
+<div className="flex items-center gap-1.5">
+  <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+  <span className="text-muted-foreground">اضافه‌کاری:</span>
+  {record.checkIn && record.checkOut ? (
+    (() => {
+      const result = calculateWorkAndOvertime(record.checkIn, record.checkOut)
+      return result.overtime !== '00:00' ? (
+        <Badge className="text-[10px] px-1.5 py-0 h-5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+          {toPersianDigits(result.overtime)} ساعت
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      )
+    })()
+  ) : (
+    <span className="text-muted-foreground">—</span>
+  )}
+</div>
             </div>
 
             <div className="flex gap-2 mt-3">
@@ -219,9 +316,11 @@ export function AttendanceModule({ currentUser: propUser }: { currentUser?: { ro
 
   const fetchAttendance = useCallback(async () => {
     try {
+      setLoading(true)
       const params = new URLSearchParams()
       const dateToUse = activeTab === 'history' ? historyDate : selectedDate
-      params.set('date', dateToUse)
+      const englishDate = dateToUse ? toEnglishNumber(dateToUse) : ''
+      params.set('date', englishDate)
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
 
@@ -505,16 +604,20 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">تاریخ</Label>
-                  <Input
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    dir="ltr"
-                    className="w-[150px]"
-                    placeholder="1405/01/15"
-                  />
-                </div>
+              <div className="space-y-1">
+  <Label className="text-xs">تاریخ</Label>
+  <PersianDatePicker
+    value={selectedDate ? toMiladi(selectedDate) : new Date()}
+    onChange={(date) => {
+      if (date) {
+        const shamsiDate = toShamsi(date)
+        setSelectedDate(shamsiDate)
+      }
+    }}
+    placeholder="۱۴۰۴/۰۴/۱۶"
+    className="w-[180px]"
+  />
+</div>
                 <div className="relative flex-1 min-w-[200px]">
                   <Label className="text-xs">جستجو</Label>
                   <div className="relative">
@@ -677,16 +780,20 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-wrap items-end gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">تاریخ</Label>
-                  <Input
-                    value={historyDate}
-                    onChange={(e) => setHistoryDate(e.target.value)}
-                    dir="ltr"
-                    className="w-[180px]"
-                    placeholder="1405/01/15"
-                  />
-                </div>
+              <div className="space-y-1">
+  <Label className="text-xs">تاریخ</Label>
+  <PersianDatePicker
+    value={historyDate ? toMiladi(historyDate) : new Date()}
+    onChange={(date) => {
+      if (date) {
+        const shamsiDate = toShamsi(date)
+        setHistoryDate(shamsiDate)
+      }
+    }}
+    placeholder="۱۴۰۴/۰۴/۱۶"
+    className="w-[200px]"
+  />
+</div>
                 <div className="relative flex-1 min-w-[200px]">
                   <Label className="text-xs">جستجو</Label>
                   <div className="relative">
@@ -737,82 +844,113 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
-                      <TableHead className="text-right text-xs font-medium">دپارتمان</TableHead>
-                      <TableHead className="text-right text-xs font-medium">ورود</TableHead>
-                      <TableHead className="text-right text-xs font-medium">خروج</TableHead>
-                      <TableHead className="text-right text-xs font-medium">کارکرد</TableHead>
-                      <TableHead className="text-right text-xs font-medium">اضافه‌کاری</TableHead>
-                      <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.records.map(record => (
-                      <TableRow key={record.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-7 h-7">
-                              <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-[9px] font-bold">
-                                {record.employee.firstName[0]}{record.employee.lastName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <span className="text-xs font-medium">{record.employee.firstName} {record.employee.lastName}</span>
-                              <p className="text-[10px] text-muted-foreground">{toPersianDigits(record.employee.personnelCode)}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {record.employee.department || '—'}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs" dir="ltr">
-                          {record.checkIn ? <span className="text-emerald-600">{record.checkIn}</span> : '—'}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs" dir="ltr">
-                          {record.checkOut ? <span className="text-sky-600">{record.checkOut}</span> : '—'}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {record.workHours ? `${toPersianDigits(record.workHours)} ساعت` : '—'}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {record.overtime && record.overtime > 0 ? (
-                            <Badge className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                              {toPersianDigits(record.overtime)} ساعت
-                            </Badge>
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <AttendanceStatusBadge status={record.status} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={7}>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            مجموع {toPersianDigits(data.records.length)} رکورد
-                          </span>
-                          <div className="flex items-center gap-4">
-                            <span>
-                              حاضر/تاخیر: <strong className="text-emerald-600">{toPersianDigits(historySummary.presentCount)}</strong>
-                            </span>
-                            <span>
-                              کل کارکرد: <strong>{toPersianDigits(Math.round(historySummary.totalWork * 10) / 10)} ساعت</strong>
-                            </span>
-                            <span>
-                              اضافه‌کاری: <strong className="text-amber-600">{toPersianDigits(Math.round(historySummary.totalOvertime * 10) / 10)} ساعت</strong>
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  </TableFooter>
-                </Table>
+              <Table>
+  <TableHeader>
+    <TableRow className="bg-muted/30">
+      <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
+      <TableHead className="text-right text-xs font-medium">دپارتمان</TableHead>
+      <TableHead className="text-right text-xs font-medium">ورود</TableHead>
+      <TableHead className="text-right text-xs font-medium">خروج</TableHead>
+      <TableHead className="text-right text-xs font-medium">کارکرد</TableHead>
+      <TableHead className="text-right text-xs font-medium">اضافه‌کاری</TableHead>
+      <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {data.records.map(record => {
+      const workResult = record.checkIn && record.checkOut 
+        ? calculateWorkAndOvertime(record.checkIn, record.checkOut)
+        : null
+      
+      return (
+        <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
+          <TableCell className="text-left">
+            <div className="flex items-start gap-2 justify-start">
+              <div className="text-right">
+                <span className="text-xs font-medium">{record.employee.firstName} {record.employee.lastName}</span>
+                <p className="text-[10px] text-muted-foreground">{toPersianDigits(record.employee.personnelCode)}</p>
+              </div>
+              <Avatar className="w-7 h-7 shrink-0">
+                <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-[9px] font-bold">
+                  {record.employee.firstName[0]}{record.employee.lastName[0]}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </TableCell>
+          
+          <TableCell className="text-right text-xs text-muted-foreground">
+            {record.employee.department || '—'}
+          </TableCell>
+          
+          <TableCell className="font-mono text-xs text-left" dir="ltr">
+            {record.checkIn ? (
+              <span className="text-emerald-600 font-medium">{toPersianDigits(record.checkIn)}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+          
+          <TableCell className="font-mono text-xs text-left" dir="ltr">
+            {record.checkOut ? (
+              <span className="text-sky-600 font-medium">{toPersianDigits(record.checkOut)}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+          
+          <TableCell className="text-right text-xs">
+            {workResult ? (
+              <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-mono">
+                {toPersianDigits(workResult.total)} ساعت
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+          
+          <TableCell className="text-right text-xs">
+            {workResult && workResult.overtime !== '00:00' ? (
+              <Badge className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-mono">
+                {toPersianDigits(workResult.overtime)} ساعت
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+          
+          <TableCell className="text-right">
+            <AttendanceStatusBadge status={record.status} />
+          </TableCell>
+        </TableRow>
+      )
+    })}
+  </TableBody>
+  <TableFooter>
+    <TableRow className="bg-muted/20">
+      <TableCell colSpan={7} className="text-right">
+        <div className="flex items-center justify-between text-xs py-1">
+          <span className="text-muted-foreground">
+            مجموع {toPersianDigits(data.records.length)} رکورد
+          </span>
+          <div className="flex items-center gap-6">
+            <span className="flex items-center gap-1">
+              <span className="text-muted-foreground">حاضر/تاخیر:</span>
+              <strong className="text-emerald-600">{toPersianDigits(historySummary.presentCount)}</strong>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-muted-foreground">کل کارکرد:</span>
+              <strong className="text-violet-600">{toPersianDigits(Math.round(historySummary.totalWork * 10) / 10)} ساعت</strong>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-muted-foreground">اضافه‌کاری:</span>
+              <strong className="text-amber-600">{toPersianDigits(Math.round(historySummary.totalOvertime * 10) / 10)} ساعت</strong>
+            </span>
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
+  </TableFooter>
+</Table>
               </CardContent>
             </Card>
           )}
