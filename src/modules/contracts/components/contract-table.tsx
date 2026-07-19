@@ -237,6 +237,37 @@ export function ContractTable({
       toast.error('خطا در فسخ قرارداد')
     }
   }
+const handleDownloadContract = async (contract: Contract) => {
+  try {
+    toast.loading('در حال تولید PDF...')
+    
+    // به جای client-side، از API سرور استفاده می‌کنیم
+    const res = await fetch(`/api/contracts/${contract.id}/pdf`)
+    
+    if (!res.ok) {
+      toast.dismiss()
+      toast.error('خطا در دانلود قرارداد')
+      return
+    }
+
+    const blob = await res.blob()
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `قرارداد_${contract.contractNumber || contract.id}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(link.href)
+
+    toast.dismiss()
+    toast.success('قرارداد با موفقیت دانلود شد')
+  } catch (error) {
+    toast.dismiss()
+    toast.error('خطا در دانلود قرارداد')
+  }
+}
+
+  /*
   const handleDownloadContract = async (contract: Contract) => {
     try {
       console.log('1️⃣ شروع دانلود برای قرارداد:', contract.id)
@@ -283,6 +314,7 @@ export function ContractTable({
       toast.error('خطا در دانلود قرارداد')
     }
   }
+    */
   const handleDelete = async (contract: Contract) => {
     try {
       const res = await fetch(`/api/contracts/${contract.id}`, {
