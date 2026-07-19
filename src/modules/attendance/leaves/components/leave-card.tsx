@@ -58,12 +58,12 @@ export function LeaveCard({
               <div className="flex items-center gap-1.5">
                 <CalendarDays className="w-3.5 h-3.5 text-purple-500" />
                 <span className="text-muted-foreground">شروع:</span>
-                <span className="font-medium">{formatShamsi(leave.startDate)}</span>
+                <span className="font-medium">{toPersianDigits(leave.startDate)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CalendarDays className="w-3.5 h-3.5 text-violet-500" />
                 <span className="text-muted-foreground">پایان:</span>
-                <span className="font-medium">{formatShamsi(leave.endDate)}</span>
+                <span className="font-medium">{toPersianDigits(leave.endDate)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-sky-500" />

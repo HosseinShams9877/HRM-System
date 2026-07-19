@@ -78,7 +78,7 @@ export function LeavesStatsTab({ stats, leaves }: LeavesStatsTabProps) {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Bar Chart - By Type */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm" dir='rtl'>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-purple-500" />
@@ -108,7 +108,7 @@ export function LeavesStatsTab({ stats, leaves }: LeavesStatsTabProps) {
         </Card>
 
         {/* Pie Chart - By Status */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm" dir='rtl'>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <PieChartIcon className="w-4 h-4 text-purple-500" />
@@ -143,7 +143,7 @@ export function LeavesStatsTab({ stats, leaves }: LeavesStatsTabProps) {
       </div>
 
       {/* Type Breakdown Grid */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm" dir='rtl'>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Users className="w-4 h-4 text-purple-500" />
@@ -151,7 +151,7 @@ export function LeavesStatsTab({ stats, leaves }: LeavesStatsTabProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3" dir='rtl'>
             {Object.entries(typeBreakdown).map(([type, counts]) => {
               const typeConf = LEAVE_TYPE_CONFIG[type] || DEFAULT_LEAVE_TYPE
               const typeRate = counts.total > 0 ? Math.round((counts.approved / counts.total) * 100) : 0

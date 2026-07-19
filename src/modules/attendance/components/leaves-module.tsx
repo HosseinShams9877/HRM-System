@@ -562,76 +562,103 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
           ) : (
             <Card className="border-0 shadow-sm overflow-hidden">
               <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
-                    <TableHead className="text-right text-xs font-medium">نوع</TableHead>
-                    <TableHead className="text-right text-xs font-medium">تاریخ شروع</TableHead>
-                    <TableHead className="text-right text-xs font-medium">تاریخ پایان</TableHead>
-                    <TableHead className="text-right text-xs font-medium">روزها</TableHead>
-                    <TableHead className="text-right text-xs font-medium">دلیل</TableHead>
-                    <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
-                    <TableHead className="text-right text-xs font-medium">اقدامات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaves.map(leave => (
-                    <TableRow key={leave.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-gradient-to-br from-purple-400 to-violet-500 text-white text-[10px] font-bold">
-                              {leave.employee.firstName[0]}{leave.employee.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <span className="text-sm font-medium">{leave.employee.firstName} {leave.employee.lastName}</span>
-                            <p className="text-[10px] text-muted-foreground">{leave.employee.department || '—'}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell><LeaveTypeBadge type={leave.type} /></TableCell>
-                      <TableCell className="text-xs">{formatShamsi(leave.startDate)}</TableCell>
-                      <TableCell className="text-xs">{formatShamsi(leave.endDate)}</TableCell>
-                      <TableCell className="text-xs font-medium">{toPersianDigits(leave.totalDays)} روز</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{leave.reason || '—'}</TableCell>
-                      <TableCell><LeaveStatusBadge status={leave.status} /></TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={() => setDetailLeave(leave)}
-                          >
-                            <Eye className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                          {leave.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
-                                onClick={() => handleQuickApprove(leave)}
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0 text-red-500 hover:bg-red-50"
-                                onClick={() => handleQuickReject(leave)}
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+  <TableHeader>
+    <TableRow className="bg-muted/30">
+      <TableHead className="text-right text-xs font-medium">اقدامات</TableHead>
+      <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
+      <TableHead className="text-right text-xs font-medium">دلیل</TableHead>
+      <TableHead className="text-right text-xs font-medium">روزها</TableHead>
+      <TableHead className="text-right text-xs font-medium">تاریخ پایان</TableHead>
+      <TableHead className="text-right text-xs font-medium">تاریخ شروع</TableHead>
+      <TableHead className="text-right text-xs font-medium">نوع</TableHead>
+      <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {leaves.map(leave => (
+      <TableRow key={leave.id}>
+        {/* ستون ۱: اقدامات */}
+        <TableCell className="text-right">
+          <div className="flex items-center gap-1 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setDetailLeave(leave)}
+            >
+              <Eye className="w-4 h-4 text-muted-foreground" />
+            </Button>
+            {leave.status === 'pending' && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
+                  onClick={() => handleQuickApprove(leave)}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-red-500 hover:bg-red-50"
+                  onClick={() => handleQuickReject(leave)}
+                >
+                  <XCircle className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        </TableCell>
+
+        {/* ستون ۲: وضعیت */}
+        <TableCell className="text-right">
+          <LeaveStatusBadge status={leave.status} />
+        </TableCell>
+
+        {/* ستون ۳: دلیل */}
+        <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate text-right">
+          {leave.reason || '—'}
+        </TableCell>
+
+        {/* ستون ۴: روزها */}
+        <TableCell className="text-xs font-medium text-right">
+          {toPersianDigits(leave.totalDays)} روز
+        </TableCell>
+
+        {/* ستون ۵: تاریخ پایان */}
+        <TableCell className="text-xs text-right">
+          {toPersianDigits(leave.endDate)}
+        </TableCell>
+
+        {/* ستون ۶: تاریخ شروع */}
+        <TableCell className="text-xs text-right">
+          {toPersianDigits(leave.startDate)}
+        </TableCell>
+
+        {/* ستون ۷: نوع */}
+        <TableCell className="text-right">
+          <LeaveTypeBadge type={leave.type} />
+        </TableCell>
+
+        {/* ستون ۸: کارمند */}
+        <TableCell className="text-right">
+          <div className="flex items-center gap-3 justify-end">
+            <div>
+              <span className="text-sm font-medium">{leave.employee.firstName} {leave.employee.lastName}</span>
+              <p className="text-[10px] text-muted-foreground">{leave.employee.department || '—'}</p>
+            </div>
+            <Avatar className="w-8 h-8">
+              <AvatarFallback className="bg-gradient-to-br from-purple-400 to-violet-500 text-white text-[10px] font-bold">
+                {leave.employee.firstName[0]}{leave.employee.lastName[0]}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
             </Card>
           )}
         </TabsContent>
@@ -685,7 +712,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
                               <div className="flex items-center gap-4 text-xs">
                                 <span className="flex items-center gap-1">
                                   <CalendarDays className="w-3 h-3 text-purple-400" />
-                                  {formatShamsi(leave.startDate)} — {formatShamsi(leave.endDate)}
+                                  {toPersianDigits(leave.startDate)} — {toPersianDigits(leave.endDate)}
                                 </span>
                                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
                                   {toPersianDigits(leave.totalDays)} روز
@@ -831,7 +858,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
         onOpenChange={(open) => !open && setActionConfirm(null)}
         title={actionConfirm?.action === 'approved' ? 'تایید مرخصی' : 'رد مرخصی'}
         description={actionConfirm
-          ? `آیا از ${actionConfirm.action === 'approved' ? 'تایید' : 'رد'} مرخصی ${actionConfirm.leave.employee.firstName} ${actionConfirm.leave.employee.lastName} (${toPersianDigits(actionConfirm.leave.totalDays)} روز - ${actionConfirm.leave.type} از ${formatShamsi(actionConfirm.leave.startDate)} تا ${formatShamsi(actionConfirm.leave.endDate)}) اطمینان دارید؟`
+          ? `آیا از ${actionConfirm.action === 'approved' ? 'تایید' : 'رد'} مرخصی ${actionConfirm.leave.employee.firstName} ${actionConfirm.leave.employee.lastName} (${toPersianDigits(actionConfirm.leave.totalDays)} روز - ${actionConfirm.leave.type} از ${toPersianDigits(actionConfirm.leave.startDate)} تا ${toPersianDigits(actionConfirm.leave.endDate)}) اطمینان دارید؟`
           : ''
         }
         confirmText={actionConfirm?.action === 'approved' ? 'تایید' : 'رد کردن'}
