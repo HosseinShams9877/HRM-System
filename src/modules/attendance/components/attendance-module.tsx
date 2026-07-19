@@ -84,6 +84,21 @@ const toShamsi = (date: Date): string => {
     return ''
   }
 }
+
+// تبدیل رشته زمان به عدد اعشاری ساعت
+const timeStrToHours = (time: string): number => {
+  if (!time || !time.includes(':')) return 0
+  const [h, m] = time.split(':').map(Number)
+  return (h || 0) + (m || 0) / 60
+}
+// ============================================
+// تبدیل عدد اعشاری به ساعت:دقیقه
+// ============================================
+const hoursToTimeStr = (hours: number): string => {
+  const h = Math.floor(hours)
+  const m = Math.round((hours - h) * 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
 // ============================================
 // Stat Card Component
 // ============================================
@@ -499,14 +514,30 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
   const stats = data?.stats || { total: 0, present: 0, absent: 0, late: 0, leave: 0, mission: 0 }
 
   // History summary
-  const historySummary = useMemo(() => {
-    if (!data?.records) return { totalWork: 0, totalOvertime: 0, presentCount: 0 }
-    return {
-      totalWork: data.records.reduce((s, r) => s + (r.workHours || 0), 0),
-      totalOvertime: data.records.reduce((s, r) => s + (r.overtime || 0), 0),
-      presentCount: data.records.filter(r => r.status === 'present' || r.status === 'late').length,
+const historySummary = useMemo(() => {
+  if (!data?.records) return { totalWork: 0, totalOvertime: 0, presentCount: 0 }
+
+  let totalWork = 0
+  let totalOvertime = 0
+
+  data.records.forEach(r => {
+    if (r.checkIn && r.checkOut) {
+      const result = calculateWorkAndOvertime(r.checkIn, r.checkOut)
+      totalWork += timeStrToHours(result.total)
+      totalOvertime += timeStrToHours(result.overtime)
+    } else if (r.workHours || r.overtime) {
+      // ✅ اگر از API اومده و کارکرد و اضافه‌کار عددی هست
+      totalWork += r.workHours || 0
+      totalOvertime += r.overtime || 0
     }
-  }, [data])
+  })
+
+  return {
+    totalWork,
+    totalOvertime,
+    presentCount: data.records.filter(r => r.status === 'present' || r.status === 'late').length,
+  }
+}, [data])
 
   // ============================================
   // Loading State
@@ -698,77 +729,95 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
               ))}
             </div>
           ) : (
-            <Card className="border-0 shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
-                    <TableHead className="text-right text-xs font-medium">ساعت ورود</TableHead>
-                    <TableHead className="text-right text-xs font-medium">ساعت خروج</TableHead>
-                    <TableHead className="text-right text-xs font-medium">ساعات کار</TableHead>
-                    <TableHead className="text-right text-xs font-medium">اضافه‌کاری</TableHead>
-                    <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
-                    <TableHead className="text-right text-xs font-medium">اقدامات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.records.map(record => (
-                    <TableRow key={record.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-[10px] font-bold">
-                              {record.employee.firstName[0]}{record.employee.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <span className="text-sm font-medium">{record.employee.firstName} {record.employee.lastName}</span>
-                            <p className="text-[10px] text-muted-foreground">{toPersianDigits(record.employee.personnelCode)}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs" dir="ltr">
-                        {record.checkIn ? <span className="text-emerald-600">{record.checkIn}</span> : '—'}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs" dir="ltr">
-                        {record.checkOut ? <span className="text-sky-600">{record.checkOut}</span> : '—'}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {record.workHours ? (
-                          <span>{toPersianDigits(record.workHours)} ساعت</span>
-                        ) : '—'}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {record.overtime && record.overtime > 0 ? (
-                          <Badge className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                            {toPersianDigits(record.overtime)} ساعت
-                          </Badge>
-                        ) : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <AttendanceStatusBadge status={record.status} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {!record.checkIn && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleQuickCheckIn(record.employee, record.date)}>
-                              <LogIn className="w-3 h-3" />
-                              ورود
-                            </Button>
-                          )}
-                          {record.checkIn && !record.checkOut && (
-                            <Button size="sm" className="h-7 text-[10px] gap-1" onClick={() => handleQuickCheckOut(record.employee, record.date)}>
-                              <LogOut className="w-3 h-3" />
-                              خروج
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
+        <Card className="border-0 shadow-sm overflow-hidden">
+ <Table>
+  <TableHeader>
+    <TableRow className="bg-muted/30">
+      <TableHead className="text-right text-xs font-medium">اقدامات</TableHead>
+      <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
+      <TableHead className="text-right text-xs font-medium">اضافه‌کاری</TableHead>
+      <TableHead className="text-right text-xs font-medium">ساعات کار</TableHead>
+      <TableHead className="text-right text-xs font-medium">ساعت خروج</TableHead>
+      <TableHead className="text-right text-xs font-medium">ساعت ورود</TableHead>
+      <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {data.records.map(record => (
+      <TableRow key={record.id}>
+        <TableCell className="text-right">
+          <div className="flex gap-1 justify-end">
+            {!record.checkIn && (
+              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => handleQuickCheckIn(record.employee, record.date)}>
+                <LogIn className="w-3 h-3" />
+                ورود
+              </Button>
+            )}
+            {record.checkIn && !record.checkOut && (
+              <Button size="sm" className="h-7 text-[10px] gap-1" onClick={() => handleQuickCheckOut(record.employee, record.date)}>
+                <LogOut className="w-3 h-3" />
+                خروج
+              </Button>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">
+          <AttendanceStatusBadge status={record.status} />
+        </TableCell>
+        <TableCell className="text-right text-xs">
+          {record.checkIn && record.checkOut ? (
+            (() => {
+              const result = calculateWorkAndOvertime(record.checkIn, record.checkOut)
+              return result.overtime !== '00:00' ? (
+                <Badge className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-mono">
+                  {toPersianDigits(result.overtime)} ساعت
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )
+            })()
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </TableCell>
+        <TableCell className="text-right text-xs">
+          {record.checkIn && record.checkOut ? (
+            (() => {
+              const result = calculateWorkAndOvertime(record.checkIn, record.checkOut)
+              return (
+                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-mono">
+                  {toPersianDigits(result.total)} ساعت
+                </Badge>
+              )
+            })()
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </TableCell>
+        <TableCell className="font-mono text-xs text-right" dir="ltr">
+          {record.checkOut ? <span className="text-sky-600">{record.checkOut}</span> : '—'}
+        </TableCell>
+        <TableCell className="font-mono text-xs text-right" dir="ltr">
+          {record.checkIn ? <span className="text-emerald-600">{record.checkIn}</span> : '—'}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center gap-3 justify-end">
+            <div>
+              <span className="text-sm font-medium">{record.employee.firstName} {record.employee.lastName}</span>
+              <p className="text-[10px] text-muted-foreground">{toPersianDigits(record.employee.personnelCode)}</p>
+            </div>
+            <Avatar className="w-8 h-8">
+              <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-[10px] font-bold">
+                {record.employee.firstName[0]}{record.employee.lastName[0]}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
+</Card>
           )}
         </TabsContent>
 
@@ -844,16 +893,16 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-              <Table>
+            <Table>
   <TableHeader>
     <TableRow className="bg-muted/30">
-      <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
-      <TableHead className="text-right text-xs font-medium">دپارتمان</TableHead>
-      <TableHead className="text-right text-xs font-medium">ورود</TableHead>
-      <TableHead className="text-right text-xs font-medium">خروج</TableHead>
-      <TableHead className="text-right text-xs font-medium">کارکرد</TableHead>
-      <TableHead className="text-right text-xs font-medium">اضافه‌کاری</TableHead>
       <TableHead className="text-right text-xs font-medium">وضعیت</TableHead>
+      <TableHead className="text-right text-xs font-medium">اضافه‌کاری</TableHead>
+      <TableHead className="text-right text-xs font-medium">کارکرد</TableHead>
+      <TableHead className="text-right text-xs font-medium">خروج</TableHead>
+      <TableHead className="text-right text-xs font-medium">ورود</TableHead>
+      <TableHead className="text-right text-xs font-medium">دپارتمان</TableHead>
+      <TableHead className="text-right text-xs font-medium">کارمند</TableHead>
     </TableRow>
   </TableHeader>
   <TableBody>
@@ -864,8 +913,59 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
       
       return (
         <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
-          <TableCell className="text-left">
-            <div className="flex items-start gap-2 justify-start">
+          {/* ستون ۱: وضعیت */}
+          <TableCell className="text-right">
+            <AttendanceStatusBadge status={record.status} />
+          </TableCell>
+
+          {/* ستون ۲: اضافه‌کاری */}
+          <TableCell className="text-right text-xs">
+            {record.checkIn && record.checkOut && workResult.overtime !== '00:00' ? (
+              <Badge className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-mono">
+                {toPersianDigits(workResult.overtime)} ساعت
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+
+          {/* ستون ۳: کارکرد */}
+          <TableCell className="text-right text-xs">
+            {record.checkIn && record.checkOut ? (
+              <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-mono">
+                {toPersianDigits(workResult.total)} ساعت
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+
+          {/* ستون ۴: خروج */}
+          <TableCell className="font-mono text-xs text-right" dir="ltr">
+            {record.checkOut ? (
+              <span className="text-sky-600 font-medium">{toPersianDigits(record.checkOut)}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+
+          {/* ستون ۵: ورود */}
+          <TableCell className="font-mono text-xs text-right" dir="ltr">
+            {record.checkIn ? (
+              <span className="text-emerald-600 font-medium">{toPersianDigits(record.checkIn)}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </TableCell>
+
+          {/* ستون ۶: دپارتمان */}
+          <TableCell className="text-right text-xs text-muted-foreground">
+            {record.employee.department || '—'}
+          </TableCell>
+
+          {/* ستون ۷: کارمند */}
+          <TableCell className="text-right">
+            <div className="flex items-center gap-2 justify-end">
               <div className="text-right">
                 <span className="text-xs font-medium">{record.employee.firstName} {record.employee.lastName}</span>
                 <p className="text-[10px] text-muted-foreground">{toPersianDigits(record.employee.personnelCode)}</p>
@@ -877,79 +977,42 @@ const handleQuickCheckOut = (emp: EmployeeBasic, date: string) => {
               </Avatar>
             </div>
           </TableCell>
-          
-          <TableCell className="text-right text-xs text-muted-foreground">
-            {record.employee.department || '—'}
-          </TableCell>
-          
-          <TableCell className="font-mono text-xs text-left" dir="ltr">
-            {record.checkIn ? (
-              <span className="text-emerald-600 font-medium">{toPersianDigits(record.checkIn)}</span>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </TableCell>
-          
-          <TableCell className="font-mono text-xs text-left" dir="ltr">
-            {record.checkOut ? (
-              <span className="text-sky-600 font-medium">{toPersianDigits(record.checkOut)}</span>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </TableCell>
-          
-          <TableCell className="text-right text-xs">
-            {workResult ? (
-              <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-mono">
-                {toPersianDigits(workResult.total)} ساعت
-              </Badge>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </TableCell>
-          
-          <TableCell className="text-right text-xs">
-            {workResult && workResult.overtime !== '00:00' ? (
-              <Badge className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 font-mono">
-                {toPersianDigits(workResult.overtime)} ساعت
-              </Badge>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </TableCell>
-          
-          <TableCell className="text-right">
-            <AttendanceStatusBadge status={record.status} />
-          </TableCell>
         </TableRow>
       )
     })}
   </TableBody>
-  <TableFooter>
-    <TableRow className="bg-muted/20">
-      <TableCell colSpan={7} className="text-right">
-        <div className="flex items-center justify-between text-xs py-1">
-          <span className="text-muted-foreground">
-            مجموع {toPersianDigits(data.records.length)} رکورد
+ <TableFooter>
+  <TableRow className="bg-muted/20">
+    <TableCell colSpan={7} className="text-right">
+      <div dir="rtl" className="flex items-center justify-between text-xs py-1">
+        <div className="flex items-center gap-6">
+         
+<span className="flex items-center gap-1">
+  <span className="text-muted-foreground">کل کارکرد:</span>
+  <strong className="text-violet-600">
+    {toPersianDigits(hoursToTimeStr(historySummary.totalWork))}
+  </strong>
+</span>
+<span className="flex items-center gap-1">
+  <span className="text-muted-foreground">اضافه‌کاری:</span>
+  <strong className="text-amber-600">
+    {toPersianDigits(hoursToTimeStr(historySummary.totalOvertime))}
+  </strong>
+</span>
+          <span className="flex items-center gap-1">
+            <span className="text-muted-foreground">حاضر/تاخیر:</span>
+            <strong className="text-emerald-600">
+              {toPersianDigits(historySummary.presentCount)}
+            </strong>
           </span>
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-1">
-              <span className="text-muted-foreground">حاضر/تاخیر:</span>
-              <strong className="text-emerald-600">{toPersianDigits(historySummary.presentCount)}</strong>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-muted-foreground">کل کارکرد:</span>
-              <strong className="text-violet-600">{toPersianDigits(Math.round(historySummary.totalWork * 10) / 10)} ساعت</strong>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-muted-foreground">اضافه‌کاری:</span>
-              <strong className="text-amber-600">{toPersianDigits(Math.round(historySummary.totalOvertime * 10) / 10)} ساعت</strong>
-            </span>
-          </div>
         </div>
-      </TableCell>
-    </TableRow>
-  </TableFooter>
+        <span className="text-muted-foreground">
+          مجموع {toPersianDigits(data.records.length)} رکورد
+        </span>
+      </div>
+    </TableCell>
+  </TableRow>
+</TableFooter>
 </Table>
               </CardContent>
             </Card>
