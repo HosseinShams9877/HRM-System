@@ -68,7 +68,8 @@ export function StatisticsTab({
                 <BarChart data={barChartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v: number) => toPersianDigits(v)} />
-                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category"  width={80} tick={{ fontSize: 13 }}  tickMargin={60}
+  />
                   <RechartsTooltip
                     formatter={(value: number) => [toPersianDigits(value), 'تعداد']}
                   />
