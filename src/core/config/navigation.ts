@@ -62,30 +62,71 @@ export const NAV_ITEMS: NavItem[] = [
     allowedRoles: ['admin', 'hr_manager', 'department_manager', 'employee', 'intern'],
   },
   {
-    id: 'organization',
-    label: 'سازمان و پرسنل',
-    icon: 'Network',
-    allowedRoles: ['admin', 'hr_manager', 'department_manager'],
-    children: [
-      { id: 'employees', label: 'کارکنان', icon: 'Users' },
-      { id: 'org-employee', label: 'پرونده پرسنلی', icon: 'Folder' },
-      {
-        id: 'org-chart-group',
-        label: 'چارت سازمانی',
-        icon: 'Network',
-        children: [  // ← زیرمنوهای چارت سازمانی
-          { id: 'org-chart', label: 'نمودار سازمانی', icon: 'Network' },
-          { id: 'org-departments', label: 'ساختار دپارتمان‌ها', icon: 'Building2' },
-          { id: 'org-positions', label: 'پست‌های سازمانی', icon: 'Briefcase' },
-        ],
-      },
-      { id: 'contract-view', label: 'قرارداد', icon: 'FileBadge' },
-      { id: 'contract-order', label: 'حکم کاری', icon: 'UserCheck' },
-      { id: 'work-history', label: 'سوابق شغلی', icon: 'Briefcase' },
-      //{ id: 'employee-documents', label: 'مدارک پرسنلی', icon: 'FileText' },
-      { id: 'employee-archive', label: 'آرشیو کارکنان', icon: 'Archive' },
-      { id: 'hr-settings', label: 'تنظیمات منابع انسانی', icon: 'Settings' },
-    ],
+  id: 'organization',
+  label: 'سازمان و پرسنل',
+  icon: 'Network',
+  allowedRoles: ['admin', 'hr_manager', 'department_manager', 'employee'],
+  children: [
+    { 
+      id: 'employees', 
+      label: 'کارکنان', 
+      icon: 'Users', 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'] 
+    },
+    { 
+      id: 'org-employee', 
+      label: 'پرونده پرسنلی', 
+      icon: 'Folder', 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager', 'employee'] 
+    },
+    {
+      id: 'org-chart-group',
+      label: 'چارت سازمانی',
+      icon: 'Network',
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'],
+      children: [
+        { id: 'org-chart', label: 'نمودار سازمانی', icon: 'Network' },
+        { id: 'org-departments', label: 'ساختار دپارتمان‌ها', icon: 'Building2' },
+        { id: 'org-positions', label: 'پست‌های سازمانی', icon: 'Briefcase' },
+      ],
+    },
+    { 
+      id: 'employee-contracts', 
+      label: 'قرارداد و حکم', 
+      icon: 'FileBadge',
+      allowedRoles: ['employee']  
+    },
+    { 
+      id: 'contract-view', 
+      label: 'قرارداد', 
+      icon: 'FileBadge', 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'] 
+    },
+    { 
+      id: 'contract-order', 
+      label: 'حکم کاری', 
+      icon: 'UserCheck', 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'] 
+    },
+    { 
+      id: 'work-history', 
+      label: 'سوابق شغلی', 
+      icon: 'Briefcase', 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'] 
+    },
+    { 
+      id: 'employee-archive', 
+      label: 'آرشیو کارکنان', 
+      icon: 'Archive', 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'] 
+    },
+    { 
+      id: 'hr-settings', 
+      label: 'تنظیمات منابع انسانی', 
+      icon: 'Settings', 
+      allowedRoles: ['admin', 'hr_manager'] 
+    },
+  ],
 },
   {
     id: 'recruitment',

@@ -31,6 +31,8 @@ import { EmployeeDocuments } from '@/modules/employees/components/employee-docum
 import { EmployeeArchive } from '@/modules/employees/components/employee-arshive'
 import { HRSettings } from '@/modules/employees/components/ht-setting'
 import { EmployeeWizard } from '@/modules/employees/components/employee-form'
+import { EmployeeContractsModule } from '@/modules/contracts/components/employee-contracts-module'
+
 
 // ============================================
 // Types
@@ -143,6 +145,9 @@ export function ModuleRouter({
   }  if (activeModule === 'org-chart' || activeModule === 'org-departments' || activeModule === 'org-positions' || activeModule === 'organization') {
     return <OrganizationModule initialTab={activeModule === 'org-departments' ? 'org-departments' : activeModule === 'org-positions' ? 'org-positions' : 'org-chart'} />
   }
+  if (activeModule === 'employee-contracts') {
+  return <EmployeeContractsModule currentUser={user} />
+}
   if (activeModule === 'announcements-regulations' || activeModule === 'announcements') {
     return <AnnouncementsRegulationsModule initialTab="announcements" />
   }
