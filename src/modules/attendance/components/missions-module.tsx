@@ -394,9 +394,9 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <PlaneTakeoff className="w-3.5 h-3.5" style={{ display: 'inline' }} />
-                          <span>{formatShamsi(mission.startDate)}</span>
+                          <span>{toPersianDigits(mission.startDate)}</span>
                           <span className="text-muted-foreground/50">تا</span>
-                          <span>{formatShamsi(mission.endDate)}</span>
+                          <span>{toPersianDigits(mission.endDate)}</span>
                         </div>
                         <Badge className="bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[11px]">
                           {toPersianDigits(mission.totalDays)} روز
@@ -452,108 +452,129 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
 
           {/* Table View */}
           {missions.length > 0 && viewMode === 'table' && (
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right">کارمند</TableHead>
-                      <TableHead className="text-right">عنوان</TableHead>
-                      <TableHead className="text-right">مقصد</TableHead>
-                      <TableHead className="text-right">شروع</TableHead>
-                      <TableHead className="text-right">پایان</TableHead>
-                      <TableHead className="text-right">روزها</TableHead>
-                      <TableHead className="text-right">وضعیت</TableHead>
-                      <TableHead className="text-right">اقدامات</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {missions.map((mission) => (
-                      <TableRow key={mission.id} className="cursor-pointer" onClick={() => setDetailMission(mission)}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="bg-gradient-to-br from-sky-400 to-teal-500 text-white text-[10px] font-bold">
-                                {mission.employee.firstName[0]}
-                                {mission.employee.lastName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium whitespace-nowrap">
-                                {mission.employee.firstName} {mission.employee.lastName}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">{mission.employee.personnelCode}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium text-sm">{mission.title}</TableCell>
-                        <TableCell className="text-sm">
-                          {mission.destination ? (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-sky-500" />
-                              {mission.destination}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm whitespace-nowrap">{formatShamsi(mission.startDate)}</TableCell>
-                        <TableCell className="text-sm whitespace-nowrap">{formatShamsi(mission.endDate)}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[11px]">
-                            {toPersianDigits(mission.totalDays)} روز
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <MissionStatusBadge status={mission.status} />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {mission.status === 'pending' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setActionConfirm({ mission, action: 'approved' })
-                                  }}
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setActionConfirm({ mission, action: 'rejected' })
-                                  }}
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setDetailMission(mission)
-                              }}
-                            >
-                              <Eye className="w-4 h-4 text-muted-foreground" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+           <Card className="border-0 shadow-sm">
+  <CardContent className="p-0">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-right">اقدامات</TableHead>
+          <TableHead className="text-right">وضعیت</TableHead>
+          <TableHead className="text-right">روزها</TableHead>
+          <TableHead className="text-right">پایان</TableHead>
+          <TableHead className="text-right">شروع</TableHead>
+          <TableHead className="text-right">مقصد</TableHead>
+          <TableHead className="text-right">عنوان</TableHead>
+          <TableHead className="text-right">کارمند</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {missions.map((mission) => (
+          <TableRow key={mission.id} className="cursor-pointer" onClick={() => setDetailMission(mission)}>
+            {/* ستون ۱: اقدامات */}
+            <TableCell className="text-right">
+              <div className="flex items-center gap-1 justify-end">
+                {mission.status === 'pending' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActionConfirm({ mission, action: 'approved' })
+                      }}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActionConfirm({ mission, action: 'rejected' })
+                      }}
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setDetailMission(mission)
+                  }}
+                >
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </div>
+            </TableCell>
+
+            {/* ستون ۲: وضعیت */}
+            <TableCell className="text-right">
+              <MissionStatusBadge status={mission.status} />
+            </TableCell>
+
+            {/* ستون ۳: روزها */}
+            <TableCell className="text-right">
+              <Badge className="bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[11px]">
+                {toPersianDigits(mission.totalDays)} روز
+              </Badge>
+            </TableCell>
+
+            {/* ستون ۴: پایان */}
+            <TableCell className="text-sm text-right whitespace-nowrap">
+              {toPersianDigits(mission.endDate)}
+            </TableCell>
+
+            {/* ستون ۵: شروع */}
+            <TableCell className="text-sm text-right whitespace-nowrap">
+              {toPersianDigits(mission.startDate)}
+            </TableCell>
+
+            {/* ستون ۶: مقصد */}
+            <TableCell className="text-sm text-right">
+              {mission.destination ? (
+                <span className="flex items-center gap-1 justify-end">
+                  {mission.destination}
+                  <MapPin className="w-3 h-3 text-sky-500" />
+                </span>
+              ) : (
+                '—'
+              )}
+            </TableCell>
+
+            {/* ستون ۷: عنوان */}
+            <TableCell className="font-medium text-sm text-right">
+              {mission.title}
+            </TableCell>
+
+            {/* ستون ۸: کارمند */}
+            <TableCell className="text-right">
+              <div className="flex items-center gap-2 justify-end">
+                <div>
+                  <p className="text-sm font-medium whitespace-nowrap text-right">
+                    {mission.employee.firstName} {mission.employee.lastName}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground text-right">{mission.employee.personnelCode}</p>
+                </div>
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-gradient-to-br from-sky-400 to-teal-500 text-white text-[10px] font-bold">
+                    {mission.employee.firstName[0]}
+                    {mission.employee.lastName[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </CardContent>
+</Card>
           )}
         </TabsContent>
 
@@ -562,10 +583,10 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
         {/* ======================== */}
         <TabsContent value="pending" className="space-y-4 mt-4">
           {/* Pending Summary */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm" dir='rtl'>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" >
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
                     <Clock className="w-5 h-5 text-white" />
                   </div>

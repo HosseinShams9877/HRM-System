@@ -668,7 +668,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
             ============================ */}
         <TabsContent value="pending" className="space-y-4">
           {pendingLeaves.length === 0 ? (
-            <Card className="border-0 shadow-sm">
+            <Card className="border-0 shadow-sm" >
               <CardContent className="py-16 text-center">
                 <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
                 <h3 className="text-sm font-medium text-muted-foreground">درخواست در انتظاری وجود ندارد</h3>
@@ -678,7 +678,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Pending List */}
-              <div className="space-y-3">
+              <div className="space-y-3" dir='rtl'>
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
                   <h3 className="text-sm font-semibold">
@@ -760,7 +760,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
               </div>
 
               {/* Summary Panel */}
-              <div className="space-y-4">
+              <div className="space-y-4" dir='rtl'>
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-purple-500" />
                   <h3 className="text-sm font-semibold">خلاصه وضعیت</h3>

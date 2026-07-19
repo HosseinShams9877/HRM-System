@@ -1,1 +1,1 @@
-export { GET } from '@/modules/contracts/api/[id]/pdf/route'
+export { GET } from '@/modules/contracts/api/[id]/download/route'

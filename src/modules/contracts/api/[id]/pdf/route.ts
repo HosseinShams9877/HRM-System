@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import reshaper from 'arabic-reshaper'
@@ -157,11 +157,9 @@ async function buildPDF(contract: any): Promise<Uint8Array> {
   return await pdfDoc.save()
 }
 
-// src/modules/contracts/api/[id]/pdf/route.ts
-
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params  // ✅ اینجا await کن
+    const { id } = await params
     const baseUrl = req.nextUrl.origin
     const res = await fetch(`${baseUrl}/api/contracts/${id}`)
     if (!res.ok) return NextResponse.json({ error: 'قرارداد یافت نشد' }, { status: 404 })
