@@ -674,11 +674,11 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
                             </div>
                             <div className="space-y-1">
                               <p className="text-[10px] text-muted-foreground">شروع</p>
-                              <p className="text-sm font-medium">{formatShamsi(mission.startDate)}</p>
+                              <p className="text-sm font-medium">{toPersianDigits(mission.startDate)}</p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-[10px] text-muted-foreground">پایان</p>
-                              <p className="text-sm font-medium">{formatShamsi(mission.endDate)}</p>
+                              <p className="text-sm font-medium">{toPersianDigits(mission.endDate)}</p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-[10px] text-muted-foreground">کد پرسنلی</p>

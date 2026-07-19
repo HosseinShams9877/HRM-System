@@ -15,6 +15,26 @@ import { STATUS_CONFIG } from '../constants'
 // ============================================
 // Status Badge
 // ============================================
+// اضافه کن به helpers یا همون فایل
+const formatShamsiDate = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return '—'
+  
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString
+    if (isNaN(date.getTime())) return '—'
+    
+    const persianDate = new Intl.DateTimeFormat('fa-IR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date)
+    
+    // تبدیل اعداد به فارسی
+    return persianDate.replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)])
+  } catch (error) {
+    return '—'
+  }
+}
 
 export function MissionStatusBadge({ status }: { status: string }) {
   const c = STATUS_CONFIG[status] || STATUS_CONFIG.pending
@@ -125,7 +145,7 @@ export function MissionDetailDialog({
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">تاریخ ثبت درخواست</p>
             <p className="text-sm font-medium">
-              {mission.createdAt ? formatShamsi(mission.createdAt.split('T')[0]?.replace(/-/g, '/') || '') : '—'}
+              {mission.createdAt ? formatShamsiDate(mission.createdAt.split('T')[0]?.replace(/-/g, '/') || '') : '—'}
             </p>
           </div>
         </div>

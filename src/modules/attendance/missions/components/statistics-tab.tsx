@@ -55,7 +55,7 @@ export function StatisticsTab({
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Bar Chart */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm" dir='rtl'>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-sky-600" />
@@ -84,7 +84,7 @@ export function StatisticsTab({
         </Card>
 
         {/* Pie Chart */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm" dir='rtl'>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-sky-600" />
@@ -129,7 +129,7 @@ export function StatisticsTab({
       </div>
 
       {/* Destination Ranking */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm" dir='rtl'>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-bold flex items-center gap-2">
             <MapPin className="w-4 h-4 text-sky-600" />
