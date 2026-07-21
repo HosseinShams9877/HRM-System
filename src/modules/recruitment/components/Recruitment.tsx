@@ -126,11 +126,7 @@ const updateStatus = useUpdateCandidateStatus()
         offeredSalary: 0,
       }))
 
-      setCandidates(prev => {
-        const existingIds = new Set(prev.map(c => c.id))
-        const merged = [...newCandidates.filter(c => !existingIds.has(c.id)), ...prev]
-        return merged
-      })
+   refetchCandidates()
       setApplications(prev => {
         const existingIds = new Set(prev.map(a => a.id))
         const merged = [...newApplications.filter(a => !existingIds.has(a.id)), ...prev]
@@ -146,7 +142,7 @@ const updateStatus = useUpdateCandidateStatus()
     } catch (error) {
       console.error('Portal sync error:', error)
     }
-  }, [])
+  }, [refetchCandidates])
 
   // ── Fetch Data ──────────────────────────────────────────────
   const fetchData = useCallback(async () => {
