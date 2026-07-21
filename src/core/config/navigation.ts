@@ -134,8 +134,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'UserPlus',
     allowedRoles: ['admin', 'hr_manager', 'department_manager'],
     children: [
-      { id: 'recruitment-jobs', label: 'جذب', icon: 'Briefcase' },
-      { id: 'recruitment-candidates', label: 'استخدام', icon: 'Users' },
+      { id: 'recruitment-jobs', label: 'جذب و استخدام',icon: 'Briefcase' },
       { id: 'onboarding', label: 'آنبوردینگ', icon: 'PlaneTakeoff' },
       { id: 'recruitment-applications', label: 'سایت استخدام', icon: 'FileText' },
     ],
