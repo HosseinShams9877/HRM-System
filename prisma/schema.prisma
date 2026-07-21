@@ -202,7 +202,7 @@ model Application {
   appliedAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   notes          String?
-
+  hiredAt        DateTime?
   interviews     Interview[]
   assessments    Assessment[]  
   jobOffer       JobOffer?

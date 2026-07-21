@@ -81,6 +81,7 @@ export interface JobApplication {
   matchScore: number
   screeningScore: number
   appliedAt: string
+  hiredAt?: string
   rejectionReason?: string
   offeredSalary?: number
   interviews?: Interview[]

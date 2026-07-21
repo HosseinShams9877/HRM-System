@@ -485,7 +485,7 @@ const handleSaveScore = async (data: any) => {
           <p className="text-gray-500 dark:text-gray-400 mt-1">مدیریت فرآیند جذب و استخدام نیروی انسانی</p>
         </div>
         <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={refetchCandidates} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
+        <Button variant="outline" size="sm" onClick={() => refetchCandidates()} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
   <RefreshCw className="h-4 w-4 mr-1" />
   بروزرسانی
 </Button>
