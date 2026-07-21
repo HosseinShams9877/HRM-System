@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search') || ''
     const expiringDays = searchParams.get('expiring') || ''
     const { skip, take, page, limit } = parsePagination(searchParams)
+    const employeeId = searchParams.get('employeeId') || ''
 
     // Build where clause with proper AND+OR syntax
     const andConditions: Record<string, unknown>[] = []
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
     if (type) andConditions.push({ type })
     if (status) andConditions.push({ status })
     if (department) andConditions.push({ department })
+    if (employeeId) andConditions.push({ employeeId })
     if (search) {
       andConditions.push({
         OR: [
