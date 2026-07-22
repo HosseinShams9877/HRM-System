@@ -406,6 +406,8 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
                       {/* Quick Actions for Pending */}
                       {mission.status === 'pending' && (
                         <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                           {currentUser?.role !== 'employee' && (
+                           <>
                           <Button
                             size="sm"
                             className="flex-1 h-8 text-xs gap-1"
@@ -441,6 +443,7 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
                           >
                             <Eye className="w-4 h-4 text-muted-foreground" />
                           </Button>
+                          </>)}
                         </div>
                       )}
                     </CardContent>
@@ -473,7 +476,7 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
             {/* ستون ۱: اقدامات */}
             <TableCell className="text-right">
               <div className="flex items-center gap-1 justify-end">
-                {mission.status === 'pending' && (
+                {mission.status === 'pending' &&  currentUser?.role !== 'employee' && (
                   <>
                     <Button
                       size="sm"
@@ -685,34 +688,37 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
                               <p className="text-sm font-medium">{toPersianDigits(mission.employee.personnelCode)}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 pt-1">
-                            <Button
-                              size="sm"
-                              className="flex-1 h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
-                              onClick={() => setActionConfirm({ mission, action: 'approved' })}
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              تایید مأموریت
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="flex-1 h-9 gap-1.5"
-                              onClick={() => setActionConfirm({ mission, action: 'rejected' })}
-                            >
-                              <XCircle className="w-4 h-4" />
-                              رد مأموریت
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-9 gap-1.5"
-                              onClick={() => setDetailMission(mission)}
-                            >
-                              <Eye className="w-4 h-4" />
-                              جزئیات
-                            </Button>
-                          </div>
+                      { currentUser?.role !== 'employee' &&(
+                        <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => setActionConfirm({ mission, action: 'approved' })}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          تایید مأموریت
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="flex-1 h-9 gap-1.5"
+                          onClick={() => setActionConfirm({ mission, action: 'rejected' })}
+                        >
+                          <XCircle className="w-4 h-4" />
+                          رد مأموریت
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 gap-1.5"
+                          onClick={() => setDetailMission(mission)}
+                        >
+                          <Eye className="w-4 h-4" />
+                          جزئیات
+                        </Button>
+                      </div>
+                      ) }
+                          
                         </div>
                       )}
                     </CardContent>

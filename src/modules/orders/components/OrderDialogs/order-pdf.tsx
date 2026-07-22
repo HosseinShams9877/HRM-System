@@ -345,12 +345,12 @@ export function OrderPDF({
           <View style={styles.sectionBody}>
             <View style={styles.grid2}>
               <View style={styles.gridItem}>
-                <Text style={styles.label}>نام و نام خانوادگی</Text>
-                <Text style={styles.value}>{employee.firstName} {employee.lastName}</Text>
-              </View>
-              <View style={styles.gridItem}>
                 <Text style={styles.label}>کد پرسنلی</Text>
                 <Text style={styles.value}>{toPersianDigits(employee.personnelCode)}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.label}>نام و نام خانوادگی</Text>
+                <Text style={styles.value}>{employee.firstName} {employee.lastName}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>کد ملی</Text>

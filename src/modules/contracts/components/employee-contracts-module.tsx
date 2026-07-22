@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { pdf } from '@react-pdf/renderer'
 import { OrderPDF, registerFonts } from '@/modules/orders/components/OrderDialogs/order-pdf'
 import { OrderRecord } from '@/modules/orders/types'
+import { useEmployee } from '@/modules/employees/hooks/use-employee'
 
 interface Contract {
   id: string
@@ -92,80 +93,122 @@ const [isDownloading, setIsDownloading] = useState(false)
     load()
   }, [employeeId])
 
-const handleDownloadPDF = async (item: Order) => {
-  setIsDownloading(true)
-  try {
-    // دریافت اطلاعات کامل حکم
-    const res = await fetch(`/api/orders/${item.id}`)
-    if (!res.ok) {
-      toast.error('خطا در دریافت اطلاعات حکم')
-      return
+  const handleDownloadPDF = async (item: Order) => {
+    setIsDownloading(true)
+    try {
+      // دریافت اطلاعات کامل حکم
+      const orderRes = await fetch(`/api/orders/${item.id}`)
+      if (!orderRes.ok) {
+        toast.error('خطا در دریافت اطلاعات حکم')
+        return
+      }
+      const orderData = await orderRes.json()
+      
+      // ✅ گرفتن اطلاعات کامل کارمند از دیتابیس
+      const employeeId = orderData.employeeId
+      let fullEmployee = orderData.employee || {}
+      
+      try {
+        const empRes = await fetch(`/api/employees/${employeeId}`)
+        if (empRes.ok) {
+          const empData = await empRes.json()
+          fullEmployee = empData.data || empData || fullEmployee
+        }
+      } catch (error) {
+        console.error('Error fetching full employee:', error)
+      }
+      
+      // گرفتن نام‌های جدید
+      let newPositionName = '—'
+      let newDepartmentName = '—'
+      
+      if (orderData.newPosition) {
+        try {
+          const posRes = await fetch(`/api/positions/${orderData.newPosition}`)
+          if (posRes.ok) {
+            const posData = await posRes.json()
+            newPositionName = posData.title || orderData.newPosition
+          }
+        } catch (error) {
+          console.error('Error fetching new position:', error)
+          newPositionName = orderData.newPosition || '—'
+        }
+      }
+      
+      if (orderData.newDepartment) {
+        try {
+          const deptRes = await fetch(`/api/departments/${orderData.newDepartment}`)
+          if (deptRes.ok) {
+            const deptData = await deptRes.json()
+            newDepartmentName = deptData.name || orderData.newDepartment
+          }
+        } catch (error) {
+          console.error('Error fetching new department:', error)
+          newDepartmentName = orderData.newDepartment || '—'
+        }
+      }
+      
+      const fontKey = Date.now().toString()
+      await registerFonts(fontKey)
+      
+      const displayOrder = orderData
+      
+      const hasPositionChange = displayOrder.newPosition || displayOrder.newDepartment
+      const hasSalaryChange = displayOrder.baseSalary || 
+                             displayOrder.housingAllowance || 
+                             displayOrder.foodAllowance || 
+                             displayOrder.attractionAllowance || 
+                             displayOrder.responsibilityAllowance || 
+                             displayOrder.otherAllowances ||
+                             displayOrder.spouseAllowance ||
+                             displayOrder.childAllowance ||
+                             displayOrder.yearsOfServiceBase ||
+                             displayOrder.fixedDeductions
+  
+      const orderTypeLabels: Record<string, string> = {
+        employment: 'استخدام',
+        extension: 'تمدید قرارداد',
+        salary_increase: 'افزایش حقوق',
+        position_change: 'تغییر سمت',
+        department_change: 'تغییر واحد',
+        promotion: 'ارتقاء شغلی',
+        transfer: 'انتقال',
+        suspension: 'تعلیق',
+        termination: 'پایان همکاری',
+        other: 'سایر',
+      }
+  
+      const blob = await pdf(
+        <OrderPDF
+          order={orderData}
+          employee={fullEmployee}
+          displayOrder={displayOrder}
+          hasPositionChange={hasPositionChange}
+          hasSalaryChange={hasSalaryChange}
+          orderTypeLabels={orderTypeLabels}
+          formatShamsi={formatShamsi}
+          fontKey={fontKey}
+          newPositionName={newPositionName}
+          newDepartmentName={newDepartmentName}
+        />
+      ).toBlob()
+      
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `حکم_کاری_${displayOrder.orderNumber || 'unknown'}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+      
+      toast.success('PDF با موفقیت دانلود شد')
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('خطا در دانلود فایل')
+    } finally {
+      setIsDownloading(false)
     }
-    const orderData = await res.json()
-    
-    const fontKey = Date.now().toString()
-    await registerFonts(fontKey)
-    
-    // آماده‌سازی داده‌های مورد نیاز برای PDF
-    const employee = orderData.employee || {}
-    const displayOrder = orderData
-    
-    const hasPositionChange = displayOrder.newPosition || displayOrder.newDepartment
-    const hasSalaryChange = displayOrder.baseSalary || 
-                           displayOrder.housingAllowance || 
-                           displayOrder.foodAllowance || 
-                           displayOrder.attractionAllowance || 
-                           displayOrder.responsibilityAllowance || 
-                           displayOrder.otherAllowances ||
-                           displayOrder.spouseAllowance ||
-                           displayOrder.childAllowance ||
-                           displayOrder.yearsOfServiceBase ||
-                           displayOrder.fixedDeductions
-
-    const orderTypeLabels: Record<string, string> = {
-      employment: 'استخدام',
-      extension: 'تمدید قرارداد',
-      salary_increase: 'افزایش حقوق',
-      position_change: 'تغییر سمت',
-      department_change: 'تغییر واحد',
-      promotion: 'ارتقاء شغلی',
-      transfer: 'انتقال',
-      suspension: 'تعلیق',
-      termination: 'پایان همکاری',
-      other: 'سایر',
-    }
-
-    const blob = await pdf(
-      <OrderPDF
-        order={orderData}
-        employee={employee}
-        displayOrder={displayOrder}
-        hasPositionChange={hasPositionChange}
-        hasSalaryChange={hasSalaryChange}
-        orderTypeLabels={orderTypeLabels}
-        formatShamsi={formatShamsi}
-        fontKey={fontKey}
-        newPositionName={displayOrder.newPositionName || displayOrder.newPosition || '—'}
-        newDepartmentName={displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
-      />
-    ).toBlob()
-    
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `حکم_کاری_${displayOrder.orderNumber || 'unknown'}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(link.href)
-    
-    toast.success('PDF با موفقیت دانلود شد')
-  } catch (error) {
-    console.error('Error:', error)
-    toast.error('خطا در دانلود فایل')
-  } finally {
-    setIsDownloading(false)
   }
-}
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { label: string; className: string }> = {

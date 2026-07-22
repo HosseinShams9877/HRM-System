@@ -506,46 +506,46 @@ export function AddOrderDialog({ open, onOpenChange, employees, onSubmit, submit
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                          <CommandInput 
-                            placeholder="جستجوی سمت..." 
-                            value={positionSearch}
-                            onValueChange={(value) => setPositionSearch(value)}
-                            className="h-9"
-                          />
-                          <CommandList className="max-h-56">
-                            <CommandEmpty>سمتی یافت نشد</CommandEmpty>
-                            <CommandGroup>
-                              {loadingPositions ? (
-                                <div className="flex items-center justify-center py-4">
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  <span className="mr-2">در حال بارگذاری...</span>
-                                </div>
-                              ) : filteredPositions.length === 0 ? (
-                                <div className="text-center py-4 text-sm text-muted-foreground">
-                                  {selectedDepartmentId ? 'سمتی برای این واحد یافت نشد' : 'ابتدا واحد را انتخاب کنید'}
-                                </div>
-                              ) : (
-                                filteredPositions.map((pos) => (
-                                  <CommandItem
-                                    key={pos.id}
-                                    value={pos.id}
-                                    onSelect={() => {
-                                      setSelectedPositionId(pos.id)
-                                      setPositionSearch('')
-                                    }}
-                                    className="flex items-center justify-between"
-                                  >
-                                    <span>{pos.title}</span>
-                                    {selectedPositionId === pos.id && (
-                                      <Check className="h-4 w-4 text-emerald-500" />
-                                    )}
-                                  </CommandItem>
-                                ))
-                              )}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
+                      <Command shouldFilter={false}>
+  <CommandInput 
+    placeholder="جستجوی سمت..." 
+    value={positionSearch}
+    onValueChange={(value) => setPositionSearch(value)}
+    className="h-9"
+  />
+  <CommandList className="max-h-56">
+    <CommandEmpty>سمتی یافت نشد</CommandEmpty>
+    <CommandGroup>
+      {loadingPositions ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="mr-2">در حال بارگذاری...</span>
+        </div>
+      ) : filteredPositions.length === 0 ? (
+        <div className="text-center py-4 text-sm text-muted-foreground">
+          {selectedDepartmentId ? 'سمتی برای این واحد یافت نشد' : 'ابتدا واحد را انتخاب کنید'}
+        </div>
+      ) : (
+        filteredPositions.map((pos) => (
+          <CommandItem
+            key={pos.id}
+            value={pos.id}
+            onSelect={() => {
+              setSelectedPositionId(pos.id)
+              setPositionSearch('')
+            }}
+            className="flex items-center justify-between"
+          >
+            <span>{pos.title}</span>
+            {selectedPositionId === pos.id && (
+              <Check className="h-4 w-4 text-emerald-500" />
+            )}
+          </CommandItem>
+        ))
+      )}
+    </CommandGroup>
+  </CommandList>
+</Command>
                       </PopoverContent>
                     </Popover>
                   </div>
