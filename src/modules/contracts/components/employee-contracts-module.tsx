@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { FileBadge, FileText, Calendar, Building2, Download } from 'lucide-react'
+import { FileBadge, FileText, Calendar, Building2, Download, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Badge } from '@/core/components/ui/badge'
 import { Button } from '@/core/components/ui/button'
@@ -9,6 +9,9 @@ import { Skeleton } from '@/core/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/core/components/ui/table'
 import { toPersianDigits, formatShamsi } from '@/core/lib/utils-fa'
 import { toast } from 'sonner'
+import { pdf } from '@react-pdf/renderer'
+import { OrderPDF, registerFonts } from '@/modules/orders/components/OrderDialogs/order-pdf'
+import { OrderRecord } from '@/modules/orders/types'
 
 interface Contract {
   id: string
@@ -47,7 +50,7 @@ export function EmployeeContractsModule({ currentUser }: EmployeeContractsModule
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'contracts' | 'orders'>('contracts')
-
+const [isDownloading, setIsDownloading] = useState(false)
   const employeeId = currentUser?.employeeId
 
   const fetchContracts = async () => {
@@ -89,28 +92,80 @@ export function EmployeeContractsModule({ currentUser }: EmployeeContractsModule
     load()
   }, [employeeId])
 
-  const handleDownload = async (id: string, type: 'contract' | 'order') => {
-    try {
-      const res = await fetch(`/api/${type}s/${id}/pdf`)
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${type}-${id}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-        toast.success('فایل با موفقیت دانلود شد')
-      } else {
-        toast.error('خطا در دانلود فایل')
-      }
-    } catch (error) {
-      console.error('Download error:', error)
-      toast.error('خطا در دانلود فایل')
+const handleDownloadPDF = async (item: Order) => {
+  setIsDownloading(true)
+  try {
+    // دریافت اطلاعات کامل حکم
+    const res = await fetch(`/api/orders/${item.id}`)
+    if (!res.ok) {
+      toast.error('خطا در دریافت اطلاعات حکم')
+      return
     }
+    const orderData = await res.json()
+    
+    const fontKey = Date.now().toString()
+    await registerFonts(fontKey)
+    
+    // آماده‌سازی داده‌های مورد نیاز برای PDF
+    const employee = orderData.employee || {}
+    const displayOrder = orderData
+    
+    const hasPositionChange = displayOrder.newPosition || displayOrder.newDepartment
+    const hasSalaryChange = displayOrder.baseSalary || 
+                           displayOrder.housingAllowance || 
+                           displayOrder.foodAllowance || 
+                           displayOrder.attractionAllowance || 
+                           displayOrder.responsibilityAllowance || 
+                           displayOrder.otherAllowances ||
+                           displayOrder.spouseAllowance ||
+                           displayOrder.childAllowance ||
+                           displayOrder.yearsOfServiceBase ||
+                           displayOrder.fixedDeductions
+
+    const orderTypeLabels: Record<string, string> = {
+      employment: 'استخدام',
+      extension: 'تمدید قرارداد',
+      salary_increase: 'افزایش حقوق',
+      position_change: 'تغییر سمت',
+      department_change: 'تغییر واحد',
+      promotion: 'ارتقاء شغلی',
+      transfer: 'انتقال',
+      suspension: 'تعلیق',
+      termination: 'پایان همکاری',
+      other: 'سایر',
+    }
+
+    const blob = await pdf(
+      <OrderPDF
+        order={orderData}
+        employee={employee}
+        displayOrder={displayOrder}
+        hasPositionChange={hasPositionChange}
+        hasSalaryChange={hasSalaryChange}
+        orderTypeLabels={orderTypeLabels}
+        formatShamsi={formatShamsi}
+        fontKey={fontKey}
+        newPositionName={displayOrder.newPositionName || displayOrder.newPosition || '—'}
+        newDepartmentName={displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
+      />
+    ).toBlob()
+    
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `حکم_کاری_${displayOrder.orderNumber || 'unknown'}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(link.href)
+    
+    toast.success('PDF با موفقیت دانلود شد')
+  } catch (error) {
+    console.error('Error:', error)
+    toast.error('خطا در دانلود فایل')
+  } finally {
+    setIsDownloading(false)
   }
+}
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { label: string; className: string }> = {
@@ -260,15 +315,27 @@ export function EmployeeContractsModule({ currentUser }: EmployeeContractsModule
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-[10px] gap-1"
-                          onClick={() => handleDownload(item.id, activeTab === 'contracts' ? 'contract' : 'order')}
-                        >
-                          <Download className="w-3 h-3" />
-                          دانلود
-                        </Button>
+                    <Button
+  variant="outline"
+  size="sm"
+  className="h-7 text-[10px] gap-1"
+  onClick={() => {
+    if (activeTab === 'orders') {
+      handleDownloadPDF(item as Order)
+    } else {
+      // برای قرارداد - دانلود فایل
+      if ((item as Contract).filePath) {
+        window.open((item as Contract).filePath!, '_blank')
+      } else {
+        toast.info('فایلی برای این قرارداد وجود ندارد')
+      }
+    }
+  }}
+  disabled={isDownloading}
+>
+  {isDownloading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+  دانلود
+</Button>
                       </TableCell>
                     </TableRow>
                   )
