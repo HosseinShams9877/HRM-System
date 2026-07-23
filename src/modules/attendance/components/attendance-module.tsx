@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Clock, Search, UserCheck, UserX, CalendarOff, MapPin,
   LogIn, LogOut, Users, LayoutGrid, List,
-  TrendingUp, BarChart3,
+  TrendingUp, BarChart3, ChevronRight, ChevronLeft
 } from 'lucide-react'
 import { PersianDatePicker } from '@/core/components/ui/persian-date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
@@ -321,6 +321,8 @@ export function AttendanceModule({ currentUser: propUser }: { currentUser?: { ro
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
   const [activeTab, setActiveTab] = useState('today')
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
   const debouncedSearch = useDebounce(search, 300)
 
   // تاریخ امروز
@@ -338,27 +340,74 @@ export function AttendanceModule({ currentUser: propUser }: { currentUser?: { ro
       params.set('date', englishDate)
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
-
+  
       const res = await fetch(`/api/attendance?${params.toString()}`)
       if (res.ok) {
         const json = await res.json()
         const payload = json.data || json
-        // API returns array in json.data or object with records/stats
+        
+        let records = []
+        let statsData = { total: 0, present: 0, absent: 0, late: 0, leave: 0, mission: 0 }
+        
         if (Array.isArray(payload)) {
-          setData({
-            records: payload,
-            stats: {
-              total: payload.length,
-              present: payload.filter((r: AttendanceRecord) => r.status === 'present').length,
-              absent: payload.filter((r: AttendanceRecord) => r.status === 'absent').length,
-              late: payload.filter((r: AttendanceRecord) => r.status === 'late').length,
-              leave: payload.filter((r: AttendanceRecord) => r.status === 'leave').length,
-              mission: payload.filter((r: AttendanceRecord) => r.status === 'mission').length,
-            },
-          })
+          records = payload
+          statsData = {
+            total: records.length,
+            present: records.filter((r: AttendanceRecord) => r.status === 'present').length,
+            absent: records.filter((r: AttendanceRecord) => r.status === 'absent').length,
+            late: records.filter((r: AttendanceRecord) => r.status === 'late').length,
+            leave: records.filter((r: AttendanceRecord) => r.status === 'leave').length,
+            mission: records.filter((r: AttendanceRecord) => r.status === 'mission').length,
+          }
         } else {
-          setData(payload)
+          records = payload.records || []
+          statsData = payload.stats || statsData
         }
+  
+        // ✅ برای هر رکورد، اطلاعات کامل دپارتمان و سمت رو بگیر
+        const enrichedRecords = await Promise.all(
+          records.map(async (record: AttendanceRecord) => {
+            let departmentName = record.employee?.department || '—'
+            let positionName = record.employee?.position || '—'
+            
+            // اگر department id هست، نامش رو بگیر
+            if (record.employee?.department && !record.employee.department.startsWith('_')) {
+              try {
+                const deptRes = await fetch(`/api/departments/${record.employee.department}`)
+                if (deptRes.ok) {
+                  const deptData = await deptRes.json()
+                  departmentName = deptData.name || deptData.title || record.employee.department
+                }
+              } catch (e) {
+                console.error('Error fetching department:', e)
+              }
+            }
+            
+            // اگر position id هست، نامش رو بگیر
+            if (record.employee?.position && !record.employee.position.startsWith('_')) {
+              try {
+                const posRes = await fetch(`/api/positions/${record.employee.position}`)
+                if (posRes.ok) {
+                  const posData = await posRes.json()
+                  positionName = posData.title || posData.name || record.employee.position
+                }
+              } catch (e) {
+                console.error('Error fetching position:', e)
+              }
+            }
+            
+            return {
+              ...record,
+              employee: {
+                ...record.employee,
+                department: departmentName,
+                position: positionName,
+              }
+            }
+          })
+        )
+  
+        setData({ records: enrichedRecords, stats: statsData })
       }
     } catch (err) {
       console.error('Fetch attendance error:', err)
@@ -538,7 +587,26 @@ const historySummary = useMemo(() => {
     presentCount: data.records.filter(r => r.status === 'present' || r.status === 'late').length,
   }
 }, [data])
+const totalItems = data?.records?.length || 0
+const totalPages = Math.ceil(totalItems / itemsPerPage)
 
+const paginatedRecords = useMemo(() => {
+  const records = data?.records || []
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  return records.slice(startIndex, endIndex)
+}, [data?.records, currentPage, itemsPerPage])
+
+// وقتی فیلترها تغییر میکنن، به صفحه اول برو
+useEffect(() => {
+  setCurrentPage(1)
+}, [search, statusFilter, selectedDate, historyDate, activeTab])
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages) {
+    setCurrentPage(page)
+  }
+}
   // ============================================
   // Loading State
   // ============================================
@@ -719,7 +787,7 @@ const historySummary = useMemo(() => {
             </Card>
           ) : viewMode === 'card' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {data.records.map(record => (
+              {paginatedRecords.map(record => (
                 <EmployeeCard
                   key={record.id}
                   record={record}
@@ -743,7 +811,7 @@ const historySummary = useMemo(() => {
     </TableRow>
   </TableHeader>
   <TableBody>
-    {data.records.map(record => (
+    {paginatedRecords.map(record => (
       <TableRow key={record.id}>
         <TableCell className="text-right">
           <div className="flex gap-1 justify-end">
@@ -819,6 +887,67 @@ const historySummary = useMemo(() => {
 </Table>
 </Card>
           )}
+          {/* ✅ Pagination - برای تب‌های today و history */}
+{(activeTab === 'today' || activeTab === 'history') && totalItems > itemsPerPage && (
+  <div className="flex items-center justify-center gap-4 px-2 py-3">
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let pageNum
+          if (totalPages <= 5) {
+            pageNum = i + 1
+          } else if (currentPage <= 3) {
+            pageNum = i + 1
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i
+          } else {
+            pageNum = currentPage - 2 + i
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={currentPage === pageNum ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => goToPage(pageNum)}
+              className={`h-8 w-8 p-0 text-sm ${
+                currentPage === pageNum 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              {toPersianDigits(pageNum)}
+            </Button>
+          )
+        }).reverse()}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      نمایش {toPersianDigits(paginatedRecords.length)} از {toPersianDigits(totalItems)} رکورد
+    </p>
+  </div>
+)}
         </TabsContent>
 
         {/* ============================
@@ -906,7 +1035,7 @@ const historySummary = useMemo(() => {
     </TableRow>
   </TableHeader>
   <TableBody>
-    {data.records.map(record => {
+    {paginatedRecords.map(record => {
       const workResult = record.checkIn && record.checkOut 
         ? calculateWorkAndOvertime(record.checkIn, record.checkOut)
         : null
@@ -1017,6 +1146,67 @@ const historySummary = useMemo(() => {
               </CardContent>
             </Card>
           )}
+{/* ✅ Pagination مشترک برای تب‌های today و history */}
+{(activeTab === 'today' || activeTab === 'history') && totalItems > itemsPerPage && (
+  <div className="flex items-center justify-center gap-4 px-2 py-3">
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let pageNum
+          if (totalPages <= 5) {
+            pageNum = i + 1
+          } else if (currentPage <= 3) {
+            pageNum = i + 1
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i
+          } else {
+            pageNum = currentPage - 2 + i
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={currentPage === pageNum ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => goToPage(pageNum)}
+              className={`h-8 w-8 p-0 text-sm ${
+                currentPage === pageNum 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              {toPersianDigits(pageNum)}
+            </Button>
+          )
+        }).reverse()}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      نمایش {toPersianDigits(paginatedRecords.length)} از {toPersianDigits(totalItems)} رکورد
+    </p>
+  </div>
+)}
         </TabsContent>
 
         {/* ============================

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   TrendingUp, Search, Users, CalendarOff, Clock,
-  Loader2, ChevronDown, Building2
+  Loader2, ChevronDown, Building2, ChevronRight, ChevronLeft
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
@@ -16,6 +16,7 @@ import {
 } from '@/core/components/ui/table'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { toPersianDigits, formatShamsi, getTodayShamsi } from '@/core/lib/utils-fa'
+import { Department } from '@/modules/settings/index'
 
 // ============================================
 // Types
@@ -200,9 +201,11 @@ function BalanceCard({
 function DepartmentSummary({
   employees,
   allLeaves,
+  departments
 }: {
   employees: EmployeeBasic[]
   allLeaves: LeaveRecord[]
+  departments: { id: string; name: string }[]
 }) {
   const today = getTodayShamsi()
   const todayStr = `${today.year}/${String(today.month).padStart(2, '0')}/${String(today.day).padStart(2, '0')}`
@@ -218,22 +221,46 @@ function DepartmentSummary({
     .filter(l => l.status === 'approved' && l.startDate.startsWith(currentMonth))
     .reduce((sum, l) => sum + l.totalDays, 0)
 
-  // Group by department
-  const departmentMap = new Map<string, { employees: number; leaveToday: number; daysUsed: number }>()
+  // Build department map with name as key
+  const departmentMap = new Map<string, { name: string; employees: number; leaveToday: number; daysUsed: number }>()
+  
+  departments.forEach(dept => {
+    departmentMap.set(dept.name, { 
+      name: dept.name, 
+      employees: 0, 
+      leaveToday: 0, 
+      daysUsed: 0 
+    })
+  })
+  
+  departmentMap.set('بدون دپارتمان', { 
+    name: 'بدون دپارتمان', 
+    employees: 0, 
+    leaveToday: 0, 
+    daysUsed: 0 
+  })
 
   employees.forEach(emp => {
-    const dept = emp.department || 'بدون دپارتمان'
-    if (!departmentMap.has(dept)) {
-      departmentMap.set(dept, { employees: 0, leaveToday: 0, daysUsed: 0 })
+    const deptName = emp.department || 'بدون دپارتمان'
+    const entry = departmentMap.get(deptName)
+    if (entry) {
+      entry.employees++
+    } else {
+      departmentMap.set(deptName, { 
+        name: deptName, 
+        employees: 1, 
+        leaveToday: 0, 
+        daysUsed: 0 
+      })
     }
-    departmentMap.get(dept)!.employees++
   })
 
   allLeaves.forEach(leave => {
     if (!leave.employee) return
-    const dept = leave.employee.department || 'بدون دپارتمان'
-    const entry = departmentMap.get(dept)
+    const deptName = leave.employee.department || 'بدون دپارتمان'
+    const entry = departmentMap.get(deptName)
     if (!entry) return
+    
     if (leave.status === 'approved' && leave.startDate <= todayStr && leave.endDate >= todayStr) {
       entry.leaveToday++
     }
@@ -242,10 +269,7 @@ function DepartmentSummary({
     }
   })
 
-  const departments = Array.from(departmentMap.entries()).map(([name, data]) => ({
-    name,
-    ...data,
-  }))
+  const departmentStats = Array.from(departmentMap.values())
 
   return (
     <div className="space-y-6">
@@ -301,7 +325,7 @@ function DepartmentSummary({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {departments.length === 0 ? (
+          {departmentStats.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground text-sm">
               داده‌ای موجود نیست
             </div>
@@ -317,7 +341,7 @@ function DepartmentSummary({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {departments.map(dept => (
+                  {departmentStats.map(dept => (
                     <TableRow key={dept.name}>
                       <TableCell className="text-sm font-medium">{dept.name}</TableCell>
                       <TableCell className="text-center text-sm">{toPersianDigits(dept.employees)}</TableCell>
@@ -351,16 +375,30 @@ function DepartmentSummary({
 
 export function LeaveBalanceModule({ currentUser }: { currentUser?: { role: string; employeeId?: string } }) {
   const [employees, setEmployees] = useState<EmployeeBasic[]>([])
-
+  const [departments, setDepartments] = useState<Department[]>([])
   const [leaves, setLeaves] = useState<LeaveRecord[]>([])
   const [allLeaves, setAllLeaves] = useState<LeaveRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [empSearch, setEmpSearch] = useState('')
   const isEmployee = currentUser?.role === 'employee'
-  
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
+const historyItemsPerPage = 7
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(() => {
     return isEmployee ? currentUser?.employeeId || '' : ''
   })
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const res = await fetch('/api/departments')
+      
+      if (res.ok) {
+        const data = await res.json()
+        console.log('📋 Departments from API:', data)
+        setDepartments(data)
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+    }
+  }, [])
   // Fetch employees
   const fetchEmployees = useCallback(async () => {
     try {
@@ -368,11 +406,53 @@ export function LeaveBalanceModule({ currentUser }: { currentUser?: { role: stri
       if (res.ok) {
         const json = await res.json()
         const arr = Array.isArray(json) ? json : Array.isArray(json.data) ? json.data : []
-        setEmployees(arr.map((e: EmployeeBasic) => ({
-          id: e.id, firstName: e.firstName, lastName: e.lastName,
-          personnelCode: e.personnelCode, avatar: e.avatar,
-          department: e.department, position: e.position,
-        })))
+        
+        // ✅ برای هر کارمند، نام دپارتمان و سمت رو بگیر
+        const enrichedEmployees = await Promise.all(
+          arr.map(async (e: EmployeeBasic) => {
+            let departmentName = e.department || null
+            let positionName = e.position || null
+            
+            // گرفتن نام دپارتمان
+            if (e.department && !e.department.startsWith('_')) {
+              try {
+                const deptRes = await fetch(`/api/departments/${e.department}`)
+                if (deptRes.ok) {
+                  const deptData = await deptRes.json()
+                  departmentName = deptData.name || deptData.title || e.department
+                } else {
+                  // ❌ اگه پیدا نشد، null بذار (نه id)
+                  departmentName = null
+                }
+              } catch {
+                departmentName = null
+              }
+            }
+            
+            // گرفتن نام سمت
+            if (e.position && !e.position.startsWith('_')) {
+              try {
+                const posRes = await fetch(`/api/positions/${e.position}`)
+                if (posRes.ok) {
+                  const posData = await posRes.json()
+                  positionName = posData.title || posData.name || e.position
+                } else {
+                  positionName = null
+                }
+              } catch {
+                positionName = null
+              }
+            }
+            
+            return {
+              ...e,
+              department: departmentName,
+              position: positionName,
+            }
+          })
+        )
+        
+        setEmployees(enrichedEmployees)
       }
     } catch (err) {
       console.error('Fetch employees error:', err)
@@ -386,7 +466,51 @@ export function LeaveBalanceModule({ currentUser }: { currentUser?: { role: stri
       if (res.ok) {
         const json = await res.json()
         const arr = Array.isArray(json) ? json : Array.isArray(json.data) ? json.data : []
-        setAllLeaves(arr)
+        
+        // ✅ برای هر مرخصی، نام دپارتمان و سمت رو بگیر
+        const enrichedLeaves = await Promise.all(
+          arr.map(async (leave: LeaveRecord) => {
+            let departmentName = leave.employee?.department || null
+            let positionName = leave.employee?.position || null
+            
+            // گرفتن نام دپارتمان
+            if (leave.employee?.department && !leave.employee.department.startsWith('_')) {
+              try {
+                const deptRes = await fetch(`/api/departments/${leave.employee.department}`)
+                if (deptRes.ok) {
+                  const deptData = await deptRes.json()
+                  departmentName = deptData.name || deptData.title || leave.employee.department
+                }
+              } catch {
+                // keep original
+              }
+            }
+            
+            // گرفتن نام سمت
+            if (leave.employee?.position && !leave.employee.position.startsWith('_')) {
+              try {
+                const posRes = await fetch(`/api/positions/${leave.employee.position}`)
+                if (posRes.ok) {
+                  const posData = await posRes.json()
+                  positionName = posData.title || posData.name || leave.employee.position
+                }
+              } catch {
+                // keep original
+              }
+            }
+            
+            return {
+              ...leave,
+              employee: leave.employee ? {
+                ...leave.employee,
+                department: departmentName,
+                position: positionName,
+              } : leave.employee,
+            }
+          })
+        )
+        
+        setAllLeaves(enrichedLeaves)
       }
     } catch (err) {
       console.error('Fetch all leaves error:', err)
@@ -398,6 +522,7 @@ export function LeaveBalanceModule({ currentUser }: { currentUser?: { role: stri
     const load = async () => {
       setLoading(true)
       await fetchEmployees()
+      await fetchDepartments()
       if (!isEmployee) {
         await fetchAllLeaves()
       }
@@ -457,6 +582,20 @@ useEffect(() => {
       )
     : employees
 
+    const historyTotalItems = leaves.length
+const historyTotalPages = Math.ceil(historyTotalItems / historyItemsPerPage)
+
+const paginatedHistory = useMemo(() => {
+  const startIndex = (historyCurrentPage - 1) * historyItemsPerPage
+  const endIndex = startIndex + historyItemsPerPage
+  return leaves.slice(startIndex, endIndex)
+}, [leaves, historyCurrentPage, historyItemsPerPage])
+
+// وقتی کارمند عوض میشه، به صفحه اول برو
+useEffect(() => {
+  setHistoryCurrentPage(1)
+}, [selectedEmployeeId])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -486,7 +625,7 @@ useEffect(() => {
       </div>
 
       {/* Employee Selector */}
-      {!isEmployee && currentUser?.role === 'employee' &&  (
+      {!isEmployee &&  (
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -629,7 +768,7 @@ useEffect(() => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {leaves.map(leave => (
+                      {paginatedHistory.map(leave => (
                         <TableRow key={leave.id}>
                           <TableCell>
                             <LeaveTypeBadge type={leave.type} />
@@ -652,11 +791,71 @@ useEffect(() => {
                 </div>
               </Card>
             )}
+             {historyTotalItems > historyItemsPerPage && (
+    <div className="flex items-center justify-center gap-4 px-2 py-3">
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setHistoryCurrentPage(p => Math.max(1, p - 1))}
+          disabled={historyCurrentPage <= 1}
+          className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        
+        <div className="flex items-center gap-1">
+          {Array.from({ length: Math.min(historyTotalPages, 5) }, (_, i) => {
+            let pageNum
+            if (historyTotalPages <= 5) {
+              pageNum = i + 1
+            } else if (historyCurrentPage <= 3) {
+              pageNum = i + 1
+            } else if (historyCurrentPage >= historyTotalPages - 2) {
+              pageNum = historyTotalPages - 4 + i
+            } else {
+              pageNum = historyCurrentPage - 2 + i
+            }
+            
+            return (
+              <Button
+                key={pageNum}
+                variant={historyCurrentPage === pageNum ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setHistoryCurrentPage(pageNum)}
+                className={`h-8 w-8 p-0 text-sm ${
+                  historyCurrentPage === pageNum 
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                  : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                }`}
+              >
+                {toPersianDigits(pageNum)}
+              </Button>
+            )
+          }).reverse()}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setHistoryCurrentPage(p => Math.min(historyTotalPages, p + 1))}
+          disabled={historyCurrentPage >= historyTotalPages}
+          className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        نمایش {toPersianDigits(paginatedHistory.length)} از {toPersianDigits(historyTotalItems)} مرخصی
+      </p>
+    </div>
+  )}
           </div>
         </>
       ) : (
         /* Department Summary when no employee selected */
-        <DepartmentSummary employees={employees} allLeaves={allLeaves} />
+        <DepartmentSummary employees={employees} allLeaves={allLeaves}departments={departments}  />
       )}
     </div>
   )

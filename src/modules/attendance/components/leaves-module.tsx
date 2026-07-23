@@ -5,7 +5,7 @@ import {
   CalendarOff, Search, Plus, CheckCircle2, XCircle,
   Clock, Eye, LayoutGrid, List,
   BarChart3, FileText,
-  CalendarDays, TrendingUp, AlertTriangle,
+  CalendarDays, TrendingUp, AlertTriangle, ChevronRight, ChevronLeft
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
@@ -87,6 +87,8 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
   const [detailLeave, setDetailLeave] = useState<LeaveRecord | null>(null)
   const { toast } = useToast()
   const [calendarView, setCalendarView] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
 
   // ============================================
   // Fetch Data
@@ -98,29 +100,73 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
       if (search) params.set('search', search)
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
       if (typeFilter && typeFilter !== 'all') params.set('type', typeFilter)
-
+  
       const res = await fetch(`/api/leaves?${params.toString()}`)
       if (res.ok) {
         const json = await res.json()
-        // API returns { data, pagination, stats } or { leaves, stats }
+        let leavesData = []
+        let statsData = { total: 0, pending: 0, approved: 0, rejected: 0 }
+        
         if (json.data && json.stats) {
-          setData({ leaves: json.data, stats: json.stats })
+          leavesData = json.data
+          statsData = json.stats
         } else if (json.leaves && json.stats) {
-          setData(json)
+          leavesData = json.leaves
+          statsData = json.stats
         } else if (Array.isArray(json.data)) {
-          const leavesArr = json.data
-          setData({
-            leaves: leavesArr,
-            stats: {
-              total: leavesArr.length,
-              pending: leavesArr.filter((l: LeaveRecord) => l.status === 'pending').length,
-              approved: leavesArr.filter((l: LeaveRecord) => l.status === 'approved').length,
-              rejected: leavesArr.filter((l: LeaveRecord) => l.status === 'rejected').length,
-            },
-          })
-        } else {
-          setData({ leaves: [], stats: { total: 0, pending: 0, approved: 0, rejected: 0 } })
+          leavesData = json.data
+          statsData = {
+            total: leavesData.length,
+            pending: leavesData.filter((l: LeaveRecord) => l.status === 'pending').length,
+            approved: leavesData.filter((l: LeaveRecord) => l.status === 'approved').length,
+            rejected: leavesData.filter((l: LeaveRecord) => l.status === 'rejected').length,
+          }
         }
+  
+        // ✅ برای هر مرخصی، اطلاعات کامل دپارتمان و سمت رو بگیر
+        const enrichedLeaves = await Promise.all(
+          leavesData.map(async (leave: LeaveRecord) => {
+            let departmentName = leave.employee?.department || '—'
+            let positionName = leave.employee?.position || '—'
+            
+            // اگر department id هست، نامش رو بگیر
+            if (leave.employee?.department && !leave.employee.department.startsWith('_')) {
+              try {
+                const deptRes = await fetch(`/api/departments/${leave.employee.department}`)
+                if (deptRes.ok) {
+                  const deptData = await deptRes.json()
+                  departmentName = deptData.name || deptData.title || leave.employee.department
+                }
+              } catch (e) {
+                console.error('Error fetching department:', e)
+              }
+            }
+            
+            // اگر position id هست، نامش رو بگیر
+            if (leave.employee?.position && !leave.employee.position.startsWith('_')) {
+              try {
+                const posRes = await fetch(`/api/positions/${leave.employee.position}`)
+                if (posRes.ok) {
+                  const posData = await posRes.json()
+                  positionName = posData.title || posData.name || leave.employee.position
+                }
+              } catch (e) {
+                console.error('Error fetching position:', e)
+              }
+            }
+            
+            return {
+              ...leave,
+              employee: {
+                ...leave.employee,
+                department: departmentName,
+                position: positionName,
+              }
+            }
+          })
+        )
+  
+        setData({ leaves: enrichedLeaves, stats: statsData })
       }
     } catch (err) {
       console.error('Fetch leaves error:', err)
@@ -230,6 +276,27 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
 
   // Approval rate
   const approvalRate = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0
+
+  // بعد از computed dataها اضافه کن
+const totalItems = leaves.length
+const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+const paginatedLeaves = useMemo(() => {
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  return leaves.slice(startIndex, endIndex)
+}, [leaves, currentPage, itemsPerPage])
+
+// وقتی فیلترها تغییر میکنن، به صفحه اول برو
+useEffect(() => {
+  setCurrentPage(1)
+}, [search, statusFilter, typeFilter])
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages) {
+    setCurrentPage(page)
+  }
+}
 
   // ============================================
   // Loading State
@@ -549,7 +616,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
             </Card>
           ) : viewMode === 'card' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {leaves.map(leave => (
+              {paginatedLeaves.map(leave => (
                 <LeaveCard
                   key={leave.id}
                   leave={leave}
@@ -575,7 +642,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
     </TableRow>
   </TableHeader>
   <TableBody>
-    {leaves.map(leave => (
+    {paginatedLeaves.map(leave => (
       <TableRow key={leave.id}>
         {/* ستون ۱: اقدامات */}
         <TableCell className="text-right">
@@ -661,6 +728,67 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
 </Table>
             </Card>
           )}
+          {/* ✅ Pagination - فقط برای تب requests */}
+{activeTab === 'requests' && leaves.length > itemsPerPage && (
+  <div className="flex items-center justify-center gap-4 px-2 py-3">
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let pageNum
+          if (totalPages <= 5) {
+            pageNum = i + 1
+          } else if (currentPage <= 3) {
+            pageNum = i + 1
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i
+          } else {
+            pageNum = currentPage - 2 + i
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={currentPage === pageNum ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => goToPage(pageNum)}
+              className={`h-8 w-8 p-0 text-sm ${
+                currentPage === pageNum 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              {toPersianDigits(pageNum)}
+            </Button>
+          )
+        }).reverse()}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      نمایش {toPersianDigits(paginatedLeaves.length)} از {toPersianDigits(totalItems)} مرخصی
+    </p>
+  </div>
+)}
         </TabsContent>
 
         {/* ============================
