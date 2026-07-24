@@ -1,6 +1,7 @@
+// src/app/api/holidays/route.ts
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
-import { validateWithZod, holidayCreateSchema } from '@/core/lib/validators'
 import { parsePagination, createPaginationMeta } from '@/core/lib/pagination'
 
 // GET /api/holidays — لیست تعطیلات
@@ -43,16 +44,19 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/holidays — ایجاد تعطیلی
+// POST /api/holidays — ایجاد تعطیلی (بدون validation)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    console.log('📥 POST /api/holidays - Received:', body)
 
-    const validation = validateWithZod(holidayCreateSchema, body)
-    if (!validation.success) {
-      return NextResponse.json({ error: 'داده‌های ورودی نامعتبر است', details: validation.errors }, { status: 400 })
+    // اعتبارسنجی دستی ساده
+    if (!body.title || !body.date || !body.type) {
+      return NextResponse.json(
+        { error: 'عنوان، تاریخ و نوع تعطیلی الزامی است' },
+        { status: 400 }
+      )
     }
-    const validatedData = validation.data
 
     const holiday = await db.holiday.create({
       data: {
@@ -64,9 +68,17 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(holiday, { status: 201 })
+    console.log('✅ Holiday created:', holiday)
+    return NextResponse.json({ 
+      success: true,
+      data: holiday 
+    }, { status: 201 })
+    
   } catch (error) {
-    console.error('Create holiday error:', error)
-    return NextResponse.json({ error: 'خطا در ایجاد تعطیلی' }, { status: 500 })
+    console.error('❌ Create holiday error:', error)
+    return NextResponse.json({ 
+      error: 'خطا در ایجاد تعطیلی',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

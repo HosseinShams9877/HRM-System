@@ -23,11 +23,13 @@ export function useShiftsData() {
       if (res.ok) { 
         const json = await res.json() 
         const payload = json.data || json 
-        setShifts(payload.shifts) 
-        setStats(payload.stats) 
+        setShifts(payload.shifts || []) 
+        setStats(payload.stats || { total: 0, active: 0, totalEmployees: 0 }) 
       }
     } catch (err) { 
       console.error('Fetch shifts error:', err) 
+      setShifts([])
+      setStats({ total: 0, active: 0, totalEmployees: 0 })
     }
   }, [])
 
@@ -48,6 +50,7 @@ export function useShiftsData() {
       }
     } catch (err) { 
       console.error('Fetch employees error:', err) 
+      setEmployees([])
     }
   }, [])
 
@@ -61,6 +64,7 @@ export function useShiftsData() {
       }
     } catch (err) { 
       console.error('Fetch assignments error:', err) 
+      setAssignments([])
     }
   }, [])
 
@@ -70,13 +74,20 @@ export function useShiftsData() {
       if (typeFilter && typeFilter !== 'all') params.set('type', typeFilter)
       const res = await fetch(`/api/holidays?${params.toString()}`)
       if (res.ok) { 
-        const json = await res.json() 
-        const payload = json.data || json 
-        setHolidays(payload.holidays) 
-        setHolidayStats(payload.stats) 
+        const json = await res.json()
+        console.log('📥 fetchHolidays response:', json) // برای دیباگ
+        
+        // ساختار پاسخ: { data: [...], pagination: {...}, stats: {...} }
+        setHolidays(json.data || []) 
+        setHolidayStats(json.stats || { total: 0, official: 0, agreed: 0, occasional: 0 })
+      } else {
+        setHolidays([])
+        setHolidayStats({ total: 0, official: 0, agreed: 0, occasional: 0 })
       }
     } catch (err) { 
       console.error('Fetch holidays error:', err) 
+      setHolidays([])
+      setHolidayStats({ total: 0, official: 0, agreed: 0, occasional: 0 })
     }
   }, [])
 
@@ -249,7 +260,6 @@ export function useShiftsData() {
   }, [])
 
   return {
-    // State
     shifts,
     employees,
     holidays,
@@ -257,8 +267,6 @@ export function useShiftsData() {
     stats,
     holidayStats,
     loading,
-    
-    // Actions
     fetchShifts,
     fetchEmployees,
     fetchAssignments,

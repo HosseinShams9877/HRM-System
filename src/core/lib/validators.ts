@@ -89,8 +89,9 @@ export const departmentCreateSchema = z.object({
 export const holidayCreateSchema = z.object({
   title: z.string().min(2, 'عنوان تعطیلی الزامی است'),
   date: z.string().min(1, 'تاریخ الزامی است'),
-  type: z.enum(['national', 'religious', 'organizational']).optional(),
-  isRecurring: z.boolean().optional(),
+  type: z.enum(['official', 'agreed', 'occasional']).default('official'),
+  isRecurring: z.boolean().optional().default(false),
+  description: z.string().optional().nullable(),
 })
 
 // ---- Recruitment Validation ----
