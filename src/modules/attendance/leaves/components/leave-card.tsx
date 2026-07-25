@@ -20,11 +20,13 @@ export function LeaveCard({
   onApprove,
   onReject,
   onView,
+  isAdmin = false
 }: {
   leave: LeaveRecord
   onApprove: (leave: LeaveRecord) => void
   onReject: (leave: LeaveRecord) => void
   onView: (leave: LeaveRecord) => void
+  isAdmin?: boolean
 }) {
   const typeConf = LEAVE_TYPE_CONFIG[leave.type] || DEFAULT_LEAVE_TYPE
   const fullName = `${leave.employee.firstName} ${leave.employee.lastName}`
@@ -93,7 +95,7 @@ export function LeaveCard({
                 <Eye className="w-3 h-3" />
                 جزئیات
               </Button>
-              {leave.status === 'pending' && (
+              {isAdmin && leave.status === 'pending' && (
                 <>
                   <Button
                     size="sm"

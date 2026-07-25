@@ -16,11 +16,13 @@ export function LeaveDetailDialog({
   onClose,
   onApprove,
   onReject,
+  isAdmin = false
 }: {
   leave: LeaveRecord | null
   onClose: () => void
   onApprove: (leave: LeaveRecord) => void
   onReject: (leave: LeaveRecord) => void
+  isAdmin : boolean
 }) {
   if (!leave) return null
 
@@ -103,7 +105,7 @@ export function LeaveDetailDialog({
         </div>
 
         {/* Actions */}
-        {leave.status === 'pending' && (
+        {leave.status === 'pending' && isAdmin && (
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={onClose}>بستن</Button>
             <Button

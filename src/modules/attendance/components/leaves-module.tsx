@@ -89,7 +89,7 @@ export function LeavesModule({ currentUser }: { currentUser?: { role: string; em
   const [calendarView, setCalendarView] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 7
-
+const isAdminOrManager = currentUser?.role === 'admin' || currentUser?.role === 'hr_manager' || currentUser?.role === 'manager'
   // ============================================
   // Fetch Data
   // ============================================
@@ -623,6 +623,7 @@ const goToPage = (page: number) => {
                   onApprove={handleQuickApprove}
                   onReject={handleQuickReject}
                   onView={setDetailLeave}
+                  isAdmin={isAdminOrManager}
                 />
               ))}
             </div>
@@ -655,7 +656,7 @@ const goToPage = (page: number) => {
             >
               <Eye className="w-4 h-4 text-muted-foreground" />
             </Button>
-            {leave.status === 'pending' && (
+            {isAdminOrManager && leave.status === 'pending' && (
               <>
                 <Button
                   variant="ghost"
@@ -852,6 +853,8 @@ const goToPage = (page: number) => {
                                 </p>
                               )}
                               <div className="flex gap-2 mt-3">
+                                {isAdminOrManager  && (
+  <>
                                 <Button
                                   size="sm"
                                   className="h-8 text-[11px] gap-1 flex-1"
@@ -869,6 +872,8 @@ const goToPage = (page: number) => {
                                   <XCircle className="w-3.5 h-3.5" />
                                   رد کردن
                                 </Button>
+                                
+                                  </>)}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1000,6 +1005,7 @@ const goToPage = (page: number) => {
         onClose={() => setDetailLeave(null)}
         onApprove={(leave) => { setDetailLeave(null); handleQuickApprove(leave) }}
         onReject={(leave) => { setDetailLeave(null); handleQuickReject(leave) }}
+        isAdmin={isAdminOrManager}
       />
     </div>
   )
