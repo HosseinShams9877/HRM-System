@@ -32,6 +32,7 @@ import { EmployeeArchive } from '@/modules/employees/components/employee-arshive
 import { HRSettings } from '@/modules/employees/components/ht-setting'
 import { EmployeeWizard } from '@/modules/employees/components/employee-form'
 import { EmployeeContractsModule } from '@/modules/contracts/components/employee-contracts-module'
+import { EmployeeLeaveBalanceModule } from '@/modules/attendance/leaves/components/employee-leave-balance'
 
 
 // ============================================
@@ -124,7 +125,14 @@ export function ModuleRouter({
   if (activeModule === 'att-today') return <AttendanceModule currentUser={user}/>
   if (activeModule === 'att-leave') return <LeavesModule  currentUser={user}/>
   if (activeModule === 'att-mission') return <MissionsModule currentUser={user} />
-  if (activeModule === 'att-leave-balance') return <LeaveBalanceModule />
+  if (activeModule === 'att-leave-balance') {
+  // اگر کاربر employee هست، کامپوننت مخصوص کارمند رو نشون بده
+  if (user?.role === 'employee' || currentUser?.role === 'employee') {
+    const empId = user?.employeeId || currentUser?.employeeId || ''
+    return <EmployeeLeaveBalanceModule employeeId={empId} />
+  }
+  return <LeaveBalanceModule currentUser={user || currentUser} />
+}
   if (activeModule === 'att-shifts') return <ShiftsModule />
   if (activeModule === 'contracts' || activeModule === 'contract-view') return <ContractsModule />
   if (activeModule === 'contract-order') return <OrdersModule />
