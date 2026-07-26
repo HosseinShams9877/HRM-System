@@ -108,7 +108,18 @@ function getShamsiDayOfWeek(year: number, month: number, day: number): number {
 
 // اضافه کردن تابع برای چک کردن تعطیلی یک تاریخ خاص
 function isHolidayDate(dateStr: string, holidays: HolidayData[]): { isHoliday: boolean; title: string } {
-  const found = holidays.find(h => h.date === dateStr)
+  // نرمالایز کردن تاریخ: اطمینان از اینکه هر دو طرف با صفر جلوی ماه و روز باشن
+  const normalizeDate = (date: string) => {
+    const parts = date.split('/')
+    if (parts.length !== 3) return date
+    return `${parts[0]}/${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}`
+  }
+  
+  const normalizedInput = normalizeDate(dateStr)
+   console.log('🔍 Checking date - Input:', dateStr, 'Normalized:', normalizedInput)
+  console.log('📋 All holidays:', holidays.map(h => ({ date: h.date, normalized: normalizeDate(h.date), title: h.title })))
+  const found = holidays.find(h => normalizeDate(h.date) === normalizedInput)
+   console.log('✅ Found holiday:', found ? found.title : 'NOT FOUND')
   return {
     isHoliday: !!found,
     title: found?.title || ''
@@ -268,21 +279,27 @@ export function EmployeeShiftsModule({
   }, [employeeId])
 
   // گرفتن تعطیلات
-  useEffect(() => {
-    const fetchHolidays = async () => {
-      try {
-        const res = await fetch('/api/holidays')
-        if (res.ok) {
-          const json = await res.json()
-          const data = json.data || json
-          setHolidays(data.data || data.holidays || [])
-        }
-      } catch (err) {
-        console.error('Error fetching holidays:', err)
+useEffect(() => {
+  const fetchHolidays = async () => {
+    try {
+      const res = await fetch('/api/holidays')
+      if (res.ok) {
+        const json = await res.json()
+        console.log('📦 Full API response:', json)
+        console.log('📦 json.data:', json.data)
+        console.log('📦 json.holidays:', json.holidays)
+        
+        // ✅ درست: json.data خودش آرایه تعطیلات هست
+        const holidaysData = json.data || []
+        setHolidays(holidaysData)
+        console.log('🎯 Holidays loaded:', holidaysData)
       }
+    } catch (err) {
+      console.error('Error fetching holidays:', err)
     }
-    fetchHolidays()
-  }, [])
+  }
+  fetchHolidays()
+}, [])
 
   if (loading) {
     return (
@@ -520,7 +537,7 @@ export function EmployeeShiftsModule({
                         const targetMonth = targetDate.getMonth() + 1
                         const targetDay = targetDate.getDate()
                         const dateStr = `${targetYear}/${String(targetMonth).padStart(2, '0')}/${String(targetDay).padStart(2, '0')}`
-                        
+                        console.log(`📅 ${day.label}: dateStr = ${dateStr}`)
                         const holidayInfo = isHolidayDate(dateStr, holidays)
                         
                         return (
