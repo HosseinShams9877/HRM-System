@@ -631,54 +631,73 @@ useEffect(() => {
                   </Card>
                 </div>
 
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="p-4 bg-muted/30 border-b">
-                    <h4 className="text-sm font-semibold">برنامه هفتگی کامل</h4>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1 p-4">
-                    {DAYS_OF_WEEK.map(day => {
-                      const schedule = selectedShift.schedules?.find(s => s.dayOfWeek === day.value)
-                      const isWork = schedule?.isWorkingDay ?? false
-                      
-                      return (
-                        <div
-                          key={day.value}
-                          className={`p-3 rounded-lg text-center ${
-                            isWork 
-                              ? 'bg-emerald-50 dark:bg-emerald-950/20' 
-                              : 'bg-red-50/50 dark:bg-red-950/10'
-                          }`}
-                        >
-                          <div className="text-xs font-medium text-muted-foreground mb-1">
-                            {day.label}
-                          </div>
-                          {isWork && schedule ? (
-                            <>
-                              <div className="text-sm font-bold font-mono" style={{ color: selectedShift.color }}>
-                                {formatTimeToPersian(schedule.startTime)}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground">تا</div>
-                              <div className="text-sm font-bold font-mono" style={{ color: selectedShift.color }}>
-                                {formatTimeToPersian(schedule.endTime)}
-                              </div>
-                              {schedule.breakStart && schedule.breakEnd && (
-                                <div className="text-[8px] text-muted-foreground mt-0.5 flex items-center gap-0.5 justify-center">
-                                  <Coffee className="w-2.5 h-2.5" />
-                                  {formatTimeToPersian(schedule.breakStart)}-{formatTimeToPersian(schedule.breakEnd)}
-                                </div>
-                              )}
-                              <div className="text-[8px] text-muted-foreground mt-0.5">
-                                {toPersianDigits(schedule.minWorkHours)} ساعت
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-xs text-red-500 italic">تعطیل</div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
+                {/* برنامه هفتگی کامل - با تعطیلات */}
+<div className="border rounded-lg overflow-hidden">
+  <div className="p-4 bg-muted/30 border-b">
+    <h4 className="text-sm font-semibold">برنامه هفتگی کامل</h4>
+  </div>
+  <div className="grid grid-cols-7 gap-1 p-4">
+    {DAYS_OF_WEEK.map(day => {
+      const schedule = selectedShift.schedules?.find(s => s.dayOfWeek === day.value)
+      const isWork = schedule?.isWorkingDay ?? false
+      
+      // محاسبه تاریخ برای هر روز (مثل بخش برنامه هفتگی)
+      const today = getTodayShamsi()
+      const todayDayOfWeek = getShamsiDayOfWeek(today.year, today.month, today.day)
+      const dayOffset = day.value - todayDayOfWeek
+      const todayDate = new Date(today.year, today.month - 1, today.day)
+      const targetDate = new Date(todayDate)
+      targetDate.setDate(todayDate.getDate() + dayOffset)
+      
+      const targetYear = targetDate.getFullYear()
+      const targetMonth = targetDate.getMonth() + 1
+      const targetDay = targetDate.getDate()
+      const dateStr = `${targetYear}/${String(targetMonth).padStart(2, '0')}/${String(targetDay).padStart(2, '0')}`
+      
+      const holidayInfo = isHolidayDate(dateStr, holidays)
+      const isDayHoliday = holidayInfo.isHoliday
+      
+      return (
+        <div
+          key={day.value}
+          className={`p-3 rounded-lg text-center ${
+            isWork && !isDayHoliday
+              ? 'bg-emerald-50 dark:bg-emerald-950/20' 
+              : 'bg-red-50/50 dark:bg-red-950/10'
+          }`}
+        >
+          <div className="text-xs font-medium text-muted-foreground mb-1">
+            {day.label}
+          </div>
+          {isWork && !isDayHoliday && schedule ? (
+            <>
+              <div className="text-sm font-bold font-mono" style={{ color: selectedShift.color }}>
+                {formatTimeToPersian(schedule.startTime)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">تا</div>
+              <div className="text-sm font-bold font-mono" style={{ color: selectedShift.color }}>
+                {formatTimeToPersian(schedule.endTime)}
+              </div>
+              {schedule.breakStart && schedule.breakEnd && (
+                <div className="text-[8px] text-muted-foreground mt-0.5 flex items-center gap-0.5 justify-center">
+                  <Coffee className="w-2.5 h-2.5" />
+                  {formatTimeToPersian(schedule.breakStart)}-{formatTimeToPersian(schedule.breakEnd)}
                 </div>
+              )}
+              <div className="text-[8px] text-muted-foreground mt-0.5">
+                {toPersianDigits(schedule.minWorkHours)} ساعت
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-red-500 italic">
+              {isDayHoliday ? holidayInfo.title || 'تعطیل' : 'تعطیل'}
+            </div>
+          )}
+        </div>
+      )
+    })}
+  </div>
+</div>
               </div>
               
               <DialogFooter>
