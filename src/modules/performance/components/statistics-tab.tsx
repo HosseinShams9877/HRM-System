@@ -176,7 +176,7 @@ export function StatisticsTab({ items }: StatisticsTabProps) {
             )
           }}
           labelLine={{
-            stroke: (entry: any, index: number) => PIE_COLORS[index % PIE_COLORS.length],
+            
             strokeWidth: 1.5,
             strokeDasharray: '3 3'
           }}
