@@ -29,7 +29,7 @@ import { PaySlipDetailDialog } from './pay-slip-detail-dialog'
 import { GeneratePaySlipsDialog } from './generate-pay-slips-dialog'
 import { SettingsTab } from './payroll-settings-tab'
 import { ReportsTab } from './payroll-reports-tab'
-
+import { useActiveEmployees } from '@/modules/employees/hooks/use-employees-list'
 // ============================================
 // Main PayrollModule
 // ============================================
@@ -39,7 +39,7 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
   const [summary, setSummary] = useState<PayrollSummaryResponse>({
     totalBaseSalary: 0, totalAllowances: 0, totalDeductions: 0, totalNetSalary: 0, count: 0, byStatus: {}
   })
-  const [employees, setEmployees] = useState<EmployeeBasic[]>([])
+  const { data: employees = [], isLoading: employeesLoading } = useActiveEmployees()
   const [payrollItems, setPayrollItems] = useState<PayrollItemDefinition[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -73,18 +73,8 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
       setLoading(false)
     }
   }, [yearFilter, monthFilter, statusFilter, search])
+ 
 
-  const fetchEmployees = useCallback(async () => {
-    try {
-      const res = await fetch('/api/employees?status=active')
-      if (res.ok) {
-        const data = await res.json()
-        setEmployees(Array.isArray(data) ? data : (data.employees || []))
-      }
-    } catch (err) {
-      console.error('Fetch employees error:', err)
-    }
-  }, [])
 
   const fetchPayrollItems = useCallback(async () => {
     try {
@@ -97,12 +87,10 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
       console.error('Fetch payroll items error:', err)
     }
   }, [yearFilter])
-
   useEffect(() => {
     fetchPayroll()
-    fetchEmployees()
     fetchPayrollItems()
-  }, [fetchPayroll, fetchEmployees, fetchPayrollItems])
+  }, [fetchPayroll, fetchPayrollItems])
 
   const handleCreate = async (formData: {
     employeeId: string

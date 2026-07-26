@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Search, Plus, Receipt, AlertTriangle, Info, Lock,
 } from 'lucide-react'
@@ -15,6 +15,27 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/core
 import { toPersianDigits, formatCurrency, getTodayShamsi } from '@/core/lib/utils-fa'
 import { PERSIAN_MONTHS, RIALS_TO_TOMANS, FORMULA_DESCRIPTIONS } from '../constants'
 import type { PaySlipFormDialogProps } from '../index'
+
+// ============================================
+// توابع تبدیل اعداد
+// ============================================
+
+const toEnglishNumber = (str: string): string => {
+  const map: Record<string, string> = {
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+  }
+  return str.replace(/[۰-۹]/g, (d) => map[d] || d)
+}
+
+const toPersianNumber = (str: string): string => {
+  if (!str) return ''
+  const map: Record<string, string> = {
+    '0': '۰', '1': '۱', '2': '۲', '3': '۳', '4': '۴',
+    '5': '۵', '6': '۶', '7': '۷', '8': '۸', '9': '۹'
+  }
+  return str.replace(/\d/g, (d) => map[d] || d)
+}
 
 // ============================================
 // PaySlipFormDialog
@@ -40,54 +61,9 @@ export function PaySlipFormDialog({
   const [notes, setNotes] = useState('')
   const [empSearch, setEmpSearch] = useState('')
   const [itemAmounts, setItemAmounts] = useState<Record<string, string>>({})
-  const [prevOpen, setPrevOpen] = useState(open)
-  const [prevInitialData, setPrevInitialData] = useState(initialData)
-
-  // Adjust state when dialog opens or initialData changes (React 19 pattern)
-  if (open !== prevOpen || initialData !== prevInitialData) {
-    setPrevOpen(open)
-    setPrevInitialData(initialData)
-    if (open) {
-      if (initialData) {
-        setFormYear(initialData.year)
-        setFormMonth(initialData.month)
-        setEmployeeId(initialData.employeeId)
-        setBaseSalary(String(RIALS_TO_TOMANS(initialData.baseSalary)))
-        setWorkDays(String(initialData.workDays))
-        setOvertimeHours(String(initialData.overtimeHours))
-        setNotes(initialData.notes || '')
-        const amounts: Record<string, string> = {}
-        for (const item of initialData.items) {
-          if (item.payrollItemId) {
-            amounts[item.payrollItemId] = String(RIALS_TO_TOMANS(item.amount))
-          } else {
-            amounts[`manual_${item.id}`] = String(RIALS_TO_TOMANS(item.amount))
-          }
-        }
-        setItemAmounts(amounts)
-      } else {
-        setFormYear(year || today.year)
-        setFormMonth(today.month)
-        setEmployeeId('')
-        setBaseSalary('')
-        setWorkDays('30')
-        setOvertimeHours('0')
-        setNotes('')
-        const amounts: Record<string, string> = {}
-        for (const item of payrollItems) {
-          if (item.calculationType === 'fixed') {
-            amounts[item.id] = String(RIALS_TO_TOMANS(item.value))
-          } else if (item.calculationType === 'percentage') {
-            amounts[item.id] = '0'
-          } else if (item.calculationType === 'formula') {
-            amounts[item.id] = '0'
-          }
-        }
-        setItemAmounts(amounts)
-      }
-      setEmpSearch('')
-    }
-  }
+  
+  // ✅ استفاده از useRef برای جلوگیری از اجرای مجدد
+  const hasInitialized = useRef(false)
 
   // Filter payroll items for the selected year
   const relevantItems = useMemo(() => {
@@ -118,7 +94,6 @@ export function PaySlipFormDialog({
       } else if (item.calculationType === 'percentage') {
         calc[item.id] = Math.round(baseSalaryNum * item.value / 100)
       } else if (item.calculationType === 'formula') {
-        // Formulas auto-calculate; show read-only
         calc[item.id] = Number(itemAmounts[item.id] || 0)
       }
     }
@@ -161,13 +136,63 @@ export function PaySlipFormDialog({
       employeeId,
       year: formYear,
       month: formMonth,
-      baseSalary: baseSalaryNum * 10, // Convert to RIALS
+      baseSalary: baseSalaryNum * 10,
       workDays: Number(workDays || 30),
       overtimeHours: Number(overtimeHours || 0),
       notes: notes || null,
       items,
     })
   }
+
+  // ✅ اصلاح useEffect - فقط یک بار اجرا بشه
+  useEffect(() => {
+    // فقط وقتی دیالوگ باز میشه و قبلاً مقداردهی نشده
+    if (open && !hasInitialized.current) {
+      hasInitialized.current = true
+      
+      if (initialData) {
+        setFormYear(initialData.year)
+        setFormMonth(initialData.month)
+        setEmployeeId(initialData.employeeId)
+        setBaseSalary(String(RIALS_TO_TOMANS(initialData.baseSalary)))
+        setWorkDays(String(initialData.workDays))
+        setOvertimeHours(String(initialData.overtimeHours))
+        setNotes(initialData.notes || '')
+        const amounts: Record<string, string> = {}
+        for (const item of initialData.items) {
+          if (item.payrollItemId) {
+            amounts[item.payrollItemId] = String(RIALS_TO_TOMANS(item.amount))
+          } else {
+            amounts[`manual_${item.id}`] = String(RIALS_TO_TOMANS(item.amount))
+          }
+        }
+        setItemAmounts(amounts)
+      } else {
+        setFormYear(year || today.year)
+        setFormMonth(today.month)
+        setEmployeeId('')
+        setBaseSalary('')
+        setWorkDays('30')
+        setOvertimeHours('0')
+        setNotes('')
+        const amounts: Record<string, string> = {}
+        for (const item of payrollItems) {
+          if (item.calculationType === 'fixed') {
+            amounts[item.id] = String(RIALS_TO_TOMANS(item.value))
+          } else {
+            amounts[item.id] = '0'
+          }
+        }
+        setItemAmounts(amounts)
+      }
+      setEmpSearch('')
+    }
+
+    // وقتی دیالوگ بسته میشه، فلگ رو ریست کن
+    if (!open) {
+      hasInitialized.current = false
+    }
+  }, [open, initialData, year, today, payrollItems])
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -212,11 +237,17 @@ export function PaySlipFormDialog({
                     <Select value={employeeId} onValueChange={handleEmployeeChange}>
                       <SelectTrigger><SelectValue placeholder="انتخاب کارمند" /></SelectTrigger>
                       <SelectContent className="max-h-[200px]">
-                        {filteredEmployees.map(emp => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {emp.firstName} {emp.lastName} ({emp.personnelCode})
-                          </SelectItem>
-                        ))}
+                        {filteredEmployees.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            {empSearch ? 'کارمندی یافت نشد' : 'کارمندی موجود نیست'}
+                          </div>
+                        ) : (
+                          filteredEmployees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.firstName} {emp.lastName} ({toPersianDigits(emp.personnelCode)})
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </>
@@ -225,10 +256,18 @@ export function PaySlipFormDialog({
               <div className="space-y-2">
                 <Label>سال *</Label>
                 <Input
-                  type="number"
-                  value={formYear}
-                  onChange={(e) => setFormYear(Number(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  value={toPersianNumber(String(formYear))}
+                  onChange={(e) => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9]/g, '')
+                    if (numeric) {
+                      setFormYear(Number(numeric))
+                    }
+                  }}
                   dir="ltr"
+                  placeholder={toPersianNumber('۱۴۰۴')}
                 />
               </div>
               <div className="space-y-2">
@@ -243,12 +282,17 @@ export function PaySlipFormDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>حقوق پایه (تومان) *</Label>
+                <Label>حقوق پایه * <span className="text-muted-foreground text-xs">(تومان)</span></Label>
                 <Input
-                  type="number"
-                  placeholder="مبلغ حقوق پایه"
-                  value={baseSalary}
-                  onChange={(e) => setBaseSalary(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={toPersianNumber(' حقوق پایه')}
+                  value={toPersianNumber(baseSalary)}
+                  onChange={(e) => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9.]/g, '')
+                    setBaseSalary(numeric)
+                  }}
                   dir="ltr"
                 />
               </div>
@@ -257,19 +301,31 @@ export function PaySlipFormDialog({
               <div className="space-y-2">
                 <Label>روزهای کارکرد</Label>
                 <Input
-                  type="number"
-                  value={workDays}
-                  onChange={(e) => setWorkDays(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  value={toPersianNumber(workDays)}
+                  onChange={(e) => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9.]/g, '')
+                    setWorkDays(numeric)
+                  }}
                   dir="ltr"
+                  placeholder={toPersianNumber('مثلاً ۳۰')}
                 />
               </div>
               <div className="space-y-2">
                 <Label>ساعات اضافه‌کاری</Label>
                 <Input
-                  type="number"
-                  value={overtimeHours}
-                  onChange={(e) => setOvertimeHours(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  value={toPersianNumber(overtimeHours)}
+                  onChange={(e) => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9.]/g, '')
+                    setOvertimeHours(numeric)
+                  }}
                   dir="ltr"
+                  placeholder={toPersianNumber('مثلاً ۵')}
                 />
               </div>
               <div className="space-y-2">
@@ -306,6 +362,7 @@ export function PaySlipFormDialog({
                     <div key={item.id} className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs">
                         {item.title}
+                        <span className="text-[10px] text-muted-foreground">(تومان)</span>
                         {isFormula && (
                           <TooltipProvider>
                             <Tooltip>
@@ -329,14 +386,20 @@ export function PaySlipFormDialog({
                       </Label>
                       <div className="relative">
                         <Input
-                          type="number"
-                          value={isReadonly ? displayValue : (itemAmounts[item.id] || '')}
-                          onChange={(e) => setItemAmounts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          type="text"
+                          inputMode="numeric"
+                          value={isReadonly ? toPersianNumber(String(displayValue)) : toPersianNumber(itemAmounts[item.id] || '')}
+                          onChange={(e) => {
+                            if (isReadonly) return
+                            const englishNumber = toEnglishNumber(e.target.value)
+                            const numeric = englishNumber.replace(/[^0-9.]/g, '')
+                            setItemAmounts(prev => ({ ...prev, [item.id]: numeric }))
+                          }}
                           disabled={isReadonly}
                           dir="ltr"
                           className={isReadonly ? 'bg-muted' : ''}
+                          placeholder={toPersianNumber('۰')}
                         />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">تومان</span>
                       </div>
                     </div>
                   )
@@ -368,6 +431,7 @@ export function PaySlipFormDialog({
                     <div key={item.id} className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs">
                         {item.title}
+                        <span className="text-[10px] text-muted-foreground">(تومان)</span>
                         {isFormula && (
                           <TooltipProvider>
                             <Tooltip>
@@ -391,14 +455,20 @@ export function PaySlipFormDialog({
                       </Label>
                       <div className="relative">
                         <Input
-                          type="number"
-                          value={isReadonly ? displayValue : (itemAmounts[item.id] || '')}
-                          onChange={(e) => setItemAmounts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          type="text"
+                          inputMode="numeric"
+                          value={isReadonly ? toPersianNumber(String(displayValue)) : toPersianNumber(itemAmounts[item.id] || '')}
+                          onChange={(e) => {
+                            if (isReadonly) return
+                            const englishNumber = toEnglishNumber(e.target.value)
+                            const numeric = englishNumber.replace(/[^0-9.]/g, '')
+                            setItemAmounts(prev => ({ ...prev, [item.id]: numeric }))
+                          }}
                           disabled={isReadonly}
                           dir="ltr"
                           className={isReadonly ? 'bg-muted' : ''}
+                          placeholder={toPersianNumber('۰')}
                         />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">تومان</span>
                       </div>
                     </div>
                   )
