@@ -1,1 +1,1 @@
-export { PUT ,DELETE } from "@/modules/shifts/api/[id]/route"
+export {GET, PUT ,DELETE } from "@/modules/shifts/api/[id]/route"

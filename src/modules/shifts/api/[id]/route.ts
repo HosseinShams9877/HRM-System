@@ -1,6 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
 
+    const shift = await db.workShift.findUnique({
+      where: { id },
+      include: {
+        schedules: { orderBy: { dayOfWeek: 'asc' } },
+        assignments: {
+          where: { status: 'active' },
+          include: {
+            employee: { 
+              select: { 
+                id: true, 
+                firstName: true, 
+                lastName: true, 
+                personnelCode: true,
+                department: true 
+              } 
+            },
+          },
+        },
+        _count: {
+          select: {
+            assignments: {
+              where: { status: 'active' }
+            }
+          }
+        }
+      },
+    })
+
+    if (!shift) {
+      return NextResponse.json({ error: 'شیفت یافت نشد' }, { status: 404 })
+    }
+
+    return NextResponse.json({ data: shift })
+  } catch (error) {
+    console.error('Get shift error:', error)
+    return NextResponse.json({ error: 'خطا در دریافت شیفت' }, { status: 500 })
+  }
+}
 // PUT /api/shifts/[id] — بروزرسانی شیفت
 export async function PUT(
   req: NextRequest,

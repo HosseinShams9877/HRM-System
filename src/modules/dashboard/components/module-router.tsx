@@ -33,6 +33,7 @@ import { HRSettings } from '@/modules/employees/components/ht-setting'
 import { EmployeeWizard } from '@/modules/employees/components/employee-form'
 import { EmployeeContractsModule } from '@/modules/contracts/components/employee-contracts-module'
 import { EmployeeLeaveBalanceModule } from '@/modules/attendance/leaves/components/employee-leave-balance'
+import { EmployeeShiftsModule } from '@/modules/shifts/components/employee-shifts-module'
 
 
 // ============================================
@@ -133,7 +134,14 @@ export function ModuleRouter({
   }
   return <LeaveBalanceModule currentUser={user || currentUser} />
 }
-  if (activeModule === 'att-shifts') return <ShiftsModule />
+ if (activeModule === 'att-shifts') {
+  // اگر کاربر employee هست، کامپوننت مخصوص کارمند رو نشون بده
+  if (user?.role === 'employee' || currentUser?.role === 'employee') {
+    const empId = user?.employeeId || currentUser?.employeeId || ''
+    return <EmployeeShiftsModule employeeId={empId} />
+  }
+  return <ShiftsModule />
+}
   if (activeModule === 'contracts' || activeModule === 'contract-view') return <ContractsModule />
   if (activeModule === 'contract-order') return <OrdersModule />
   if (activeModule === 'payroll' || activeModule === 'payroll-list' || activeModule === 'payroll-reports' || activeModule === 'payroll-settings') {
