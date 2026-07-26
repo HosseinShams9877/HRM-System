@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   BarChart3, Search, Plus, Edit2, Trash2, Star, User,
-  LayoutGrid, List, Eye, CheckCircle2, Clock, Target
+  LayoutGrid, List, Eye, CheckCircle2, Clock, Target,ChevronRight, ChevronLeft
 } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
@@ -49,6 +49,8 @@ export function PerformanceModule() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [periodFilter, setPeriodFilter] = useState<string>('all')
   const [kpiEmployeeId, setKpiEmployeeId] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+const itemsPerPage = 7
 
   // ---- Data Fetching ----
 
@@ -75,7 +77,9 @@ export function PerformanceModule() {
       })
       .catch(() => {})
   }, [fetchItems])
-
+useEffect(() => {
+  setCurrentPage(1)
+}, [search, statusFilter, periodFilter])
   // ---- Computed Data ----
 
   const periods = useMemo(() => {
@@ -93,6 +97,13 @@ export function PerformanceModule() {
     })
   }, [items, search, statusFilter, periodFilter])
 
+const paginatedItems = useMemo(() => {
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  return filtered.slice(startIndex, endIndex)
+}, [filtered, currentPage, itemsPerPage])
+
+const totalPages = Math.ceil(filtered.length / itemsPerPage)
   const stats = useMemo(() => {
     const total = items.length
     const metTarget = items.filter(i => i.score >= i.target).length
@@ -419,7 +430,7 @@ export function PerformanceModule() {
           ) : viewMode === 'card' ? (
             /* Card View */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map(item => {
+              {paginatedItems.map(item => {
                 const progressPct = Math.min((item.score / 5) * 100, 100)
                 const targetPct = Math.min((item.target / 5) * 100, 100)
                 const statusInfo = STATUS_MAP[item.status] || STATUS_MAP.pending
@@ -485,48 +496,48 @@ export function PerformanceModule() {
           ) : (
             /* Table View */
             <Card className="border-0 shadow-sm">
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">کارمند</TableHead>
-                    <TableHead className="text-xs">دوره</TableHead>
-                    <TableHead className="text-xs">نمره کل</TableHead>
-                    <TableHead className="text-xs">هدف</TableHead>
-                    <TableHead className="text-xs">وضعیت</TableHead>
-                    <TableHead className="text-xs">اقدامات</TableHead>
+                    <TableHead className="text-xs text-right w-[22%]">کارمند</TableHead>
+                    <TableHead className="text-xs text-right w-[13%]">دوره</TableHead>
+                    <TableHead className="text-xs text-right w-[13%]">نمره کل</TableHead>
+                    <TableHead className="text-xs text-right w-[13%]">هدف</TableHead>
+                    <TableHead className="text-xs text-right w-[19%]">وضعیت</TableHead>
+                    <TableHead className="text-xs text-right w-[20%]">اقدامات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map(item => {
+                  {paginatedItems.map(item => {
                     const statusInfo = STATUS_MAP[item.status] || STATUS_MAP.pending
                     const StatusIcon = statusInfo.icon
                     return (
                       <TableRow key={item.id} className="cursor-pointer" onClick={() => setDetailItem(item)}>
-                        <TableCell className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+                        <TableCell className="text-xs w-[22%]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
                               <User className="w-3.5 h-3.5 text-muted-foreground" />
                             </div>
-                            <div>
-                              <div className="font-medium">{item.employee?.firstName} {item.employee?.lastName}</div>
-                              <div className="text-[10px] text-muted-foreground">{item.employee?.department || '-'}</div>
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{item.employee?.firstName} {item.employee?.lastName}</div>
+                              <div className="text-[10px] text-muted-foreground truncate">{item.employee?.department || '-'}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs">{item.period}</TableCell>
-                        <TableCell className="text-xs">
+                        <TableCell className="text-xs w-[13%]">{item.period}</TableCell>
+                        <TableCell className="text-xs w-[13%]">
                           <span className={`font-bold ${scoreColor(item.score, item.target)}`}>
                             {toPersianDigits(item.score)}
                           </span>
                         </TableCell>
-                        <TableCell className="text-xs">{toPersianDigits(item.target)}</TableCell>
-                        <TableCell className="text-xs">
-                          <Badge variant="outline" className={`text-[10px] ${statusInfo.color}`}>
+                        <TableCell className="text-xs w-[13%]">{toPersianDigits(item.target)}</TableCell>
+                        <TableCell className="text-xs w-[19%]">
+                          <Badge variant="outline" className={`text-[10px] ${statusInfo.color} whitespace-nowrap`}>
                             <StatusIcon className="w-3 h-3 ml-1" />
                             {statusInfo.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs">
+                        <TableCell className="text-xs w-[20%]">
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDetailItem(item)}>
                               <Eye className="w-3 h-3" />
@@ -546,6 +557,67 @@ export function PerformanceModule() {
               </Table>
             </Card>
           )}
+        {/* Pagination */}
+{filtered.length > itemsPerPage && (
+  <div className="flex items-center justify-center gap-4 px-2 py-3">
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+        disabled={currentPage <= 1}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          let pageNum
+          if (totalPages <= 5) {
+            pageNum = i + 1
+          } else if (currentPage <= 3) {
+            pageNum = i + 1
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i
+          } else {
+            pageNum = currentPage - 2 + i
+          }
+          
+          return (
+            <Button
+              key={pageNum}
+              variant={currentPage === pageNum ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCurrentPage(pageNum)}
+              className={`h-8 w-8 p-0 text-sm ${
+                currentPage === pageNum 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              {toPersianDigits(pageNum)}
+            </Button>
+          )
+        })}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+        disabled={currentPage >= totalPages}
+        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+    
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      نمایش {toPersianDigits(paginatedItems.length)} از {toPersianDigits(filtered.length)} ارزیابی
+    </p>
+  </div>
+)}
         </TabsContent>
 
         {/* ============================================ */}
@@ -612,11 +684,11 @@ export function PerformanceModule() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">شاخص</TableHead>
-                        <TableHead className="text-xs">نمره</TableHead>
-                        <TableHead className="text-xs">هدف</TableHead>
-                        <TableHead className="text-xs">شکاف</TableHead>
-                        <TableHead className="text-xs">وضعیت</TableHead>
+                        <TableHead className="text-xs text-right">شاخص</TableHead>
+                        <TableHead className="text-xs text-right">نمره</TableHead>
+                        <TableHead className="text-xs text-right">هدف</TableHead>
+                        <TableHead className="text-xs text-right">شکاف</TableHead>
+                        <TableHead className="text-xs text-right">وضعیت</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -663,6 +735,7 @@ export function PerformanceModule() {
               </Card>
             </div>
           )}
+        
         </TabsContent>
 
         {/* ============================================ */}

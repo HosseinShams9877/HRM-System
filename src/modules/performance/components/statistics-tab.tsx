@@ -133,37 +133,78 @@ export function StatisticsTab({ items }: StatisticsTabProps) {
           </CardContent>
         </Card>
 
-        {/* Pie Chart: Status Distribution */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Award className="w-4 h-4 text-purple-600" />
-              وضعیت ارزیابی‌ها
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={statusPieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, value }) => `${name} (${toPersianDigits(value)})`}
-                >
-                  {statusPieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+       {/* Pie Chart: Status Distribution */}
+<Card className="border-0 shadow-sm">
+  <CardHeader className="pb-2">
+    <CardTitle className="text-sm flex items-center gap-2">
+      <Award className="w-4 h-4 text-purple-600" />
+      وضعیت ارزیابی‌ها
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="p-4 pt-0">
+    <ResponsiveContainer width="100%" height={320}>
+      <PieChart>
+        <Pie
+          data={statusPieData}
+          cx="50%"
+          cy="45%"
+          innerRadius={50}
+          outerRadius={85}
+          paddingAngle={4}
+          dataKey="value"
+          label={({ name, value, cx, cy, midAngle, outerRadius, index }) => {
+            // محاسبه موقعیت لیبل بیرون از نمودار با فاصله بیشتر
+            const RADIAN = Math.PI / 180
+            const radius = outerRadius + 60  // ← فاصله بیشتر از نمودار
+            const x = cx + radius * Math.cos(-midAngle * RADIAN)
+            const y = cy + radius * Math.sin(-midAngle * RADIAN)
+            const color = PIE_COLORS[index % PIE_COLORS.length]
+            
+            return (
+              <text
+                x={x}
+                y={y}
+                fill={color}
+                textAnchor={x > cx ? 'start' : 'end'}
+                dominantBaseline="central"
+                fontSize={11}
+                fontWeight={600}
+                className="drop-shadow-sm"
+              >
+                {`${name} (${toPersianDigits(value)})`}
+              </text>
+            )
+          }}
+          labelLine={{
+            stroke: (entry: any, index: number) => PIE_COLORS[index % PIE_COLORS.length],
+            strokeWidth: 1.5,
+            strokeDasharray: '3 3'
+          }}
+        >
+          {statusPieData.map((_, index) => (
+            <Cell 
+              key={`cell-${index}`} 
+              fill={PIE_COLORS[index % PIE_COLORS.length]} 
+              strokeWidth={2}
+            />
+          ))}
+        </Pie>
+        <Tooltip 
+          formatter={(value: any) => toPersianDigits(value)}
+          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+        />
+        <Legend 
+          wrapperStyle={{ fontSize: 11, paddingTop: 15 }}
+          layout="horizontal"
+          verticalAlign="bottom"
+          align="center"
+          iconType="circle"
+          iconSize={10}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+  </CardContent>
+</Card>
       </div>
 
       {/* Score Distribution */}
