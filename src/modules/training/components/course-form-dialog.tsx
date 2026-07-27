@@ -87,7 +87,7 @@ export function CourseFormDialog({
   
   const [form, setForm] = useState({
     title: '', instructor: '', startDate: '', endDate: '', location: '',
-    status: 'planned', description: '', capacity: '', category: '', duration: '',
+    status: 'planned', description: '', capacity: '', category: '', duration: '', maxScore: '5', 
   })
   const [saving, setSaving] = useState(false)
 
@@ -104,11 +104,12 @@ export function CourseFormDialog({
         capacity: initialData.capacity?.toString() || '',
         category: initialData.category || '',
         duration: initialData.duration?.toString() || '',
+         maxScore: initialData.maxScore?.toString() || '5',
       })
     } else {
       setForm({ 
         title: '', instructor: '', startDate: defaultDate, endDate: '', location: '', 
-        status: 'planned', description: '', capacity: '', category: '', duration: '' 
+        status: 'planned', description: '', capacity: '', category: '', duration: '' ,maxScore: '5'
       })
     }
   }, [open, initialData, defaultDate])
@@ -126,6 +127,7 @@ export function CourseFormDialog({
         capacity: form.capacity ? parseInt(toEnglishNumber(form.capacity)) : null,
         category: form.category || null,
         duration: form.duration ? parseInt(toEnglishNumber(form.duration)) : null,
+         maxScore: parseInt(form.maxScore) || 5,
       })
     } finally {
       setSaving(false)
@@ -244,6 +246,24 @@ export function CourseFormDialog({
                   dir="ltr"
                 />
               </div>
+              <div className="space-y-2">
+  <Label>حداکثر نمره</Label>
+  <Select 
+    value={form.maxScore} 
+    onValueChange={v => setForm({ ...form, maxScore: v })}
+  >
+    <SelectTrigger className="h-8">
+      <SelectValue placeholder="حداکثر نمره" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="5">۵</SelectItem>
+      <SelectItem value="10">۱۰</SelectItem>
+      <SelectItem value="20">۲۰</SelectItem>
+      <SelectItem value="50">۵۰</SelectItem>
+      <SelectItem value="100">۱۰۰</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
             </div>
           </div>
 

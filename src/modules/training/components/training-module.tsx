@@ -262,7 +262,9 @@ export function TrainingModule() {
   const totalParticipants = items.reduce((sum, i) => sum + i.participants.length, 0)
 
   const selectedCourse = items.find(i => i.id === selectedCourseId)
-  const selectedCourseScores = selectedCourse?.participants.filter(p => p.score !== null).map(p => p.score as number) || []
+  const selectedCourseScores = selectedCourse?.participants
+  .filter(p => p.score !== null && p.score >= 0 && p.score <= (selectedCourse?.maxScore || 5))
+  .map(p => p.score as number) || []
   const selectedCourseAvgScore = selectedCourseScores.length > 0 ? (selectedCourseScores.reduce((a, b) => a + b, 0) / selectedCourseScores.length) : null
 
   if (loading) {
