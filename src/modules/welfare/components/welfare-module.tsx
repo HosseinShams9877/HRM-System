@@ -312,7 +312,7 @@ export function WelfareModule() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3"dir='rtl'>
           <TabsList className="grid w-[320px] grid-cols-3">
             <TabsTrigger value="rewards" className="gap-1.5 text-xs">
               <Award className="w-3.5 h-3.5" />

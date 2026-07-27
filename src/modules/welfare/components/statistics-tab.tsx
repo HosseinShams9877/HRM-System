@@ -46,7 +46,7 @@ export function StatisticsTab({
   return (
     <div className="space-y-6">
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3" dir='rtl'>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
@@ -97,7 +97,7 @@ export function StatisticsTab({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Bar Chart: Rewards by Type */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2" dir='rtl'>
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-pink-600" />
               مبالغ پاداش به تفکیک نوع
@@ -132,7 +132,7 @@ export function StatisticsTab({
 
         {/* Pie Chart: Loan Status Distribution */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2" dir='rtl'>
             <CardTitle className="text-sm flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-sky-600" />
               وضعیت درخواست‌های وام
@@ -173,7 +173,7 @@ export function StatisticsTab({
 
       {/* Additional Stats Details */}
       <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2" dir='rtl'>
           <CardTitle className="text-sm flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-600" />
             جزئیات آماری
@@ -182,7 +182,7 @@ export function StatisticsTab({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Reward breakdown */}
-            <div className="space-y-3">
+            <div className="space-y-3" dir='rtl'>
               <h4 className="text-xs font-medium text-muted-foreground">تفکیک پاداش‌ها</h4>
               {REWARD_TYPES.map(type => {
                 const typeRewards = rewards.filter(r => r.type === type)
@@ -208,7 +208,7 @@ export function StatisticsTab({
             </div>
 
             {/* Loan breakdown */}
-            <div className="space-y-3">
+            <div className="space-y-3" dir='rtl'>
               <h4 className="text-xs font-medium text-muted-foreground">تفکیک وام‌ها</h4>
               {Object.entries(LOAN_STATUS).map(([key, conf]) => {
                 const statusLoans = loans.filter(l => l.status === key)

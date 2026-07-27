@@ -1,6 +1,7 @@
 'use client'
 
-import { Award, Banknote, TrendingUp, Edit2, Trash2, LayoutGrid, List } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Award, Banknote, TrendingUp, Edit2, Trash2, LayoutGrid, List, ChevronRight, ChevronLeft } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
@@ -38,6 +39,30 @@ export function RewardsTab({
   onViewModeChange,
   rewardSummary,
 }: RewardsTabProps) {
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
+
+  const totalItems = filteredRewards.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  const paginatedRewards = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredRewards.slice(startIndex, endIndex)
+  }, [filteredRewards, currentPage, itemsPerPage])
+
+  // وقتی فیلتر تغییر میکنه، به صفحه اول برو
+  useMemo(() => {
+    setCurrentPage(1)
+  }, [rewardTypeFilter])
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
@@ -98,7 +123,10 @@ export function RewardsTab({
               variant={rewardTypeFilter === t ? 'default' : 'outline'}
               size="sm"
               className="h-7 text-[11px] px-2.5"
-              onClick={() => onTypeFilterChange(t)}
+              onClick={() => {
+                onTypeFilterChange(t)
+                setCurrentPage(1)
+              }}
             >
               {t}
             </Button>
@@ -144,121 +172,249 @@ export function RewardsTab({
           <p className="text-xs mt-1">پاداش و تشویق جدید از دکمه «پاداش جدید» ایجاد کنید</p>
         </div>
       ) : viewMode === 'card' ? (
-        /* Card View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRewards.map(item => {
-            const typeConf = REWARD_TYPE_CONFIG[item.type] || REWARD_TYPE_CONFIG['نقدی']
-            return (
-              <Card key={item.id} className="border-0 shadow-sm hover:shadow-md transition-all group">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-sm">
-                        {typeConf.icon}
+        <>
+          {/* Card View */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedRewards.map(item => {
+              const typeConf = REWARD_TYPE_CONFIG[item.type] || REWARD_TYPE_CONFIG['نقدی']
+              return (
+                <Card key={item.id} className="border-0 shadow-sm hover:shadow-md transition-all group">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-sm">
+                          {typeConf.icon}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{item.employee?.firstName} {item.employee?.lastName}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.title}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{item.employee?.firstName} {item.employee?.lastName}</p>
-                        <p className="text-[10px] text-muted-foreground">{item.title}</p>
+                      <Badge className={`text-[10px] ${typeConf.color}`}>{typeConf.label}</Badge>
+                    </div>
+                    {item.amount ? (
+                      <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                        {formatCurrency(item.amount)}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mb-2">بدون مبلغ</p>
+                    )}
+                    {item.reason && (
+                      <p className="text-[11px] text-muted-foreground mb-2 line-clamp-1">{item.reason}</p>
+                    )}
+                    <Separator className="my-2" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">{formatShamsi(item.date)}</span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => onEdit(item)}
+                        >
+                          <Edit2 className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => onDelete(item.id)}
+                        >
+                          <Trash2 className="w-3 h-3 text-red-500" />
+                        </Button>
                       </div>
                     </div>
-                    <Badge className={`text-[10px] ${typeConf.color}`}>{typeConf.label}</Badge>
-                  </div>
-                  {item.amount ? (
-                    <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                      {formatCurrency(item.amount)}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground mb-2">بدون مبلغ</p>
-                  )}
-                  {item.reason && (
-                    <p className="text-[11px] text-muted-foreground mb-2 line-clamp-1">{item.reason}</p>
-                  )}
-                  <Separator className="my-2" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{formatShamsi(item.date)}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => onEdit(item)}
-                      >
-                        <Edit2 className="w-3 h-3 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => onDelete(item.id)}
-                      >
-                        <Trash2 className="w-3 h-3 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      ) : (
-        /* Table View */
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-0">
-            <div className="max-h-[500px] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">کارمند</TableHead>
-                    <TableHead className="text-xs">نوع</TableHead>
-                    <TableHead className="text-xs">عنوان</TableHead>
-                    <TableHead className="text-xs">مبلغ</TableHead>
-                    <TableHead className="text-xs">دلیل</TableHead>
-                    <TableHead className="text-xs">تاریخ</TableHead>
-                    <TableHead className="text-xs">اقدامات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRewards.map(item => {
-                    const typeConf = REWARD_TYPE_CONFIG[item.type] || REWARD_TYPE_CONFIG['نقدی']
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Pagination - Card View */}
+          {totalItems > itemsPerPage && (
+            <div className="flex items-center justify-center gap-4 px-2 py-3">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
                     return (
-                      <TableRow key={item.id}>
-                        <TableCell className="text-xs font-medium">
-                          {item.employee?.firstName} {item.employee?.lastName}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`text-[10px] ${typeConf.color}`}>{typeConf.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-xs">{item.title}</TableCell>
-                        <TableCell className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                          {item.amount ? formatCurrency(item.amount) : '—'}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">
-                          {item.reason || '—'}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {formatShamsi(item.date)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(item)}>
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              variant="ghost" size="sm" className="h-7 w-7 p-0"
-                              onClick={() => onDelete(item.id)}
-                            >
-                              <Trash2 className="w-3 h-3 text-red-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        className={`h-8 w-8 p-0 text-sm ${
+                          currentPage === pageNum 
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                          : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {toPersianDigits(pageNum)}
+                      </Button>
                     )
-                  })}
-                </TableBody>
-              </Table>
+                  }).reverse()}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                نمایش {toPersianDigits(paginatedRewards.length)} از {toPersianDigits(totalItems)} پاداش
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Table View */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-0">
+              <div className="max-h-[500px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">اقدامات</TableHead>
+                      <TableHead className="text-xs">تاریخ</TableHead>
+                      <TableHead className="text-xs">دلیل</TableHead>
+                      <TableHead className="text-xs">مبلغ</TableHead>
+                      <TableHead className="text-xs">عنوان</TableHead>
+                      <TableHead className="text-xs">نوع</TableHead>
+                      <TableHead className="text-xs">کارمند</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRewards.map(item => {
+                      const typeConf = REWARD_TYPE_CONFIG[item.type] || REWARD_TYPE_CONFIG['نقدی']
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(item)}>
+                                <Edit2 className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                onClick={() => onDelete(item.id)}
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {formatShamsi(item.date)}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">
+                            {item.reason || '—'}
+                          </TableCell>
+                          <TableCell className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                            {item.amount ? formatCurrency(item.amount) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs">{item.title}</TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${typeConf.color}`}>{typeConf.label}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">
+                            {item.employee?.firstName} {item.employee?.lastName}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pagination - Table View */}
+          {totalItems > itemsPerPage && (
+            <div className="flex items-center justify-center gap-4 px-2 py-3">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        className={`h-8 w-8 p-0 text-sm ${
+                          currentPage === pageNum 
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                          : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {toPersianDigits(pageNum)}
+                      </Button>
+                    )
+                  }).reverse()}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                نمایش {toPersianDigits(paginatedRewards.length)} از {toPersianDigits(totalItems)} پاداش
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
