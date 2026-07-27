@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Award, Banknote, TrendingUp, Edit2, Trash2, LayoutGrid, List, ChevronRight, ChevronLeft } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
@@ -51,11 +51,6 @@ export function RewardsTab({
     const endIndex = startIndex + itemsPerPage
     return filteredRewards.slice(startIndex, endIndex)
   }, [filteredRewards, currentPage, itemsPerPage])
-
-  // وقتی فیلتر تغییر میکنه، به صفحه اول برو
-  useMemo(() => {
-    setCurrentPage(1)
-  }, [rewardTypeFilter])
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -405,6 +400,7 @@ export function RewardsTab({
                   disabled={currentPage >= totalPages}
                   className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
+                  
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               </div>
