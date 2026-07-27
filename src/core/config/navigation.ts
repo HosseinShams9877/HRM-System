@@ -77,7 +77,7 @@ export const NAV_ITEMS: NavItem[] = [
       id: 'org-employee', 
       label: 'پرونده پرسنلی', 
       icon: 'Folder', 
-      allowedRoles: ['admin', 'hr_manager', 'department_manager', 'employee'] 
+      allowedRoles: ['admin', 'hr_manager', 'department_manager'] 
     },
     {
       id: 'org-chart-group',

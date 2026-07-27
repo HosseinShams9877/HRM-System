@@ -32,5 +32,6 @@ export interface Training {
   capacity: number | null
   category: string | null
   duration: number | null
+   maxScore: number | null
   participants: Participant[]
 }

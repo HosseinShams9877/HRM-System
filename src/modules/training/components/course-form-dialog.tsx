@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { GraduationCap, Loader2, BookOpen, Shield, Briefcase, Heart, Star } from 'lucide-react'
+import { GraduationCap, Loader2, BookOpen, Shield, Briefcase, Heart, Star, Calendar } from 'lucide-react'
 import { Button } from '@/core/components/ui/button'
 import { Input } from '@/core/components/ui/input'
 import { Label } from '@/core/components/ui/label'
@@ -9,8 +9,63 @@ import { Textarea } from '@/core/components/ui/textarea'
 import { Separator } from '@/core/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/core/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/core/components/ui/dialog'
+import { PersianDatePicker } from '@/core/components/ui/persian-date-picker'
+import { toPersianDigits, formatShamsi, getTodayShamsi } from '@/core/lib/utils-fa'
 import type { Training } from '../index'
 import { STATUS_MAP, CATEGORY_MAP } from '../constants'
+import moment from 'moment-jalaali'
+
+// ============================================
+// توابع تبدیل اعداد
+// ============================================
+
+const toEnglishNumber = (str: string): string => {
+  const map: Record<string, string> = {
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+  }
+  return str.replace(/[۰-۹]/g, (d) => map[d] || d)
+}
+
+const toPersianNumber = (str: string): string => {
+  if (!str) return ''
+  const map: Record<string, string> = {
+    '0': '۰', '1': '۱', '2': '۲', '3': '۳', '4': '۴',
+    '5': '۵', '6': '۶', '7': '۷', '8': '۸', '9': '۹'
+  }
+  return str.replace(/\d/g, (d) => map[d] || d)
+}
+
+// ============================================
+// توابع تبدیل تاریخ
+// ============================================
+
+// تبدیل تاریخ شمسی به میلادی (Date)
+const toMiladi = (shamsiDate: string): Date | null => {
+  if (!shamsiDate) return null
+  try {
+    const englishDate = toEnglishNumber(shamsiDate)
+    const parts = englishDate.split('/').map(Number)
+    if (parts.length !== 3) return null
+    const m = moment(`${parts[0]}/${parts[1]}/${parts[2]}`, 'jYYYY/jMM/jDD')
+    if (!m.isValid()) return null
+    return m.toDate()
+  } catch {
+    return null
+  }
+}
+
+// تبدیل تاریخ میلادی به شمسی (رشته)
+const toShamsi = (date: Date): string => {
+  if (!date) return ''
+  try {
+    const m = moment(date)
+    const shamsiStr = m.format('jYYYY/jMM/jDD')
+    return shamsiStr
+  } catch {
+    return ''
+  }
+}
 
 // ============================================
 // Course Form Dialog
@@ -27,6 +82,9 @@ export function CourseFormDialog({
   open, onClose, onSubmit, initialData,
 }: CourseFormDialogProps) {
   const isEdit = !!initialData
+  const today = getTodayShamsi()
+  const defaultDate = `${today.year}/${String(today.month).padStart(2, '0')}/${String(today.day).padStart(2, '0')}`
+  
   const [form, setForm] = useState({
     title: '', instructor: '', startDate: '', endDate: '', location: '',
     status: 'planned', description: '', capacity: '', category: '', duration: '',
@@ -48,9 +106,12 @@ export function CourseFormDialog({
         duration: initialData.duration?.toString() || '',
       })
     } else {
-      setForm({ title: '', instructor: '', startDate: '', endDate: '', location: '', status: 'planned', description: '', capacity: '', category: '', duration: '' })
+      setForm({ 
+        title: '', instructor: '', startDate: defaultDate, endDate: '', location: '', 
+        status: 'planned', description: '', capacity: '', category: '', duration: '' 
+      })
     }
-  }, [open, initialData])
+  }, [open, initialData, defaultDate])
 
   const handleSubmit = async () => {
     if (!form.title || !form.startDate) return
@@ -62,9 +123,9 @@ export function CourseFormDialog({
         endDate: form.endDate || null,
         location: form.location || null,
         description: form.description || null,
-        capacity: form.capacity ? parseInt(form.capacity) : null,
+        capacity: form.capacity ? parseInt(toEnglishNumber(form.capacity)) : null,
         category: form.category || null,
-        duration: form.duration ? parseInt(form.duration) : null,
+        duration: form.duration ? parseInt(toEnglishNumber(form.duration)) : null,
       })
     } finally {
       setSaving(false)
@@ -119,19 +180,69 @@ export function CourseFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>تاریخ شروع *</Label>
-                <Input placeholder="1404/01/01" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} dir="ltr" />
+                <div className="relative">
+                  <PersianDatePicker
+                    value={form.startDate ? toMiladi(form.startDate) : new Date()}
+                    onChange={(date) => {
+                      if (date) {
+                        const shamsiDate = toShamsi(date)
+                        setForm({ ...form, startDate: shamsiDate })
+                      }
+                    }}
+                    placeholder={toPersianNumber(defaultDate)}
+                    className="w-full"
+                  />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>تاریخ پایان</Label>
-                <Input placeholder="1404/01/15" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} dir="ltr" />
+                <div className="relative">
+                  <PersianDatePicker
+                    value={form.endDate ? toMiladi(form.endDate) : undefined}
+                    onChange={(date) => {
+                      if (date) {
+                        const shamsiDate = toShamsi(date)
+                        setForm({ ...form, endDate: shamsiDate })
+                      } else {
+                        setForm({ ...form, endDate: '' })
+                      }
+                    }}
+                    placeholder="۱۴۰۴/۰۱/۱۵"
+                    className="w-full"
+                  />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>ظرفیت (نفر)</Label>
-                <Input type="number" placeholder="مثلاً: ۲۰" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} dir="ltr" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="مثلاً: ۲۰"
+                  value={toPersianNumber(form.capacity)}
+                  onChange={e => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9]/g, '')
+                    setForm({ ...form, capacity: numeric })
+                  }}
+                  dir="ltr"
+                />
               </div>
               <div className="space-y-2">
                 <Label>مدت دوره (ساعت)</Label>
-                <Input type="number" placeholder="مثلاً: ۴۰" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} dir="ltr" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="مثلاً: ۴۰"
+                  value={toPersianNumber(form.duration)}
+                  onChange={e => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9]/g, '')
+                    setForm({ ...form, duration: numeric })
+                  }}
+                  dir="ltr"
+                />
               </div>
             </div>
           </div>

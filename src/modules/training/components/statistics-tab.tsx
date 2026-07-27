@@ -108,7 +108,7 @@ export function StatisticsTab({ items }: StatisticsTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Bar Chart */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2" dir='rtl'>
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-amber-600" />
               تعداد دوره به تفکیک وضعیت
@@ -128,7 +128,7 @@ export function StatisticsTab({ items }: StatisticsTabProps) {
 
         {/* Pie Chart */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2" dir='rtl'>
             <CardTitle className="text-sm flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-600" />
               وضعیت شرکت‌کنندگان
@@ -161,7 +161,7 @@ export function StatisticsTab({ items }: StatisticsTabProps) {
 
       {/* Category breakdown */}
       <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2" dir='rtl'>
           <CardTitle className="text-sm flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-600" />
             توزیع دوره‌ها بر اساس دسته‌بندی

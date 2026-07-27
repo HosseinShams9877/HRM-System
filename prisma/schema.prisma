@@ -839,6 +839,7 @@ model Training {
   category    String? // دسته‌بندی: technical, management, soft, safety, other
   duration    Int? // مدت دوره به ساعت
   createdAt   DateTime @default(now())
+  maxScore    Int?    @default(5)
   updatedAt   DateTime @updatedAt
 
   participants TrainingParticipant[]
