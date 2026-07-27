@@ -16,7 +16,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     })
     if (!item) return NextResponse.json({ error: 'یافت نشد' }, { status: 404 })
     return NextResponse.json(item)
-  } catch (error) { return NextResponse.json({ error: 'خطا' }, { status: 500 }) }
+  } catch (error) { 
+    console.error('GET training error:', error)
+    return NextResponse.json({ error: 'خطا' }, { status: 500 }) 
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -26,17 +29,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const existing = await db.training.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'یافت نشد' }, { status: 404 })
 
-    const allowedFields = ['title', 'instructor', 'startDate', 'endDate', 'location', 'status', 'description', 'capacity', 'category', 'duration']
+    // ✅ maxScore رو به allowedFields اضافه کن
+    const allowedFields = ['title', 'instructor', 'startDate', 'endDate', 'location', 'status', 'description', 'capacity', 'category', 'duration', 'maxScore']
     const data: Record<string, unknown> = {}
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
-        data[field] = body[field] || null
+        // ✅ برای maxScore اطمینان حاصل کن که عدد هست
+        if (field === 'maxScore') {
+          data[field] = body[field] ? parseInt(body[field]) : null
+        } else {
+          data[field] = body[field] || null
+        }
       }
     }
 
     const item = await db.training.update({ where: { id }, data })
     return NextResponse.json(item)
-  } catch (error) { return NextResponse.json({ error: 'خطا' }, { status: 500 }) }
+  } catch (error) { 
+    console.error('PUT training error:', error)
+    return NextResponse.json({ error: 'خطا' }, { status: 500 }) 
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -47,5 +59,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     await db.trainingParticipant.deleteMany({ where: { trainingId: id } })
     await db.training.delete({ where: { id } })
     return NextResponse.json({ message: 'حذف شد' })
-  } catch (error) { return NextResponse.json({ error: 'خطا' }, { status: 500 }) }
+  } catch (error) { 
+    console.error('DELETE training error:', error)
+    return NextResponse.json({ error: 'خطا' }, { status: 500 }) 
+  }
 }

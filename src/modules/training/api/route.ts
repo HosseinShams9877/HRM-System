@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       pagination: createPaginationMeta(page, limit, total),
     })
   } catch (error) {
+    console.error('GET training error:', error)
     return NextResponse.json({ error: 'خطا در دریافت دوره‌ها' }, { status: 500 })
   }
 }
@@ -52,12 +53,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { title, instructor, startDate, endDate, location, status, description, capacity, category, duration } = body
+    const { title, instructor, startDate, endDate, location, status, description, capacity, category, duration, maxScore } = body
+    
     const validation = validateWithZod(trainingCreateSchema, body)
     if (!validation.success) {
       return NextResponse.json({ error: 'داده‌های ورودی نامعتبر است', details: validation.errors }, { status: 400 })
     }
-    const validatedData = validation.data
+    
+    const parsedMaxScore = maxScore ? parseInt(maxScore) : 5
+    
     const item = await db.training.create({
       data: {
         title,
@@ -67,13 +71,16 @@ export async function POST(req: NextRequest) {
         location: location || null,
         status: status || 'planned',
         description: description || null,
-        capacity: capacity || null,
+        capacity: capacity ? parseInt(capacity) : null,
         category: category || null,
-        duration: duration || null,
+        duration: duration ? parseInt(duration) : null,
+        maxScore: parsedMaxScore,
       },
     })
+    
     return NextResponse.json(item, { status: 201 })
   } catch (error) {
+    console.error('Create training error:', error)
     return NextResponse.json({ error: 'خطا در ایجاد دوره' }, { status: 500 })
   }
 }

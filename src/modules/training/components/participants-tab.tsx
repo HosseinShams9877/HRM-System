@@ -42,7 +42,7 @@ export function ParticipantsTab({
 }: ParticipantsTabProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-
+const maxScore = selectedCourse?.maxScore || 5
   // فیلتر کردن شرکت‌کنندگان
   const filteredParticipants = useMemo(() => {
     if (!selectedCourse) return []
@@ -261,7 +261,7 @@ export function ParticipantsTab({
                               onChange={e => {
                                 const val = e.target.value.replace(/[^0-9.]/g, '')
                                 const num = val ? parseFloat(val) : null
-                                if (num === null || (num >= 0 && num <= 5)) {
+                               if (num === null || (num >= 0 && num <= maxScore)) {
                                   onUpdateParticipant(p.id, selectedCourseId, { score: num })
                                 }
                               }}
@@ -269,7 +269,7 @@ export function ParticipantsTab({
                               className="h-7 text-xs w-[60px] text-center"
                               dir="ltr"
                             />
-                            <span className="text-[10px] text-muted-foreground">/۵</span>
+                          <span className="text-[10px] text-muted-foreground">/{toPersianDigits(maxScore)}</span>
                           </div>
                         </TableCell>
                         <TableCell>
