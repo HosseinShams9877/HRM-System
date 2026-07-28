@@ -206,9 +206,19 @@ export function ModuleRouter({
   // اگر کاربر employee هست، کامپوننت مخصوص کارمند رو نشون بده
   if (user?.role === 'employee' || currentUser?.role === 'employee') {
     const empId = user?.employeeId || currentUser?.employeeId || ''
-    return <EmployeeWelfareModule employeeId={empId} />
+    let initialTab: 'rewards' | 'loans' = 'rewards'
+    if (activeModule === 'welfare-loans') {
+      initialTab = 'loans'
+    }
+    return <EmployeeWelfareModule employeeId={empId} initialTab={initialTab} />
   }
-  return <WelfareModule />
+  
+  // برای ادمین
+  let initialTab: 'rewards' | 'loans' | 'stats' = 'rewards'
+  if (activeModule === 'welfare-loans') {
+    initialTab = 'loans'
+  }
+  return <WelfareModule initialTab={initialTab} />
 }
   if (activeModule === 'settings' || activeModule === 'settings-general' || activeModule === 'settings-access') return <SettingsModule />
 /*

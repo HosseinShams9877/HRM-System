@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Award, CreditCard, Search, Loader2, Eye,
+  Award, CreditCard, Search, Loader2, Eye, Plus,
   LayoutGrid, List, ChevronRight, ChevronLeft, X,
   Banknote, Calendar, User, FileText, Tag, CheckCircle2, Clock, AlertCircle
 } from 'lucide-react'
@@ -40,34 +40,12 @@ function DetailDialog({
   data: any
 }) {
   if (!data) return null
-  const [showLoanDialog, setShowLoanDialog] = useState(false)
-  const [saving, setSaving] = useState(false)
+
   const isLoan = type === 'loan'
   const st = isLoan ? LOAN_STATUS[data.status] || LOAN_STATUS.pending : null
   const lt = isLoan ? LOAN_TYPE_CONFIG[data.type] || LOAN_TYPE_CONFIG['وام'] : null
+  
 
-  const handleLoanSubmit = async (data: any) => {
-  setSaving(true)
-  try {
-    const res = await fetch('/api/loans', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) {
-      toast.success('درخواست وام با موفقیت ثبت شد')
-      setShowLoanDialog(false)
-      fetchEmployeeLoans()
-    } else {
-      const err = await res.json()
-      toast.error(err.error || 'خطا در ثبت درخواست')
-    }
-  } catch {
-    toast.error('خطا در ارتباط با سرور')
-  } finally {
-    setSaving(false)
-  }
-}
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -263,19 +241,22 @@ function DetailDialog({
 
 interface EmployeeWelfareModuleProps {
   employeeId: string
+   initialTab?: 'loans' | 'rewards'
 }
 
-export function EmployeeWelfareModule({ employeeId }: EmployeeWelfareModuleProps) {
+export function EmployeeWelfareModule({ employeeId,initialTab = 'loans' }: EmployeeWelfareModuleProps) {
   const [rewards, setRewards] = useState<Reward[]>([])
   const [loans, setLoans] = useState<Loan[]>([])
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('loans')
+  const [activeTab, setActiveTab] = useState<'loans' | 'rewards'>(initialTab)
   const [search, setSearch] = useState('')
   const [loanStatusFilter, setLoanStatusFilter] = useState('همه')
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 7
+  const [showLoanDialog, setShowLoanDialog] = useState(false)  // ← اینجا باید باشه
+const [saving, setSaving] = useState(false)  // ← اینجا باید باشه
 
   // Detail Dialog
   const [detailOpen, setDetailOpen] = useState(false)
@@ -289,7 +270,28 @@ export function EmployeeWelfareModule({ employeeId }: EmployeeWelfareModuleProps
     setDetailTitle(title)
     setDetailOpen(true)
   }
-
+const handleLoanSubmit = async (data: any) => {
+  setSaving(true)
+  try {
+    const res = await fetch('/api/loans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      toast.success('درخواست وام با موفقیت ثبت شد')
+      setShowLoanDialog(false)
+      fetchEmployeeLoans()
+    } else {
+      const err = await res.json()
+      toast.error(err.error || 'خطا در ثبت درخواست')
+    }
+  } catch {
+    toast.error('خطا در ارتباط با سرور')
+  } finally {
+    setSaving(false)
+  }
+}
   // Fetch employee data
   useEffect(() => {
     if (!employeeId) return
@@ -501,6 +503,15 @@ export function EmployeeWelfareModule({ employeeId }: EmployeeWelfareModuleProps
                     <SelectItem value="paid">پرداخت شده</SelectItem>
                   </SelectContent>
                 </Select>
+
+                 <Button 
+      size="sm" 
+      className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" 
+      onClick={() => setShowLoanDialog(true)}
+    >
+      <Plus className="w-3.5 h-3.5" />
+      درخواست وام
+    </Button>
                 <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
                   <Button
                     variant={viewMode === 'card' ? 'secondary' : 'ghost'}
@@ -1055,6 +1066,15 @@ export function EmployeeWelfareModule({ employeeId }: EmployeeWelfareModuleProps
         type={detailType}
         data={detailData}
       />
+      <EmployeeLoanFormDialog
+  open={showLoanDialog}
+  onClose={() => setShowLoanDialog(false)}
+  onSubmit={handleLoanSubmit}
+  employeeId={employeeId}
+  employeeName={employee ? `${employee.firstName} ${employee.lastName}` : ''}
+  employeeDepartment={employee?.department || null}
+  saving={saving}
+/>
     </div>
   )
 }

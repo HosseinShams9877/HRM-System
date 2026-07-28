@@ -24,9 +24,11 @@ import type { Employee, Reward, Loan } from '../index'
 // Main Component — رفاهی
 // ============================================
 
-export function WelfareModule() {
+export function WelfareModule({ initialTab }: { initialTab?: 'rewards' | 'loans' | 'stats' }) {
   // --- State ---
-  const [activeTab, setActiveTab] = useState('rewards')
+ const [activeTab, setActiveTab] = useState<'rewards' | 'loans' | 'stats'>(
+    initialTab || 'rewards'
+  )
   const [rewards, setRewards] = useState<Reward[]>([])
   const [loans, setLoans] = useState<Loan[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
