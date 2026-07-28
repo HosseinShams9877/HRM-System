@@ -1,6 +1,7 @@
 'use client'
 
-import { CreditCard, Edit2, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Banknote, Calculator, Eye } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { CreditCard, Edit2, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Banknote, Calculator, Eye, ChevronRight, ChevronLeft } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
@@ -44,8 +45,27 @@ export function LoansTab({
   onUpdateLoanStatus,
   loanSummary,
 }: LoansTabProps) {
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
+
+  const totalItems = filteredLoans.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  const paginatedLoans = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredLoans.slice(startIndex, endIndex)
+  }, [filteredLoans, currentPage, itemsPerPage])
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" >
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3" dir='rtl'>
         <Card className="border-0 shadow-sm">
@@ -105,7 +125,10 @@ export function LoansTab({
                 variant={loanTypeFilter === t ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-[11px] px-2.5"
-                onClick={() => onTypeFilterChange(t)}
+                onClick={() => {
+                  onTypeFilterChange(t)
+                  setCurrentPage(1)
+                }}
               >
                 {t}
               </Button>
@@ -119,7 +142,10 @@ export function LoansTab({
                 variant={loanStatusFilter === s ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-[11px] px-2.5"
-                onClick={() => onStatusFilterChange(s)}
+                onClick={() => {
+                  onStatusFilterChange(s)
+                  setCurrentPage(1)
+                }}
               >
                 {s === 'همه' ? 'همه' : LOAN_STATUS[s]?.label || s}
               </Button>
@@ -130,14 +156,20 @@ export function LoansTab({
           <Button
             variant={viewMode === 'card' ? 'secondary' : 'ghost'}
             size="sm" className="h-7 w-7 p-0"
-            onClick={() => onViewModeChange('card')}
+            onClick={() => {
+              onViewModeChange('card')
+              setCurrentPage(1)
+            }}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant={viewMode === 'table' ? 'secondary' : 'ghost'}
             size="sm" className="h-7 w-7 p-0"
-            onClick={() => onViewModeChange('table')}
+            onClick={() => {
+              onViewModeChange('table')
+              setCurrentPage(1)
+            }}
           >
             <List className="w-3.5 h-3.5" />
           </Button>
@@ -164,191 +196,319 @@ export function LoansTab({
           <p className="text-xs mt-1">درخواست وام جدید از دکمه «درخواست وام» ایجاد کنید</p>
         </div>
       ) : viewMode === 'card' ? (
-        /* Card View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredLoans.map(item => {
-            const st = LOAN_STATUS[item.status] || LOAN_STATUS.pending
-            const lt = LOAN_TYPE_CONFIG[item.type] || LOAN_TYPE_CONFIG['وام']
-            const monthlyInstallment = item.installments ? Math.round(item.amount / item.installments) : 0
-            return (
-              <Card key={item.id} className="border-0 shadow-sm hover:shadow-md transition-all group">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-sky-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{item.employee?.firstName} {item.employee?.lastName}</p>
-                        <Badge className={`text-[10px] ${lt.color}`}>{lt.label}</Badge>
-                      </div>
-                    </div>
-                    <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
-                  </div>
-
-                  <p className="text-base font-bold text-foreground mb-1">
-                    {formatCurrency(item.amount)}
-                  </p>
-
-                  {item.installments && (
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Calculator className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-[11px] text-muted-foreground">
-                        {toPersianDigits(item.installments)} قسط — هر قسط: {formatCurrency(monthlyInstallment)}
-                      </span>
-                    </div>
-                  )}
-
-                  {item.reason && (
-                    <p className="text-[11px] text-muted-foreground mb-2 line-clamp-1">{item.reason}</p>
-                  )}
-
-                  <Separator className="my-2" />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">
-                      {toPersianDigits(new Date(item.createdAt).toLocaleDateString('fa-IR'))}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {/* Approval Workflow */}
-                      {item.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="ghost" size="sm"
-                            className="h-6 w-6 p-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
-                            title="تایید"
-                            onClick={() => onUpdateLoanStatus(item.id, 'approved')}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          </Button>
-                          <Button
-                            variant="ghost" size="sm"
-                            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
-                            title="رد"
-                            onClick={() => onUpdateLoanStatus(item.id, 'rejected')}
-                          >
-                            <XCircle className="w-3.5 h-3.5 text-red-500" />
-                          </Button>
-                        </>
-                      )}
-                      {item.status === 'approved' && (
-                        <Button
-                          variant="ghost" size="sm"
-                          className="h-6 w-6 p-0 hover:bg-sky-100 dark:hover:bg-sky-900/30"
-                          title="پرداخت شد"
-                          onClick={() => onUpdateLoanStatus(item.id, 'paid')}
-                        >
-                          <Banknote className="w-3.5 h-3.5 text-sky-600" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => onEdit(item)}
-                      >
-                        <Edit2 className="w-3 h-3 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => onDelete(item.id)}
-                      >
-                        <Trash2 className="w-3 h-3 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      ) : (
-        /* Table View */
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-0">
-            <div className="max-h-[500px] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">کارمند</TableHead>
-                    <TableHead className="text-xs">نوع</TableHead>
-                    <TableHead className="text-xs">مبلغ</TableHead>
-                    <TableHead className="text-xs">اقساط</TableHead>
-                    <TableHead className="text-xs">وضعیت</TableHead>
-                    <TableHead className="text-xs">دلیل</TableHead>
-                    <TableHead className="text-xs">اقدامات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLoans.map(item => {
-                    const st = LOAN_STATUS[item.status] || LOAN_STATUS.pending
-                    const lt = LOAN_TYPE_CONFIG[item.type] || LOAN_TYPE_CONFIG['وام']
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell className="text-xs font-medium">
-                          {item.employee?.firstName} {item.employee?.lastName}
-                        </TableCell>
-                        <TableCell>
+        <>
+          {/* Card View */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedLoans.map(item => {
+              const st = LOAN_STATUS[item.status] || LOAN_STATUS.pending
+              const lt = LOAN_TYPE_CONFIG[item.type] || LOAN_TYPE_CONFIG['وام']
+              const monthlyInstallment = item.installments ? Math.round(item.amount / item.installments) : 0
+              return (
+                <Card key={item.id} className="border-0 shadow-sm hover:shadow-md transition-all group">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                          <CreditCard className="w-4 h-4 text-sky-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{item.employee?.firstName} {item.employee?.lastName}</p>
                           <Badge className={`text-[10px] ${lt.color}`}>{lt.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium">
-                          {formatCurrency(item.amount)}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {item.installments ? toPersianDigits(item.installments) : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">
-                          {item.reason || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {item.status === 'pending' && (
-                              <>
-                                <Button
-                                  variant="ghost" size="sm" className="h-7 w-7 p-0"
-                                  title="تایید"
-                                  onClick={() => onUpdateLoanStatus(item.id, 'approved')}
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost" size="sm" className="h-7 w-7 p-0"
-                                  title="رد"
-                                  onClick={() => onUpdateLoanStatus(item.id, 'rejected')}
-                                >
-                                  <XCircle className="w-3.5 h-3.5 text-red-500" />
-                                </Button>
-                              </>
-                            )}
-                            {item.status === 'approved' && (
-                              <Button
-                                variant="ghost" size="sm" className="h-7 w-7 p-0"
-                                title="پرداخت شد"
-                                onClick={() => onUpdateLoanStatus(item.id, 'paid')}
-                              >
-                                <Banknote className="w-3.5 h-3.5 text-sky-600" />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(item)}>
-                              <Edit2 className="w-3 h-3" />
+                        </div>
+                      </div>
+                      <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                    </div>
+
+                    <p className="text-base font-bold text-foreground mb-1">
+                      {formatCurrency(item.amount)}
+                    </p>
+
+                    {item.installments && (
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Calculator className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground">
+                          {toPersianDigits(item.installments)} قسط — هر قسط: {formatCurrency(monthlyInstallment)}
+                        </span>
+                      </div>
+                    )}
+
+                    {item.reason && (
+                      <p className="text-[11px] text-muted-foreground mb-2 line-clamp-1">{item.reason}</p>
+                    )}
+
+                    <Separator className="my-2" />
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">
+                        {toPersianDigits(new Date(item.createdAt).toLocaleDateString('fa-IR'))}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {/* Approval Workflow */}
+                        {item.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="ghost" size="sm"
+                              className="h-6 w-6 p-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                              title="تایید"
+                              onClick={() => onUpdateLoanStatus(item.id, 'approved')}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             </Button>
                             <Button
-                              variant="ghost" size="sm" className="h-7 w-7 p-0"
-                              onClick={() => onDelete(item.id)}
+                              variant="ghost" size="sm"
+                              className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
+                              title="رد"
+                              onClick={() => onUpdateLoanStatus(item.id, 'rejected')}
                             >
-                              <Trash2 className="w-3 h-3 text-red-500" />
+                              <XCircle className="w-3.5 h-3.5 text-red-500" />
                             </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                          </>
+                        )}
+                        {item.status === 'approved' && (
+                          <Button
+                            variant="ghost" size="sm"
+                            className="h-6 w-6 p-0 hover:bg-sky-100 dark:hover:bg-sky-900/30"
+                            title="پرداخت شد"
+                            onClick={() => onUpdateLoanStatus(item.id, 'paid')}
+                          >
+                            <Banknote className="w-3.5 h-3.5 text-sky-600" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => onEdit(item)}
+                        >
+                          <Edit2 className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => onDelete(item.id)}
+                        >
+                          <Trash2 className="w-3 h-3 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Pagination - Card View */}
+          {totalItems > itemsPerPage && (
+            <div className="flex items-center justify-center gap-4 px-2 py-3">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        className={`h-8 w-8 p-0 text-sm ${
+                          currentPage === pageNum 
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                          : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {toPersianDigits(pageNum)}
+                      </Button>
                     )
-                  })}
-                </TableBody>
-              </Table>
+                  }).reverse()}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                نمایش {toPersianDigits(paginatedLoans.length)} از {toPersianDigits(totalItems)} وام
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Table View */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-0">
+              <div className="max-h-[500px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">اقدامات</TableHead>
+                      <TableHead className="text-xs">دلیل</TableHead>
+                      <TableHead className="text-xs">وضعیت</TableHead>
+                      <TableHead className="text-xs">اقساط</TableHead>
+                      <TableHead className="text-xs">مبلغ</TableHead>
+                      <TableHead className="text-xs">نوع</TableHead>
+                      <TableHead className="text-xs">کارمند</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLoans.map(item => {
+                      const st = LOAN_STATUS[item.status] || LOAN_STATUS.pending
+                      const lt = LOAN_TYPE_CONFIG[item.type] || LOAN_TYPE_CONFIG['وام']
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {item.status === 'pending' && (
+                                <>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                    title="تایید"
+                                    onClick={() => onUpdateLoanStatus(item.id, 'approved')}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                    title="رد"
+                                    onClick={() => onUpdateLoanStatus(item.id, 'rejected')}
+                                  >
+                                    <XCircle className="w-3.5 h-3.5 text-red-500" />
+                                  </Button>
+                                </>
+                              )}
+                              {item.status === 'approved' && (
+                                <Button
+                                  variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                  title="پرداخت شد"
+                                  onClick={() => onUpdateLoanStatus(item.id, 'paid')}
+                                >
+                                  <Banknote className="w-3.5 h-3.5 text-sky-600" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(item)}>
+                                <Edit2 className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                onClick={() => onDelete(item.id)}
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">
+                            {item.reason || '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${st.color}`}>{st.label}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.installments ? toPersianDigits(item.installments) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">
+                            {formatCurrency(item.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${lt.color}`}>{lt.label}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">
+                            {item.employee?.firstName} {item.employee?.lastName}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pagination - Table View */}
+          {totalItems > itemsPerPage && (
+            <div className="flex items-center justify-center gap-4 px-2 py-3">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        className={`h-8 w-8 p-0 text-sm ${
+                          currentPage === pageNum 
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                          : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {toPersianDigits(pageNum)}
+                      </Button>
+                    )
+                  }).reverse()}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                نمایش {toPersianDigits(paginatedLoans.length)} از {toPersianDigits(totalItems)} وام
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
