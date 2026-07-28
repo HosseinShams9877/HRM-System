@@ -34,6 +34,8 @@ import { EmployeeWizard } from '@/modules/employees/components/employee-form'
 import { EmployeeContractsModule } from '@/modules/contracts/components/employee-contracts-module'
 import { EmployeeLeaveBalanceModule } from '@/modules/attendance/leaves/components/employee-leave-balance'
 import { EmployeeShiftsModule } from '@/modules/shifts/components/employee-shifts-module'
+import { EmployeeWelfareModule } from '@/modules/welfare/components/employee-welfare-module'
+
 
 
 // ============================================
@@ -200,7 +202,14 @@ export function ModuleRouter({
   if (activeModule === 'work-history') {
     return <EmployeeWorkHistory onNavigate={onNavigate} currentUser={user} />
   }
-  if (activeModule === 'welfare' || activeModule === 'welfare-rewards' || activeModule === 'welfare-loans') return <WelfareModule />
+  if (activeModule === 'welfare' || activeModule === 'welfare-rewards' || activeModule === 'welfare-loans') {
+  // اگر کاربر employee هست، کامپوننت مخصوص کارمند رو نشون بده
+  if (user?.role === 'employee' || currentUser?.role === 'employee') {
+    const empId = user?.employeeId || currentUser?.employeeId || ''
+    return <EmployeeWelfareModule employeeId={empId} />
+  }
+  return <WelfareModule />
+}
   if (activeModule === 'settings' || activeModule === 'settings-general' || activeModule === 'settings-access') return <SettingsModule />
 /*
   if (activeModule === 'employee-documents') {

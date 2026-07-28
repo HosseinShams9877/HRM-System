@@ -273,9 +273,9 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="missions" className="gap-1.5">
-            <PlaneTakeoff className="w-4 h-4" />
-            مأموریت‌ها
+          <TabsTrigger value="statistics" className="gap-1.5">
+            <BarChart3 className="w-4 h-4" />
+            آمار
           </TabsTrigger>
           <TabsTrigger value="pending" className="gap-1.5 relative">
             <Clock className="w-4 h-4" />
@@ -286,9 +286,9 @@ export function MissionsModule({ currentUser }: { currentUser?: { role: string; 
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="statistics" className="gap-1.5">
-            <BarChart3 className="w-4 h-4" />
-            آمار
+            <TabsTrigger value="missions" className="gap-1.5">
+            <PlaneTakeoff className="w-4 h-4" />
+            مأموریت‌ها
           </TabsTrigger>
         </TabsList>
 
