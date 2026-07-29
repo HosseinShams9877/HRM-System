@@ -63,8 +63,63 @@
   return m.toDate()
 }
 
-// src/modules/employees/components/EmployeeArchive.tsx
+// ============================================
+// تبدیل عدد به حروف فارسی
+// ============================================
 
+const ones = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه']
+const tens = ['', '', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود']
+const hundreds = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد']
+const thousands = ['', 'هزار', 'میلیون', 'میلیارد', 'تریلیون']
+
+function convertThreeDigits(num: number): string {
+  if (num === 0) return ''
+  
+  const h = Math.floor(num / 100)
+  const t = Math.floor((num % 100) / 10)
+  const o = num % 10
+
+  let result = ''
+  if (h > 0) result += hundreds[h]
+  if (t > 1) {
+    result += (result ? ' و ' : '') + tens[t]
+    if (o > 0) result += ' و ' + ones[o]
+  } else if (t === 1) {
+    const teen = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده']
+    result += (result ? ' و ' : '') + teen[o]
+  } else if (o > 0) {
+    result += (result ? ' و ' : '') + ones[o]
+  }
+  return result
+}
+
+export function numberToWords(amount: number): string {
+  if (amount === 0) return 'صفر'
+  
+  const absAmount = Math.abs(amount)
+  let num = absAmount
+  let parts: string[] = []
+  let groupIndex = 0
+
+  while (num > 0) {
+    const threeDigits = num % 1000
+    if (threeDigits > 0) {
+      const threeWords = convertThreeDigits(threeDigits)
+      const unit = thousands[groupIndex]
+      const part = threeWords + (unit ? ' ' + unit : '')
+      parts.unshift(part)
+    }
+    num = Math.floor(num / 1000)
+    groupIndex++
+  }
+
+  let result = parts.join(' و ')
+  // حذف 'و' اضافی
+  result = result.replace(/ و و /g, ' و ')
+  result = result.replace(/^و /, '')
+  
+  return amount < 0 ? 'منفی ' + result : result
+}
 // ============================================
 // Helper Functions
 // ============================================

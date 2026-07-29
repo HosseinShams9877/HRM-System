@@ -533,6 +533,39 @@ model Holiday {
   updatedAt   DateTime @updatedAt
 }
 
+model MonthlyWorkRecord {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  year            Int
+  month           Int
+  
+  // کارکرد
+  workDays        Float    @default(30)    // روزهای کارکرد
+  normalHours     Float    @default(0)     // ساعات کار عادی
+  overtimeHours   Float    @default(0)     // اضافه‌کاری
+  nightShiftHours Float    @default(0)     // شب‌کاری
+  shiftType       String?  // morning_evening | morning_evening_night | morning_night | evening_night
+  fridayWorkHours Float    @default(0)     // جمعه‌کاری
+  holidayWorkHours Float   @default(0)     // تعطیل‌کاری
+  missionDays     Float    @default(0)     // مأموریت
+  leaveDays       Float    @default(0)     // مرخصی استحقاقی
+  unpaidLeaveDays Float    @default(0)     // مرخصی بدون حقوق
+  absenceDays     Float    @default(0)     // غیبت
+  delayHours      Float    @default(0)     // تأخیر
+  earlyLeaveHours Float    @default(0)     // تعجیل
+  shortWorkHours  Float    @default(0)     // کسرکار
+  
+  // وضعیت
+  status          String   @default("draft") // draft, confirmed, closed
+  notes           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
+  @@index([year, month])
+}
 // ============================================
 // حقوق و دستمزد (کاملاً دینامیک)
 // ============================================
@@ -551,6 +584,11 @@ model PayrollItem {
   isTaxable       Boolean        @default(true) // مشمول مالیات هست؟
   isEditable      Boolean        @default(true) // کاربر می‌تونه مبلغ رو ویرایش کنه؟
   isSystem        Boolean        @default(false) // آیتم سیستمی (بیمه/مالیات) — قابل حذف نیست
+   includeInEidi       Boolean  @default(false) // در محاسبه عیدی لحاظ شود
+  includeInSanavat    Boolean  @default(false) // در محاسبه سنوات لحاظ شود
+  affectsOvertime     Boolean  @default(false) // در محاسبه اضافه‌کاری اثر داشته باشد
+  includeInLeaveBuyback Boolean @default(false) // در محاسبه بازخرید مرخصی لحاظ شود
+  includeInLeaveBalance Boolean @default(false) // در محاسبه مانده مرخصی لحاظ شود
   sortOrder       Int            @default(0) // ترتیب نمایش
   isActive        Boolean        @default(true)
   year            Int // سال شمسی — هر سال قابل تنظیم مجدد

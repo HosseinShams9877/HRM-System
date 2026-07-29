@@ -63,6 +63,11 @@ export interface PayrollItemDefinition {
   code: string
   category: string // allowance | deduction
   calculationType: string // fixed | percentage | formula
+  includeInEidi: boolean
+  includeInSanavat: boolean
+  affectsOvertime: boolean
+  includeInLeaveBuyback: boolean
+  includeInLeaveBalance: boolean
   value: number
   formulaId: string | null
   formula?: {

@@ -194,6 +194,31 @@ export function PaySlipFormDialog({
     }
   }, [open, initialData, year, today, payrollItems])
 
+  useEffect(() => {
+    if (!employeeId || !formYear || !formMonth) return
+    
+    const loadWorkRecord = async () => {
+      try {
+        const res = await fetch(
+          `/api/payroll/work-records?employeeId=${employeeId}&year=${formYear}&month=${formMonth}`
+        )
+        if (res.ok) {
+          const json = await res.json()
+          const record = json.records?.[0]
+          if (record) {
+            setWorkDays(String(record.workDays || 30))
+            setOvertimeHours(String(record.overtimeHours || 0))
+            // می‌توانید سایر فیلدها را هم پر کنید
+          }
+        }
+      } catch {
+        // خطا را نادیده بگیرید
+      }
+    }
+    
+    loadWorkRecord()
+  }, [employeeId, formYear, formMonth])
+  
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">

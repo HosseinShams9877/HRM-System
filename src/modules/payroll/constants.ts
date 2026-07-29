@@ -528,6 +528,56 @@ export const SYSTEM_FORMULAS = [
     ],
   },
   {
+    code: 'shift_allowance_morning_evening',
+    name: 'نوبت‌کاری صبح و عصر',
+    description: 'محاسبه خودکار نوبت‌کاری صبح و عصر (۱۰٪)',
+    expression: '{dailyRate} * 0.1 * {workDays}',
+    variables: [
+      { varName: 'dailyRate', sourceType: 'computed', sourceId: null, label: 'نرخ روزانه' },
+      { varName: 'workDays', sourceType: 'computed', sourceId: null, label: 'روزهای کارکرد' },
+    ],
+  },
+  {
+    code: 'shift_allowance_all_shifts',
+    name: 'نوبت‌کاری صبح، عصر و شب',
+    description: 'محاسبه خودکار نوبت‌کاری صبح، عصر و شب (۱۵٪)',
+    expression: '{dailyRate} * 0.15 * {workDays}',
+    variables: [
+      { varName: 'dailyRate', sourceType: 'computed', sourceId: null, label: 'نرخ روزانه' },
+      { varName: 'workDays', sourceType: 'computed', sourceId: null, label: 'روزهای کارکرد' },
+    ],
+  },
+  {
+    code: 'shift_allowance_mixed',
+    name: 'نوبت‌کاری مختلط',
+    description: 'محاسبه خودکار نوبت‌کاری صبح و شب یا عصر و شب (۲۲.۵٪)',
+    expression: '{dailyRate} * 0.225 * {workDays}',
+    variables: [
+      { varName: 'dailyRate', sourceType: 'computed', sourceId: null, label: 'نرخ روزانه' },
+      { varName: 'workDays', sourceType: 'computed', sourceId: null, label: 'روزهای کارکرد' },
+    ],
+  },
+  {
+    code: 'absence_deduction',
+    name: 'کسر غیبت',
+    description: 'محاسبه خودکار کسر غیبت',
+    expression: '{dailyRate} * {absenceDays}',
+    variables: [
+      { varName: 'dailyRate', sourceType: 'computed', sourceId: null, label: 'نرخ روزانه' },
+      { varName: 'absenceDays', sourceType: 'employee_field', sourceId: null, label: 'روزهای غیبت' },
+    ],
+  },
+  {
+    code: 'delay_deduction',
+    name: 'کسر تأخیر',
+    description: 'محاسبه خودکار کسر تأخیر',
+    expression: '{hourlyRate} * {delayHours}',
+    variables: [
+      { varName: 'hourlyRate', sourceType: 'computed', sourceId: null, label: 'نرخ ساعتی' },
+      { varName: 'delayHours', sourceType: 'employee_field', sourceId: null, label: 'ساعات تأخیر' },
+    ],
+  },
+  {
     code: 'mission_days',
     name: 'حق ماموریت',
     description: 'محاسبه خودکار بر اساس روزهای ماموریت تأییدشده',

@@ -28,6 +28,8 @@ import { PaySlipFormDialog } from './pay-slip-form-dialog'
 import { PaySlipDetailDialog } from './pay-slip-detail-dialog'
 import { GeneratePaySlipsDialog } from './generate-pay-slips-dialog'
 import { SettingsTab } from './payroll-settings-tab'
+import { MonthlyWorkListTab } from './monthly-work-list-tab'
+import { Calendar } from 'lucide-react'
 import { ReportsTab } from './payroll-reports-tab'
 import { useActiveEmployees } from '@/modules/employees/hooks/use-employees-list'
 // ============================================
@@ -295,6 +297,10 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
             <Receipt className="w-3.5 h-3.5" />
             فیش حقوقی
           </TabsTrigger>
+          <TabsTrigger value="work-records" className="gap-1">
+  <Calendar className="w-3.5 h-3.5" />
+  کارکرد ماهانه
+</TabsTrigger>
           <TabsTrigger value="formulas" className="gap-1">
             <Calculator className="w-3.5 h-3.5" />
             فرمول‌ها
@@ -506,6 +512,10 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="work-records" className="space-y-4">
+  <MonthlyWorkListTab employees={employees} year={yearFilter} />
+</TabsContent>
 
         {/* فرمول‌ها Tab */}
         <TabsContent value="formulas">

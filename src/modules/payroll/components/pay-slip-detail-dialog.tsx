@@ -1,12 +1,12 @@
 'use client'
 
 import {
-  Receipt, BadgeDollarSign, Printer,
+  Receipt, BadgeDollarSign, Printer, FileText,
 } from 'lucide-react'
 import { Button } from '@/core/components/ui/button'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/core/components/ui/dialog'
-import { toPersianDigits, formatCurrency } from '@/core/lib/utils-fa'
+import { toPersianDigits, formatCurrency, numberToWords } from '@/core/lib/utils-fa'
 import { PERSIAN_MONTHS, RIALS_TO_TOMANS } from '../constants'
 import { PaySlipStatusBadge } from './pay-slip-status-badge'
 import type { PaySlipRecord } from '../index'
@@ -193,6 +193,21 @@ export function PaySlipDetailDialog({
               <div className="font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(RIALS_TO_TOMANS(payslip.netSalary))}</div>
             </div>
           </div>
+
+          {/* مبلغ به حروف - اضافه شود */}
+<div className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900/20 dark:to-gray-900/20 border border-slate-200 dark:border-slate-800">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+        <FileText className="w-4 h-4 text-slate-600" />
+      </div>
+      <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">مبلغ به حروف</span>
+    </div>
+    <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+      {numberToWords(RIALS_TO_TOMANS(payslip.netSalary))} تومان
+    </div>
+  </div>
+</div>
 
           {/* خالص پرداختی */}
           <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-2 border-emerald-200 dark:border-emerald-800">

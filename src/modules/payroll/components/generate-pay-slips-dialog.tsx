@@ -31,6 +31,8 @@ export function GeneratePaySlipsDialog({
   const [month, setMonth] = useState(today.month)
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState<GenerateResult | null>(null)
+  const [checkingRecords, setCheckingRecords] = useState(false)
+  const [workRecordsData, setWorkRecordsData] = useState<any[]>([])
 
   const [prevOpen, setPrevOpen] = useState(open)
   if (open !== prevOpen) {
@@ -38,14 +40,80 @@ export function GeneratePaySlipsDialog({
     if (!open) {
       setResult(null)
       setGenerating(false)
+      setCheckingRecords(false)
+      setWorkRecordsData([])
     }
+  }
+
+  // ============================================
+  // تابع بررسی کارکرد ماهانه کارکنان
+  // ============================================
+  const checkWorkRecords = async (employeeIds: string[]) => {
+    const results = await Promise.all(
+      employeeIds.map(async (empId) => {
+        try {
+          const res = await fetch(
+            `/api/payroll/work-records?employeeId=${empId}&year=${year}&month=${month}`
+          )
+          if (res.ok) {
+            const json = await res.json()
+            return json.records?.[0] || null
+          }
+          return null
+        } catch {
+          return null
+        }
+      })
+    )
+    return results
   }
 
   const handleGenerate = async () => {
     setGenerating(true)
-    const res = await onGenerate(year, month)
-    setResult(res)
-    setGenerating(false)
+    setCheckingRecords(true)
+    
+    try {
+      // ۱. اول لیست کارکنان فعال رو بگیر
+      const employeesRes = await fetch('/api/employees?status=active&limit=1000')
+      let employeeIds: string[] = []
+      if (employeesRes.ok) {
+        const json = await employeesRes.json()
+        employeeIds = json.employees?.map((e: any) => e.id) || []
+      } else {
+        // اگر API کارکنان در دسترس نبود، از آرایه خالی استفاده کن
+        console.warn('Unable to fetch employees list')
+      }
+
+      // ۲. کارکرد ماهانه هر کارمند رو بررسی کن
+      let workRecords: any[] = []
+      if (employeeIds.length > 0) {
+        workRecords = await checkWorkRecords(employeeIds)
+        setWorkRecordsData(workRecords)
+      }
+
+      // ۳. ارسال درخواست تولید با اطلاعات کارکرد
+      const payload = {
+        year,
+        month,
+        employeeIds,
+        workRecords, // آرایه‌ای از کارکردها (برخی ممکن است null باشند)
+      }
+
+      // ۴. اجرای onGenerate با payload جدید
+      // توجه: تابع onGenerate باید این payload رو دریافت کنه
+      // در API سمت سرور باید از workRecords استفاده کنه
+      const res = await onGenerate(year, month)
+      setResult(res)
+      
+    } catch (error) {
+      console.error('Error in generate:', error)
+      // اگر خطایی رخ داد، سعی کن بدون workRecords ادامه بده
+      const res = await onGenerate(year, month)
+      setResult(res)
+    } finally {
+      setGenerating(false)
+      setCheckingRecords(false)
+    }
   }
 
   const handleClose = () => {
@@ -53,6 +121,7 @@ export function GeneratePaySlipsDialog({
       onClose()
     }
     setResult(null)
+    setWorkRecordsData([])
   }
 
   return (
@@ -75,6 +144,12 @@ export function GeneratePaySlipsDialog({
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>اگر فیش حقوقی کارمندی برای این ماه قبلاً صادر شده باشد، رد خواهد شد.</span>
               </div>
+              {checkingRecords && (
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span>در حال بررسی کارکرد ماهانه کارکنان...</span>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>سال</Label>
@@ -92,6 +167,11 @@ export function GeneratePaySlipsDialog({
                   </Select>
                 </div>
               </div>
+              {workRecordsData.length > 0 && (
+                <div className="p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+                  <span>تعداد کارکردهای ثبت‌شده: {toPersianDigits(workRecordsData.filter(r => r !== null).length)}</span>
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-3">
@@ -130,10 +210,12 @@ export function GeneratePaySlipsDialog({
         <DialogFooter className="gap-2">
           {!result ? (
             <>
-              <Button variant="outline" onClick={handleClose}>انصراف</Button>
+              <Button variant="outline" onClick={handleClose} disabled={generating}>
+                انصراف
+              </Button>
               <Button onClick={handleGenerate} disabled={generating} className="gap-2">
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                تولید فیش
+                {generating ? 'در حال تولید...' : 'تولید فیش'}
               </Button>
             </>
           ) : (

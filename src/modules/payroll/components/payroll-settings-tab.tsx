@@ -48,6 +48,11 @@ function PayrollItemFormDialog({
     value: '',
     formulaId: '',
     isInsurable: true,
+    includeInEidi: false,
+    includeInSanavat: false,
+    affectsOvertime: false,
+    includeInLeaveBuyback: false,
+    includeInLeaveBalance: false,
     isTaxable: true,
     isEditable: true,
     isSystem: false,
@@ -83,12 +88,31 @@ function PayrollItemFormDialog({
           isSystem: initialData.isSystem,
           sortOrder: String(initialData.sortOrder),
           description: initialData.description || '',
+          includeInEidi: initialData.includeInEidi ?? false,
+          includeInSanavat: initialData.includeInSanavat ?? false,
+          affectsOvertime: initialData.affectsOvertime ?? false,
+          includeInLeaveBuyback: initialData.includeInLeaveBuyback ?? false,
+          includeInLeaveBalance: initialData.includeInLeaveBalance ?? false,
         })
       } else {
         setForm({
-          title: '', code: '', category: 'allowance', calculationType: 'fixed',
-          value: '', formulaId: '', isInsurable: true, isTaxable: true,
-          isEditable: true, isSystem: false, sortOrder: '0', description: '',
+          title: '',
+          code: '',
+          category: 'allowance',
+          calculationType: 'fixed',
+          value: '',
+          formulaId: '',
+          isInsurable: true,
+          isTaxable: true,
+          isEditable: true,
+          isSystem: false,
+          sortOrder: '0',
+          description: '',
+          includeInEidi: false,
+          includeInSanavat: false,
+          affectsOvertime: false,
+          includeInLeaveBuyback: false,
+          includeInLeaveBalance: false,
         })
       }
     }
@@ -220,6 +244,53 @@ function PayrollItemFormDialog({
               <input type="checkbox" checked={form.isSystem} onChange={(e) => setForm({ ...form, isSystem: e.target.checked })} className="rounded" />
               سیستمی
             </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t">
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input
+      type="checkbox"
+      checked={form.includeInEidi}
+      onChange={(e) => setForm({ ...form, includeInEidi: e.target.checked })}
+      className="rounded"
+    />
+    در محاسبه عیدی لحاظ شود
+  </label>
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input
+      type="checkbox"
+      checked={form.includeInSanavat}
+      onChange={(e) => setForm({ ...form, includeInSanavat: e.target.checked })}
+      className="rounded"
+    />
+    در محاسبه سنوات لحاظ شود
+  </label>
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input
+      type="checkbox"
+      checked={form.affectsOvertime}
+      onChange={(e) => setForm({ ...form, affectsOvertime: e.target.checked })}
+      className="rounded"
+    />
+    در محاسبه اضافه‌کاری اثر داشته باشد
+  </label>
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input
+      type="checkbox"
+      checked={form.includeInLeaveBuyback}
+      onChange={(e) => setForm({ ...form, includeInLeaveBuyback: e.target.checked })}
+      className="rounded"
+    />
+    در محاسبه بازخرید مرخصی لحاظ شود
+  </label>
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input
+      type="checkbox"
+      checked={form.includeInLeaveBalance}
+      onChange={(e) => setForm({ ...form, includeInLeaveBalance: e.target.checked })}
+      className="rounded"
+    />
+    در محاسبه مانده مرخصی لحاظ شود
+  </label>
+</div>
           </div>
         </div>
 
