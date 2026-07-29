@@ -83,6 +83,9 @@ export function WelfareModule({ initialTab }: { initialTab?: 'rewards' | 'loans'
       }
     } catch (e) { console.error(e) }
   }, [])
+  useEffect(()=> {
+    setActiveTab(initialTab)
+  },[initialTab])
 
   useEffect(() => {
     ;(async () => {

@@ -202,24 +202,23 @@ export function ModuleRouter({
   if (activeModule === 'work-history') {
     return <EmployeeWorkHistory onNavigate={onNavigate} currentUser={user} />
   }
-  if (activeModule === 'welfare' || activeModule === 'welfare-rewards' || activeModule === 'welfare-loans') {
-  // اگر کاربر employee هست، کامپوننت مخصوص کارمند رو نشون بده
+if (activeModule === 'welfare-loans') {
+  console.log('🎯 Loans module detected')
   if (user?.role === 'employee' || currentUser?.role === 'employee') {
     const empId = user?.employeeId || currentUser?.employeeId || ''
-    let initialTab: 'rewards' | 'loans' = 'rewards'
-    if (activeModule === 'welfare-loans') {
-      initialTab = 'loans'
-    }
-    return <EmployeeWelfareModule employeeId={empId} initialTab={initialTab} />
+    return <EmployeeWelfareModule employeeId={empId} initialTab="loans" />
   }
-  
-  // برای ادمین
-  let initialTab: 'rewards' | 'loans' | 'stats' = 'rewards'
-  if (activeModule === 'welfare-loans') {
-    initialTab = 'loans'
-  }
-  return <WelfareModule initialTab={initialTab} />
+  return <WelfareModule initialTab="loans" />
 }
+if (activeModule === 'welfare' || activeModule === 'welfare-rewards') {
+  console.log('🎯 Rewards module detected')
+  if (user?.role === 'employee' || currentUser?.role === 'employee') {
+    const empId = user?.employeeId || currentUser?.employeeId || ''
+    return <EmployeeWelfareModule employeeId={empId} initialTab="rewards" />
+  }
+  return <WelfareModule initialTab="rewards" />
+}
+
   if (activeModule === 'settings' || activeModule === 'settings-general' || activeModule === 'settings-access') return <SettingsModule />
 /*
   if (activeModule === 'employee-documents') {
