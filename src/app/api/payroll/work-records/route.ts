@@ -1,0 +1,1 @@
+export { GET , POST  } from '@/modules/payroll/api/work-records/route'

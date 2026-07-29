@@ -2,7 +2,7 @@
 // Types — Monthly Work Record
 // ============================================
 
-import type { EmployeeBasic } from '../types'
+import type { EmployeeBasic } from './types'
 
 export interface MonthlyWorkRecord {
   id: string
