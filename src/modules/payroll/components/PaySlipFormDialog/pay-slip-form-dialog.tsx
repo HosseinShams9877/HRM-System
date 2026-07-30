@@ -1,3 +1,5 @@
+// src/modules/payroll/components/pay-slip-form-dialog.tsx
+
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
@@ -82,7 +84,6 @@ const calculateInsurance = (
     return 0
   }
 
-  // ۱. مبلغ مشمول بیمه = حقوق پایه + مزایای مشمول بیمه
   let insurableAmount = baseSalary
   for (const item of allowanceItems) {
     if (item.isInsurable) {
@@ -90,16 +91,13 @@ const calculateInsurance = (
     }
   }
 
-  // ۲. سقف بیمه
-  const minDailyWage = settings.minDailyWage / 10 // تومان
+  const minDailyWage = settings.minDailyWage / 10
   const workDaysPerMonth = settings.workDaysPerMonth || 30
   const insuranceCeilingMultiplier = settings.insuranceCeilingMultiplier || 7
   const ceiling = minDailyWage * workDaysPerMonth * insuranceCeilingMultiplier
 
-  // ۳. اعمال سقف
   const cappedInsurable = Math.min(insurableAmount, ceiling)
 
-  // ۴. نرخ کل بیمه (سهم کارمند + بیمه بیکاری)
   const insuranceRate = settings.insuranceRate || 7
   const unemploymentRate = settings.unemploymentInsRate || 1
   const totalRate = insuranceRate + unemploymentRate
@@ -126,14 +124,10 @@ const calculateTax = (
     return 0
   }
 
-  // ۱. درآمد مشمول مالیات ماهانه
   const taxExemptAmount = settings.taxExemptAmount || 0
   const taxableMonthly = Math.max(0, grossSalary - taxExemptAmount)
-
-  // ۲. تبدیل به سالانه
   const taxableYearly = taxableMonthly * 12
 
-  // ۳. محاسبه پلکانی
   let annualTax = 0
   let remaining = taxableYearly
   const sortedBrackets = [...taxBrackets].sort((a, b) => a.orderNum - b.orderNum)
@@ -153,6 +147,93 @@ const calculateTax = (
   const result = Math.round(annualTax / 12)
   console.log('🔍 محاسبه مالیات:', { grossSalary, taxExemptAmount, taxableMonthly, taxableYearly, annualTax, result })
   return result
+}
+
+// ============================================
+// محاسبه عیدی (فقط در ماه اسفند)
+// ============================================
+const calculateEidi = (
+  baseSalary: number,
+  settings: any,
+  year: number,
+  month: number,
+  hireDate: string
+): number => {
+  // فقط در ماه اسفند (ماه ۱۲) محاسبه شود
+  if (month !== 12) return 0
+  
+  if (!settings) return 0
+  
+  // حداقل دستمزد روزانه (تومان)
+  const minDailyWage = settings.minDailyWage / 10
+
+  console.log("minDay" , minDailyWage)
+  
+  // محاسبه تعداد روزهای کارکرد در سال (ساده‌شده)
+  let daysWorked = 365 // پیش‌فرض
+  
+  if (hireDate) {
+    const parts = hireDate.split('/')
+    if (parts.length === 3) {
+      const hireYear = parseInt(parts[0])
+      const hireMonth = parseInt(parts[1])
+      const hireDay = parseInt(parts[2])
+      
+      const currentYear = year
+      if (hireYear < currentYear) {
+        daysWorked = 365
+      } else if (hireYear === currentYear) {
+        // تقریبی: روزهای باقی‌مانده از تاریخ استخدام
+        daysWorked = 365 - ((hireMonth - 1) * 30 + hireDay)
+        if (daysWorked < 0) daysWorked = 0
+      }
+    }
+  }
+  
+  // عیدی = (حداقل دستمزد روزانه × روزهای کارکرد) / ۱۲
+  let eidi = (minDailyWage * daysWorked) / 12
+
+  console.log("eidi", eidi)
+  
+  // اعمال حداقل و حداکثر
+  const minEidi = minDailyWage * 60
+  const maxEidi = minDailyWage * 90
+  
+  eidi = Math.max(minEidi, Math.min(eidi, maxEidi))
+  
+  console.log('🎁 محاسبه عیدی:', { minDailyWage, daysWorked, eidi, minEidi, maxEidi })
+  return Math.round(eidi)
+}
+
+// ============================================
+// محاسبه سنوات ماهانه
+// ============================================
+const calculateSanavat = (
+  baseSalary: number,
+  settings: any,
+  hireDate: string,
+  year: number
+): number => {
+  if (!settings) return 0
+  if (!hireDate) return 0
+  
+  const parts = hireDate.split('/')
+  if (parts.length !== 3) return 0
+  
+  const hireYear = parseInt(parts[0])
+  const yearsOfService = year - hireYear
+  
+  if (yearsOfService <= 0) return 0
+  
+  const sanavatRate = settings.sanavatRate || 2.5
+  const maxYears = settings.sanavatMaxYears || 30
+  
+  const effectiveYears = Math.min(yearsOfService, maxYears)
+  
+  const monthlySanavat = (baseSalary * sanavatRate * effectiveYears) / 100 / 12
+  
+  console.log('📅 محاسبه سنوات:', { baseSalary, sanavatRate, effectiveYears, monthlySanavat })
+  return Math.round(monthlySanavat)
 }
 
 export function PaySlipFormDialog({
@@ -204,6 +285,13 @@ export function PaySlipFormDialog({
   const [editDelayHours, setEditDelayHours] = useState('0')
 
   // ============================================
+  // Stateهای وام و پاداش
+  // ============================================
+  const [activeLoans, setActiveLoans] = useState<any[]>([])
+  const [monthlyRewards, setMonthlyRewards] = useState<any[]>([])
+  const [employeeHireDate, setEmployeeHireDate] = useState<string>('')
+
+  // ============================================
   // Stateهای حکم
   // ============================================
   const [generateOrder, setGenerateOrder] = useState(false)
@@ -214,7 +302,7 @@ export function PaySlipFormDialog({
   const [orderNewDepartment, setOrderNewDepartment] = useState('')
 
   // ============================================
-  // 🔥 Stateهای تنظیمات و مالیات
+  // Stateهای تنظیمات و مالیات
   // ============================================
   const [settings, setSettings] = useState<any>(null)
   const [taxBrackets, setTaxBrackets] = useState<any[]>([])
@@ -223,7 +311,7 @@ export function PaySlipFormDialog({
   const hasInitialized = useRef(false)
 
   // ============================================
-  // 🔥 دریافت تنظیمات حقوقی
+  // دریافت تنظیمات حقوقی
   // ============================================
   useEffect(() => {
     const loadSettings = async () => {
@@ -246,7 +334,7 @@ export function PaySlipFormDialog({
   }, [formYear])
 
   // ============================================
-  // 🔥 دریافت پله‌های مالیاتی
+  // دریافت پله‌های مالیاتی
   // ============================================
   useEffect(() => {
     const loadTaxBrackets = async () => {
@@ -267,10 +355,91 @@ export function PaySlipFormDialog({
   }, [formYear])
 
   // ============================================
-  // فیلتر آیتم‌های حقوقی + اضافه کردن بیمه و مالیات
+  // دریافت وام‌های فعال کارمند
+  // ============================================
+  const fetchActiveLoans = async (empId: string) => {
+    if (!empId) return
+    try {
+      console.log('🔄 دریافت وام‌های کارمند:', empId)
+      const res = await fetch(`/api/loans?employeeId=${empId}&status=approved`)
+      if (res.ok) {
+        const json = await res.json()
+        const loans = json.data || []
+        console.log('📋 تعداد وام‌ها:', loans.length)
+        setActiveLoans(loans)
+      }
+    } catch (error) {
+      console.error('Error fetching loans:', error)
+    }
+  }
+
+  // ============================================
+  // دریافت پاداش‌های ماه جاری کارمند
+  // ============================================
+  const fetchMonthlyRewards = async (empId: string, year: number, month: number) => {
+    if (!empId) return
+    try {
+      const res = await fetch(`/api/rewards?employeeId=${empId}`)
+      if (res.ok) {
+        const json = await res.json()
+        const allRewards = json.data || []
+        const filteredRewards = allRewards.filter((reward: any) => {
+          if (!reward.date) return false
+          const parts = reward.date.split('/')
+          if (parts.length !== 3) return false
+          const rewardYear = parseInt(parts[0])
+          const rewardMonth = parseInt(parts[1])
+          return rewardYear === year && rewardMonth === month
+        })
+        setMonthlyRewards(filteredRewards)
+        console.log('✅ پاداش‌های ماه جاری:', filteredRewards)
+      }
+    } catch (error) {
+      console.error('Error fetching rewards:', error)
+    }
+  }
+
+  // ============================================
+  // دریافت تاریخ استخدام کارمند
+  // ============================================
+  const fetchEmployeeHireDate = async (empId: string) => {
+    if (!empId) return
+    try {
+      const res = await fetch(`/api/employees/${empId}`)
+      if (res.ok) {
+        const json = await res.json()
+        const employee = json.data || json
+        if (employee.hireDate) {
+          setEmployeeHireDate(employee.hireDate)
+          console.log('✅ تاریخ استخدام:', employee.hireDate)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching employee:', error)
+    }
+  }
+
+  // ============================================
+  // بارگذاری وام، پاداش و تاریخ استخدام هنگام تغییر کارمند
+  // ============================================
+  useEffect(() => {
+    if (!employeeId) {
+      setActiveLoans([])
+      setMonthlyRewards([])
+      setEmployeeHireDate('')
+      return
+    }
+    
+    console.log('🔄 بارگذاری اطلاعات برای کارمند:', employeeId)
+    fetchActiveLoans(employeeId)
+    fetchMonthlyRewards(employeeId, formYear, formMonth)
+    fetchEmployeeHireDate(employeeId)
+  }, [employeeId, formYear, formMonth])
+
+  // ============================================
+  // فیلتر آیتم‌های حقوقی + اضافه کردن آیتم‌ها
   // ============================================
   const relevantItems = useMemo(() => {
-    // کپی از آیتم‌ها
     let items = [...payrollItems]
     
     // بررسی وجود آیتم بیمه
@@ -283,7 +452,27 @@ export function PaySlipFormDialog({
       item.code === 'TAX_INCOME' || item.code === 'TAX' || item.code === 'INCOME_TAX'
     )
 
-    // 🔥 اگر آیتم بیمه وجود نداشت، اضافه کن
+    // بررسی وجود آیتم قسط وام
+    const hasLoan = items.some(item => 
+      item.code === 'LOAN_INSTALLMENT' || item.code === 'LOAN'
+    )
+
+    // بررسی وجود آیتم پاداش
+    const hasReward = items.some(item => 
+      item.code === 'REWARD' || item.code === 'BONUS'
+    )
+
+    // بررسی وجود آیتم عیدی
+    const hasEidi = items.some(item => 
+      item.code === 'EIDI' || item.code === 'YEAR_END_BONUS'
+    )
+
+    // بررسی وجود آیتم سنوات
+    const hasSanavat = items.some(item => 
+      item.code === 'SANAVAT' || item.code === 'SENIORITY'
+    )
+
+    // اضافه کردن آیتم بیمه
     if (!hasInsurance) {
       items.push({
         id: `insurance_auto_${Date.now()}`,
@@ -305,7 +494,7 @@ export function PaySlipFormDialog({
       console.log('✅ آیتم بیمه به لیست اضافه شد')
     }
     
-    // 🔥 اگر آیتم مالیات وجود نداشت، اضافه کن
+    // اضافه کردن آیتم مالیات
     if (!hasTax) {
       items.push({
         id: `tax_auto_${Date.now()}`,
@@ -327,6 +516,94 @@ export function PaySlipFormDialog({
       console.log('✅ آیتم مالیات به لیست اضافه شد')
     }
 
+    // اضافه کردن آیتم قسط وام
+    if (!hasLoan) {
+      items.push({
+        id: `loan_auto_${Date.now()}`,
+        title: 'قسط وام',
+        code: 'LOAN_INSTALLMENT',
+        category: 'deduction',
+        calculationType: 'formula',
+        value: 0,
+        formulaId: null,
+        isInsurable: false,
+        isTaxable: false,
+        isEditable: false,
+        isSystem: true,
+        sortOrder: 998,
+        isActive: true,
+        year: formYear,
+        description: 'محاسبه خودکار اقساط وام فعال',
+      } as any)
+      console.log('✅ آیتم قسط وام به لیست اضافه شد')
+    }
+
+    // اضافه کردن آیتم پاداش
+    if (!hasReward) {
+      items.push({
+        id: `reward_auto_${Date.now()}`,
+        title: 'پاداش و تشویق',
+        code: 'REWARD',
+        category: 'allowance',
+        calculationType: 'formula',
+        value: 0,
+        formulaId: null,
+        isInsurable: false,
+        isTaxable: true,
+        isEditable: false,
+        isSystem: true,
+        sortOrder: 50,
+        isActive: true,
+        year: formYear,
+        description: 'محاسبه خودکار پاداش‌های ماه جاری',
+      } as any)
+      console.log('✅ آیتم پاداش به لیست اضافه شد')
+    }
+
+    // 🔥 اضافه کردن آیتم عیدی (فقط اسفند نمایش داده می‌شود)
+    if (!hasEidi) {
+      items.push({
+        id: `eidi_auto_${Date.now()}`,
+        title: 'عیدی پایان سال',
+        code: 'EIDI',
+        category: 'allowance',
+        calculationType: 'formula',
+        value: 0,
+        formulaId: null,
+        isInsurable: false,
+        isTaxable: true,
+        isEditable: false,
+        isSystem: true,
+        sortOrder: 10,
+        isActive: true,
+        year: formYear,
+        description: 'محاسبه خودکار عیدی (فقط اسفند)',
+      } as any)
+      console.log('✅ آیتم عیدی به لیست اضافه شد')
+    }
+
+    // 🔥 اضافه کردن آیتم سنوات
+    if (!hasSanavat) {
+      items.push({
+        id: `sanavat_auto_${Date.now()}`,
+        title: 'سنوات',
+        code: 'SANAVAT',
+        category: 'allowance',
+        calculationType: 'formula',
+        value: 0,
+        formulaId: null,
+        isInsurable: false,
+        isTaxable: true,
+        isEditable: false,
+        isSystem: true,
+        sortOrder: 20,
+        isActive: true,
+        year: formYear,
+        description: 'محاسبه خودکار سنوات ماهانه',
+      } as any)
+      console.log('✅ آیتم سنوات به لیست اضافه شد')
+    }
+
     return items
       .filter(item => item.year === formYear && item.isActive)
       .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -334,6 +611,32 @@ export function PaySlipFormDialog({
 
   const allowanceItems = relevantItems.filter(item => item.category === 'allowance')
   const deductionItems = relevantItems.filter(item => item.category === 'deduction')
+
+  // ============================================
+  // محاسبه مجموع اقساط وام‌های فعال
+  // ============================================
+  const totalLoanInstallments = useMemo(() => {
+    if (!activeLoans || activeLoans.length === 0) return 0
+    
+    let total = 0
+    for (const loan of activeLoans) {
+      if (loan.installments && loan.installments > 0) {
+        const monthlyInstallment = Math.round(loan.amount / loan.installments)
+        total += monthlyInstallment
+      } else {
+        total += loan.amount || 0
+      }
+    }
+    return Math.round(total)
+  }, [activeLoans])
+
+  // ============================================
+  // جمع کل پاداش‌های ماه جاری
+  // ============================================
+  const totalRewards = useMemo(() => {
+    if (!monthlyRewards || monthlyRewards.length === 0) return 0
+    return monthlyRewards.reduce((sum, reward) => sum + (reward.amount || 0), 0)
+  }, [monthlyRewards])
 
   // ============================================
   // محاسبات پایه
@@ -358,7 +661,7 @@ export function PaySlipFormDialog({
   const dailyRate = calculateDailyRate(baseSalaryNum, workDaysPerMonth)
 
   // ============================================
-  // 🔥 محاسبه خودکار آیتم‌های فرمولی (با بیمه و مالیات)
+  // محاسبه خودکار آیتم‌های فرمولی
   // ============================================
   const calculateFormulaItem = (item: any, tempCalculated?: Record<string, number>): number => {
     const code = item.code
@@ -429,27 +732,59 @@ export function PaySlipFormDialog({
       return Math.round(hourlyRate * delayHours)
     }
 
-    // ============================================
-    // 🔥 بیمه تامین اجتماعی
-    // ============================================
+    // بیمه تامین اجتماعی
     if (code === 'INSURANCE_EMPLOYEE' || code === 'INSURANCE' || code === 'INSURANCE_SOCIAL') {
       const result = calculateInsurance(baseSalaryNum, allowanceItems, calc, settings, workDaysNum)
-      console.log(`💰 بیمه (${item.title}):`, result, 'تومان')
       return result
     }
 
-    // ============================================
-    // 🔥 مالیات بر درآمد
-    // ============================================
+    // مالیات بر درآمد
     if (code === 'TAX_INCOME' || code === 'TAX' || code === 'INCOME_TAX') {
-      // محاسبه حقوق ناخالص
       let tempTotalAllowances = 0
       for (const aItem of allowanceItems) {
         tempTotalAllowances += calc[aItem.id] || 0
       }
       const tempGrossSalary = baseSalaryNum + tempTotalAllowances
       const result = calculateTax(tempGrossSalary, settings, taxBrackets)
-      console.log(`💰 مالیات (${item.title}):`, result, 'تومان')
+      return result
+    }
+
+    // قسط وام
+    if (code === 'LOAN_INSTALLMENT' || code === 'LOAN') {
+      return totalLoanInstallments
+    }
+
+    // پاداش
+    if (code === 'REWARD' || code === 'BONUS') {
+      return totalRewards
+    }
+
+    // ============================================
+    // 🔥 عیدی (فقط اسفند)
+    // ============================================
+    if (code === 'EIDI' || code === 'YEAR_END_BONUS') {
+      const result = calculateEidi(
+        baseSalaryNum,
+        settings,
+        formYear,
+        formMonth,
+        employeeHireDate
+      )
+      console.log(`🎁 عیدی (${item.title}):`, result, 'تومان')
+      return result
+    }
+
+    // ============================================
+    // 🔥 سنوات
+    // ============================================
+    if (code === 'SANAVAT' || code === 'SENIORITY') {
+      const result = calculateSanavat(
+        baseSalaryNum,
+        settings,
+        employeeHireDate,
+        formYear
+      )
+      console.log(`📅 سنوات (${item.title}):`, result, 'تومان')
       return result
     }
 
@@ -480,21 +815,12 @@ export function PaySlipFormDialog({
       }
     }
 
-    // لاگ نهایی برای دیباگ
-    const insuranceItem = relevantItems.find(i => i.code === 'INSURANCE_EMPLOYEE' || i.code === 'INSURANCE')
-    const taxItem = relevantItems.find(i => i.code === 'TAX_INCOME' || i.code === 'TAX')
-    if (insuranceItem) {
-      console.log('💰 مبلغ بیمه محاسبه شده:', calc[insuranceItem.id], 'تومان')
-    }
-    if (taxItem) {
-      console.log('💰 مبلغ مالیات محاسبه شده:', calc[taxItem.id], 'تومان')
-    }
-
     return calc
   }, [relevantItems, itemAmounts, baseSalaryNum, employeeBenefits, 
       overtimeHoursNum, nightShiftHours, fridayWorkHours, holidayWorkHours,
       missionDays, unpaidLeaveDays, absenceDays, delayHours,
-      workDaysNum, hourlyRate, dailyRate, settings, taxBrackets, allowanceItems])
+      workDaysNum, hourlyRate, dailyRate, settings, taxBrackets, allowanceItems,
+      totalLoanInstallments, totalRewards, formYear, formMonth, employeeHireDate])
 
   // ============================================
   // جمع‌ها
@@ -550,10 +876,12 @@ export function PaySlipFormDialog({
     loadWorkRecord()
   }, [employeeId, formYear, formMonth, isEdit])
 
-
+  // ============================================
+  // ریست کردن فیلدها هنگام تغییر کاربر
+  // ============================================
   useEffect(() => {
     if (!employeeId || isEdit) return
-  
+
     setWorkDays('30')
     setOvertimeHours('0')
     setBaseSalary('')
@@ -572,7 +900,11 @@ export function PaySlipFormDialog({
     setEditAbsenceDays('0')
     setEditDelayHours('0')
     setIsEditingWorkRecord(false)
+    setActiveLoans([])
+    setMonthlyRewards([])
+    setEmployeeHireDate('')
   }, [employeeId, isEdit])
+
   // ============================================
   // ذخیره کارکرد ویرایش شده
   // ============================================
@@ -764,6 +1096,9 @@ export function PaySlipFormDialog({
         setEmployeeBenefits({})
         setWorkRecordData(null)
         setWorkRecordStatus('')
+        setActiveLoans([])
+        setMonthlyRewards([])
+        setEmployeeHireDate('')
         const amounts: Record<string, string> = {}
         for (const item of payrollItems) {
           if (item.calculationType === 'fixed') {
