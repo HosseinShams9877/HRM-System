@@ -65,6 +65,7 @@ export const PERMISSIONS = {
   'mission:reject': ['admin', 'hr_manager', 'manager'],
   'mission:view': ['admin', 'hr_manager', 'department_manager', 'employee'],  
   // Payroll
+  'payroll:manage': ['admin', 'hr_manager'], 
   'payroll:generate': ['admin', 'hr_manager'],
   'payroll:confirm': ['admin'],
   'payroll:settings': ['admin', 'hr_manager'],

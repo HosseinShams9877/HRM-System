@@ -261,28 +261,41 @@ export function MonthlyWorkListTab({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="min-w-[140px]">
+                            {/* مشاهده - در همه وضعیت‌ها */}
                             <DropdownMenuItem onClick={() => { setSelectedRecord(record); setDetailOpen(true) }} className="gap-2">
                               <Eye className="w-3.5 h-3.5" />
                               مشاهده
                             </DropdownMenuItem>
-                            {record.status === 'draft' && (
-                              <DropdownMenuItem onClick={() => { setEditingRecord(record); setFormOpen(true) }} className="gap-2">
-                                <Edit3 className="w-3.5 h-3.5" />
-                                ویرایش
-                              </DropdownMenuItem>
-                            )}
+
+                            {/* ✨ ویرایش - در همه وضعیت‌ها (حتی بسته) */}
+                            <DropdownMenuItem 
+                              onClick={() => { setEditingRecord(record); setFormOpen(true) }} 
+                              className="gap-2 text-blue-600 focus:text-blue-700"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              ویرایش
+                              {record.status === 'closed' && (
+                                <span className="text-[9px] text-amber-600 mr-1">(باز)</span>
+                              )}
+                            </DropdownMenuItem>
+
+                            {/* تأیید - فقط پیش‌نویس */}
                             {record.status === 'draft' && (
                               <DropdownMenuItem onClick={() => handleStatusChange(record.id, 'confirmed')} className="gap-2">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 تأیید
                               </DropdownMenuItem>
                             )}
+
+                            {/* بستن - فقط تأیید شده */}
                             {record.status === 'confirmed' && (
                               <DropdownMenuItem onClick={() => handleStatusChange(record.id, 'closed')} className="gap-2">
                                 <XCircle className="w-3.5 h-3.5" />
                                 بستن
                               </DropdownMenuItem>
                             )}
+
+                            {/* حذف - فقط پیش‌نویس */}
                             {record.status === 'draft' && (
                               <DropdownMenuItem onClick={() => handleDelete(record.id)} className="gap-2 text-rose-600 focus:text-rose-700">
                                 <Trash2 className="w-3.5 h-3.5" />

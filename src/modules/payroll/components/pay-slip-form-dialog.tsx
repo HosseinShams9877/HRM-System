@@ -38,6 +38,31 @@ const toPersianNumber = (str: string): string => {
 }
 
 // ============================================
+// تابع تطابق کد آیتم با مزایای کارمند
+// ============================================
+const getBenefitKey = (code: string): string | null => {
+  const mapping: Record<string, string> = {
+    'HOUSING': 'housingAllowance',
+    'HOUSING_ALLOWANCE': 'housingAllowance',
+    'FOOD': 'workAllowance',
+    'FOOD_ALLOWANCE': 'workAllowance',
+    'BEN': 'workAllowance',
+    'SPOUSE': 'spouseAllowance',
+    'SPOUSE_ALLOWANCE': 'spouseAllowance',
+    'CHILD': 'childAllowance',
+    'CHILD_ALLOWANCE': 'childAllowance',
+    'RESPONSIBILITY': 'responsibilityAllowance',
+    'RESPONSIBILITY_ALLOWANCE': 'responsibilityAllowance',
+    'OTHER': 'otherAllowances',
+    'OTHER_ALLOWANCES': 'otherAllowances',
+    'SENIORITY': 'yearsOfServiceBase',
+    'YEARS_OF_SERVICE': 'yearsOfServiceBase',
+    'SERVICE_BASE': 'yearsOfServiceBase',
+  }
+  return mapping[code] || null
+}
+
+// ============================================
 // PaySlipFormDialog
 // ============================================
 
@@ -61,9 +86,20 @@ export function PaySlipFormDialog({
   const [notes, setNotes] = useState('')
   const [empSearch, setEmpSearch] = useState('')
   const [itemAmounts, setItemAmounts] = useState<Record<string, string>>({})
+  const [employeeBenefits, setEmployeeBenefits] = useState<Record<string, number>>({})
   
-  // ✅ استفاده از useRef برای جلوگیری از اجرای مجدد
+  // ============================================
+  // Stateهای مربوط به حکم
+  // ============================================
+  const [generateOrder, setGenerateOrder] = useState(false)
+  const [orderType, setOrderType] = useState('SALARY_CHANGE')
+  const [orderEffectiveDate, setOrderEffectiveDate] = useState('')
+  const [orderDescription, setOrderDescription] = useState('')
+  const [orderNewPosition, setOrderNewPosition] = useState('')
+  const [orderNewDepartment, setOrderNewDepartment] = useState('')
+  
   const hasInitialized = useRef(false)
+  const salaryLoaded = useRef(false)
 
   // Filter payroll items for the selected year
   const relevantItems = useMemo(() => {
@@ -89,8 +125,14 @@ export function PaySlipFormDialog({
     const calc: Record<string, number> = {}
     for (const item of relevantItems) {
       if (item.calculationType === 'fixed') {
-        const userVal = Number(itemAmounts[item.id] || 0)
-        calc[item.id] = item.isEditable ? userVal : RIALS_TO_TOMANS(item.value)
+        // بررسی آیا این آیتم با یکی از مزایای کارمند مطابقت دارد
+        const benefitKey = getBenefitKey(item.code)
+        if (benefitKey && employeeBenefits[benefitKey] !== undefined) {
+          calc[item.id] = employeeBenefits[benefitKey]
+        } else {
+          const userVal = Number(itemAmounts[item.id] || 0)
+          calc[item.id] = item.isEditable ? userVal : RIALS_TO_TOMANS(item.value)
+        }
       } else if (item.calculationType === 'percentage') {
         calc[item.id] = Math.round(baseSalaryNum * item.value / 100)
       } else if (item.calculationType === 'formula') {
@@ -98,7 +140,7 @@ export function PaySlipFormDialog({
       }
     }
     return calc
-  }, [relevantItems, itemAmounts, baseSalaryNum])
+  }, [relevantItems, itemAmounts, baseSalaryNum, employeeBenefits])
 
   const totalAllowances = useMemo(() => {
     return allowanceItems.reduce((sum, item) => sum + (calculatedAmounts[item.id] || 0), 0)
@@ -113,6 +155,23 @@ export function PaySlipFormDialog({
 
   const handleEmployeeChange = (empId: string) => {
     setEmployeeId(empId)
+    salaryLoaded.current = false
+    setEmployeeBenefits({})
+  }
+
+  // ============================================
+  // تابع کمکی برای عنوان حکم بر اساس نوع
+  // ============================================
+  const getOrderTitle = (type: string): string => {
+    const titles: Record<string, string> = {
+      SALARY_CHANGE: 'حکم تغییر حقوق',
+      POSITION_CHANGE: 'حکم تغییر سمت',
+      CONTRACT_EXTENSION: 'حکم تمدید قرارداد',
+      PROMOTION: 'حکم ارتقا',
+      TRANSFER: 'حکم انتقال',
+      TERMINATION: 'حکم پایان همکاری',
+    }
+    return titles[type] || 'حکم کارگزینی'
   }
 
   const handleSubmit = () => {
@@ -132,6 +191,30 @@ export function PaySlipFormDialog({
       })
     }
 
+    const orderData = generateOrder ? {
+      employeeId,
+      orderType: orderType,
+      title: getOrderTitle(orderType),
+      description: orderDescription || null,
+      issueDate: getTodayShamsi().full,
+      effectiveDate: orderEffectiveDate || getTodayShamsi().full,
+      status: 'active',
+      baseSalary: baseSalaryNum * 10,
+      newPosition: orderNewPosition || null,
+      newDepartment: orderNewDepartment || null,
+      housingAllowance: null,
+      foodAllowance: null,
+      attractionAllowance: null,
+      responsibilityAllowance: null,
+      otherAllowances: null,
+      fixedDeductions: null,
+      spouseAllowance: null,
+      childAllowance: null,
+      yearsOfServiceBase: null,
+      insuranceStatus: null,
+      taxStatus: null,
+    } : null
+
     onSubmit({
       employeeId,
       year: formYear,
@@ -141,12 +224,13 @@ export function PaySlipFormDialog({
       overtimeHours: Number(overtimeHours || 0),
       notes: notes || null,
       items,
+      generateOrder,
+      orderData,
     })
   }
 
-  // ✅ اصلاح useEffect - فقط یک بار اجرا بشه
+  // ✅ مقداردهی اولیه دیالوگ
   useEffect(() => {
-    // فقط وقتی دیالوگ باز میشه و قبلاً مقداردهی نشده
     if (open && !hasInitialized.current) {
       hasInitialized.current = true
       
@@ -167,6 +251,7 @@ export function PaySlipFormDialog({
           }
         }
         setItemAmounts(amounts)
+        setOrderEffectiveDate(getTodayShamsi().full)
       } else {
         setFormYear(year || today.year)
         setFormMonth(today.month)
@@ -175,6 +260,7 @@ export function PaySlipFormDialog({
         setWorkDays('30')
         setOvertimeHours('0')
         setNotes('')
+        setEmployeeBenefits({})
         const amounts: Record<string, string> = {}
         for (const item of payrollItems) {
           if (item.calculationType === 'fixed') {
@@ -184,16 +270,91 @@ export function PaySlipFormDialog({
           }
         }
         setItemAmounts(amounts)
+        setOrderEffectiveDate(getTodayShamsi().full)
+        setOrderType('SALARY_CHANGE')
+        setOrderDescription('')
+        setOrderNewPosition('')
+        setOrderNewDepartment('')
+        setGenerateOrder(false)
       }
       setEmpSearch('')
     }
 
-    // وقتی دیالوگ بسته میشه، فلگ رو ریست کن
     if (!open) {
       hasInitialized.current = false
+      salaryLoaded.current = false
     }
   }, [open, initialData, year, today, payrollItems])
 
+  // ============================================
+  // بارگذاری حقوق پایه و مزایا از اطلاعات کارمند
+  // ============================================
+  useEffect(() => {
+    if (!employeeId) return
+    if (salaryLoaded.current) return
+    if (isEdit) return
+    
+    const loadEmployeeData = async () => {
+      try {
+        const res = await fetch(`/api/employees/${employeeId}/financial`)
+        if (res.ok) {
+          const json = await res.json()
+          const data = json.data || json
+          
+          // ۱. حقوق پایه
+          if (data.baseSalary) {
+            setBaseSalary(String(RIALS_TO_TOMANS(data.baseSalary)))
+          } else {
+            const settingRes = await fetch('/api/payroll/settings')
+            if (settingRes.ok) {
+              const settingJson = await settingRes.json()
+              const setting = settingJson.setting
+              if (setting?.baseSalaryDefault) {
+                setBaseSalary(String(RIALS_TO_TOMANS(setting.baseSalaryDefault)))
+              }
+            }
+          }
+          
+          // ۲. مزایا
+          const benefits: Record<string, number> = {}
+          if (data.housingAllowance) benefits['housingAllowance'] = RIALS_TO_TOMANS(data.housingAllowance)
+          if (data.workAllowance) benefits['workAllowance'] = RIALS_TO_TOMANS(data.workAllowance)
+          if (data.spouseAllowance) benefits['spouseAllowance'] = RIALS_TO_TOMANS(data.spouseAllowance)
+          if (data.childAllowance) benefits['childAllowance'] = RIALS_TO_TOMANS(data.childAllowance)
+          if (data.responsibilityAllowance) benefits['responsibilityAllowance'] = RIALS_TO_TOMANS(data.responsibilityAllowance)
+          if (data.otherAllowances) benefits['otherAllowances'] = RIALS_TO_TOMANS(data.otherAllowances)
+          if (data.yearsOfServiceBase) benefits['yearsOfServiceBase'] = RIALS_TO_TOMANS(data.yearsOfServiceBase)
+          
+          setEmployeeBenefits(benefits)
+          
+          // ۳. تنظیم مقادیر آیتم‌ها با مزایا
+          const newItemAmounts: Record<string, string> = {}
+          for (const item of payrollItems) {
+            const benefitKey = getBenefitKey(item.code)
+            if (benefitKey && benefits[benefitKey] !== undefined) {
+              newItemAmounts[item.id] = String(benefits[benefitKey])
+            } else if (item.calculationType === 'fixed') {
+              newItemAmounts[item.id] = String(RIALS_TO_TOMANS(item.value))
+            } else {
+              newItemAmounts[item.id] = '0'
+            }
+          }
+          setItemAmounts(newItemAmounts)
+          
+          salaryLoaded.current = true
+        }
+      } catch (error) {
+        console.error('Error loading employee data:', error)
+        salaryLoaded.current = true
+      }
+    }
+    
+    loadEmployeeData()
+  }, [employeeId, isEdit, payrollItems])
+
+  // ============================================
+  // بارگذاری کارکرد ماهانه
+  // ============================================
   useEffect(() => {
     if (!employeeId || !formYear || !formMonth) return
     
@@ -208,7 +369,6 @@ export function PaySlipFormDialog({
           if (record) {
             setWorkDays(String(record.workDays || 30))
             setOvertimeHours(String(record.overtimeHours || 0))
-            // می‌توانید سایر فیلدها را هم پر کنید
           }
         }
       } catch {
@@ -233,13 +393,14 @@ export function PaySlipFormDialog({
         </DialogHeader>
 
         <div className="space-y-5 py-4">
-          {/* اطلاعات پایه */}
+          {/* اطلاعات پایه - همان کد قبلی */}
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               اطلاعات پایه
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* کارمند */}
               <div className="space-y-2">
                 <Label>کارمند *</Label>
                 {isEdit ? (
@@ -278,6 +439,7 @@ export function PaySlipFormDialog({
                   </>
                 )}
               </div>
+              {/* سال */}
               <div className="space-y-2">
                 <Label>سال *</Label>
                 <Input
@@ -287,14 +449,13 @@ export function PaySlipFormDialog({
                   onChange={(e) => {
                     const englishNumber = toEnglishNumber(e.target.value)
                     const numeric = englishNumber.replace(/[^0-9]/g, '')
-                    if (numeric) {
-                      setFormYear(Number(numeric))
-                    }
+                    if (numeric) setFormYear(Number(numeric))
                   }}
                   dir="ltr"
                   placeholder={toPersianNumber('۱۴۰۴')}
                 />
               </div>
+              {/* ماه */}
               <div className="space-y-2">
                 <Label>ماه *</Label>
                 <Select value={String(formMonth)} onValueChange={(v) => setFormMonth(Number(v))}>
@@ -306,12 +467,20 @@ export function PaySlipFormDialog({
                   </SelectContent>
                 </Select>
               </div>
+              {/* حقوق پایه */}
               <div className="space-y-2">
-                <Label>حقوق پایه * <span className="text-muted-foreground text-xs">(تومان)</span></Label>
+                <div className="flex items-center justify-between">
+                  <Label>حقوق پایه * <span className="text-muted-foreground text-xs mr-1">(تومان)</span></Label>
+                  {!isEdit && employeeId && (
+                    <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700">
+                      از کارمند
+                    </Badge>
+                  )}
+                </div>
                 <Input
                   type="text"
                   inputMode="numeric"
-                  placeholder={toPersianNumber(' حقوق پایه')}
+                  placeholder={toPersianNumber('حقوق پایه')}
                   value={toPersianNumber(baseSalary)}
                   onChange={(e) => {
                     const englishNumber = toEnglishNumber(e.target.value)
@@ -319,9 +488,17 @@ export function PaySlipFormDialog({
                     setBaseSalary(numeric)
                   }}
                   dir="ltr"
+                  className={!isEdit && employeeId ? 'bg-muted/50' : ''}
+                  readOnly={!isEdit && !!employeeId}
                 />
+                {!isEdit && employeeId && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    از اطلاعات مالی کارمند دریافت شده است.
+                  </p>
+                )}
               </div>
             </div>
+            {/* روزهای کارکرد، اضافه‌کاری، توضیحات */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
               <div className="space-y-2">
                 <Label>روزهای کارکرد</Label>
@@ -375,12 +552,19 @@ export function PaySlipFormDialog({
                 <Badge variant="outline" className="text-[10px]">
                   {toPersianDigits(allowanceItems.length)} آیتم
                 </Badge>
+                {!isEdit && employeeId && Object.keys(employeeBenefits).length > 0 && (
+                  <Badge className="text-[10px] bg-emerald-100 text-emerald-700">
+                    از اطلاعات کارمند
+                  </Badge>
+                )}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {allowanceItems.map(item => {
                   const isFormula = item.calculationType === 'formula'
                   const isPercentage = item.calculationType === 'percentage'
-                  const isReadonly = isFormula || (item.calculationType === 'fixed' && !item.isEditable)
+                  const benefitKey = getBenefitKey(item.code)
+                  const hasBenefit = benefitKey && employeeBenefits[benefitKey] !== undefined
+                  const isReadonly = isFormula || (item.calculationType === 'fixed' && !item.isEditable) || hasBenefit
                   const displayValue = calculatedAmounts[item.id] || 0
 
                   return (
@@ -388,6 +572,11 @@ export function PaySlipFormDialog({
                       <Label className="flex items-center gap-1.5 text-xs">
                         {item.title}
                         <span className="text-[10px] text-muted-foreground">(تومان)</span>
+                        {hasBenefit && (
+                          <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-0 px-1.5 py-0">
+                            از کارمند
+                          </Badge>
+                        )}
                         {isFormula && (
                           <TooltipProvider>
                             <Tooltip>
@@ -405,7 +594,7 @@ export function PaySlipFormDialog({
                             ({toPersianDigits(item.value)}٪ حقوق پایه)
                           </span>
                         )}
-                        {item.calculationType === 'fixed' && !item.isEditable && (
+                        {item.calculationType === 'fixed' && !item.isEditable && !hasBenefit && (
                           <Lock className="w-3 h-3 text-muted-foreground" />
                         )}
                       </Label>
@@ -422,7 +611,7 @@ export function PaySlipFormDialog({
                           }}
                           disabled={isReadonly}
                           dir="ltr"
-                          className={isReadonly ? 'bg-muted' : ''}
+                          className={isReadonly ? 'bg-muted/50' : ''}
                           placeholder={toPersianNumber('۰')}
                         />
                       </div>
@@ -435,7 +624,7 @@ export function PaySlipFormDialog({
 
           {allowanceItems.length > 0 && deductionItems.length > 0 && <Separator />}
 
-          {/* کسورات - Dynamic */}
+          {/* کسورات - بدون تغییر */}
           {deductionItems.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -545,6 +734,96 @@ export function PaySlipFormDialog({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* گزینه صدور حکم همزمان - بدون تغییر */}
+          <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={generateOrder}
+                onChange={(e) => setGenerateOrder(e.target.checked)}
+                className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="font-medium text-sm text-blue-700 dark:text-blue-300">
+                  صدور همزمان حکم کارگزینی
+                </span>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                  با فعال کردن این گزینه، به همراه فیش حقوقی یک حکم کارگزینی نیز صادر می‌شود.
+                </p>
+              </div>
+            </label>
+            
+            {generateOrder && (
+              <div className="mt-3 space-y-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-blue-700 dark:text-blue-300">نوع حکم *</Label>
+                    <Select value={orderType} onValueChange={setOrderType}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="انتخاب نوع حکم" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SALARY_CHANGE">تغییر حقوق</SelectItem>
+                        <SelectItem value="POSITION_CHANGE">تغییر سمت</SelectItem>
+                        <SelectItem value="CONTRACT_EXTENSION">تمدید قرارداد</SelectItem>
+                        <SelectItem value="PROMOTION">ارتقا</SelectItem>
+                        <SelectItem value="TRANSFER">انتقال</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-blue-700 dark:text-blue-300">تاریخ اجرا *</Label>
+                    <Input
+                      type="text"
+                      value={orderEffectiveDate}
+                      onChange={(e) => setOrderEffectiveDate(e.target.value)}
+                      placeholder="مثلاً ۱۴۰۴/۰۱/۰۱"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-blue-700 dark:text-blue-300">سمت جدید (اختیاری)</Label>
+                    <Input
+                      type="text"
+                      value={orderNewPosition}
+                      onChange={(e) => setOrderNewPosition(e.target.value)}
+                      placeholder="سمت جدید کارمند"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-blue-700 dark:text-blue-300">دپارتمان جدید (اختیاری)</Label>
+                    <Input
+                      type="text"
+                      value={orderNewDepartment}
+                      onChange={(e) => setOrderNewDepartment(e.target.value)}
+                      placeholder="دپارتمان جدید"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-blue-700 dark:text-blue-300">توضیحات حکم (اختیاری)</Label>
+                  <Input
+                    value={orderDescription}
+                    onChange={(e) => setOrderDescription(e.target.value)}
+                    placeholder="توضیحات مربوط به حکم"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                
+                <div className="p-2 rounded-lg bg-blue-100/50 dark:bg-blue-900/20 text-xs text-blue-700 dark:text-blue-300">
+                  <span className="font-medium">توجه:</span> حقوق پایه جدید به طور خودکار از مبلغ وارد شده در فیش ( 
+                  <span className="font-bold">{formatCurrency(baseSalaryNum)}</span> تومان ) گرفته می‌شود.
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
