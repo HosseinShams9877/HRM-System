@@ -646,30 +646,47 @@ export const SYSTEM_FORMULAS = [
 
 
 // ─── محاسبه مالیات تصاعدی ───
-
 export function calculateProgressiveTax(
-  taxableIncome: number,
-  taxBrackets: { minAmount: number; maxAmount: number; rate: number }[]
+  taxableIncome: number,  // ریال - درآمد مشمول مالیات (با احتساب مزایا)
+  taxBrackets: { minAmount: number; maxAmount: number; rate: number }[]  // تومان
 ): number {
   if (taxableIncome <= 0 || taxBrackets.length === 0) return 0
 
-  // تبدیل ریال به تومان برای مقایسه با پله‌های مالیاتی
-  const taxableToman = Math.round(taxableIncome / 10)
+  // ============================================
+  // ۱. تبدیل ریال به تومان
+  // ============================================
+  const taxableMonthlyToman = Math.round(taxableIncome / 10)
+  const taxableYearlyToman = taxableMonthlyToman * 12
 
-  let totalTax = 0
-  for (const bracket of taxBrackets) {
-    const minAmt = bracket.minAmount
-    const maxAmt = bracket.maxAmount === 0 ? Infinity : bracket.maxAmount
+  // ============================================
+  // ۲. محاسبه مالیات سالانه به تومان
+  // ============================================
+  let annualTaxToman = 0
+  let remaining = taxableYearlyToman
 
-    if (taxableToman <= minAmt) break
+  // مرتب کردن پله‌ها بر اساس orderNum
+  const sortedBrackets = [...taxBrackets].sort((a, b) => a.orderNum - b.orderNum)
 
-    const taxableInBracket = Math.min(taxableToman, maxAmt) - minAmt
+  for (const bracket of sortedBrackets) {
+    if (remaining <= 0) break
+
+    const minAmount = bracket.minAmount  // تومان
+    const maxAmount = bracket.maxAmount === 0 ? Infinity : bracket.maxAmount  // تومان
+
+    // اگر درآمد از حداقل پله کمتر باشه، بقیه پله‌ها هم محاسبه نمیشن
+    if (taxableYearlyToman <= minAmount) break
+
+    // محاسبه مالیات در این پله
+    const taxableInBracket = Math.min(remaining, maxAmount - minAmount)
     if (taxableInBracket > 0) {
-      totalTax += Math.round(taxableInBracket * bracket.rate / 100)
+      annualTaxToman += taxableInBracket * (bracket.rate / 100)
+      remaining -= taxableInBracket
     }
   }
 
-  // تبدیل مالیات از تومان به ریال
-  return totalTax * 10
+  // ============================================
+  // ۳. تبدیل به ریال (ماهانه)
+  // ============================================
+  return Math.round((annualTaxToman / 12) * 10)
 }
 

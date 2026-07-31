@@ -585,6 +585,7 @@ model PayrollItem {
   isTaxable       Boolean        @default(true) // مشمول مالیات هست؟
   isEditable      Boolean        @default(true) // کاربر می‌تونه مبلغ رو ویرایش کنه؟
   isSystem        Boolean        @default(false) // آیتم سیستمی (بیمه/مالیات) — قابل حذف نیست
+  employeeField   String?        // نام فیلد employee_financial (مثلاً housingAllowance)
    includeInEidi       Boolean  @default(false) // در محاسبه عیدی لحاظ شود
   includeInSanavat    Boolean  @default(false) // در محاسبه سنوات لحاظ شود
   affectsOvertime     Boolean  @default(false) // در محاسبه اضافه‌کاری اثر داشته باشد

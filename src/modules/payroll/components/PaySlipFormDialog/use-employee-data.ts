@@ -11,17 +11,23 @@ const getBenefitKey = (code: string): string | null => {
     'FOOD': 'workAllowance',
     'FOOD_ALLOWANCE': 'workAllowance',
     'BEN': 'workAllowance',
+    'BENEFIT': 'workAllowance',
     'SPOUSE': 'spouseAllowance',
     'SPOUSE_ALLOWANCE': 'spouseAllowance',
+    'MARRIAGE': 'spouseAllowance',
     'CHILD': 'childAllowance',
     'CHILD_ALLOWANCE': 'childAllowance',
+    'CHILDREN': 'childAllowance',
     'RESPONSIBILITY': 'responsibilityAllowance',
     'RESPONSIBILITY_ALLOWANCE': 'responsibilityAllowance',
+    'MANAGEMENT': 'responsibilityAllowance',
     'OTHER': 'otherAllowances',
     'OTHER_ALLOWANCES': 'otherAllowances',
+    'EXTRA': 'otherAllowances',
     'SENIORITY': 'yearsOfServiceBase',
     'YEARS_OF_SERVICE': 'yearsOfServiceBase',
     'SERVICE_BASE': 'yearsOfServiceBase',
+    'SENIORITY_BASE': 'yearsOfServiceBase',
   }
   return mapping[code] || null
 }
@@ -47,12 +53,8 @@ export function useEmployeeData({
   const [employeeBenefits, setEmployeeBenefits] = useState<EmployeeBenefits>({})
   const salaryLoaded = useRef(false)
 
-  // ============================================
-  // 🔥 وقتی employeeId تغییر می‌کند، ref را ریست کن
-  // ============================================
   useEffect(() => {
     salaryLoaded.current = false
-    // Reset benefits when employee changes
     setEmployeeBenefits({})
   }, [employeeId])
 
@@ -83,16 +85,25 @@ export function useEmployeeData({
             }
           }
 
-          // ۲. مزایا
+          // ۲. ✅ همه مزایا
           const benefits: EmployeeBenefits = {}
+          
+          // حق مسکن
           if (data.housingAllowance) benefits.housingAllowance = RIALS_TO_TOMANS(data.housingAllowance)
+          // بن کارگری
           if (data.workAllowance) benefits.workAllowance = RIALS_TO_TOMANS(data.workAllowance)
+          // حق تاهل
           if (data.spouseAllowance) benefits.spouseAllowance = RIALS_TO_TOMANS(data.spouseAllowance)
+          // حق اولاد
           if (data.childAllowance) benefits.childAllowance = RIALS_TO_TOMANS(data.childAllowance)
+          // حق مسئولیت
           if (data.responsibilityAllowance) benefits.responsibilityAllowance = RIALS_TO_TOMANS(data.responsibilityAllowance)
+          // سایر مزایا
           if (data.otherAllowances) benefits.otherAllowances = RIALS_TO_TOMANS(data.otherAllowances)
+          // پایه سنوات
           if (data.yearsOfServiceBase) benefits.yearsOfServiceBase = RIALS_TO_TOMANS(data.yearsOfServiceBase)
 
+          console.log('✅ مزایای دریافت شده از کارمند:', benefits)
           setEmployeeBenefits(benefits)
           onBenefitsLoaded(benefits)
 
