@@ -75,7 +75,7 @@ export function PayrollItemFormDialog({
   const handleFieldSelect = (fieldValue: string) => {
     const selectedField = EMPLOYEE_FIELDS.find(f => f.value === fieldValue)
     // ساخت کد خودکار از employeeField (مثلاً housingAllowance → HOUSING_ALLOWANCE)
-    const autoCode = fieldValue.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '')
+    const autoCode = fieldValue === 'workAllowance' ? 'FOOD_ALLOWANCE' : fieldValue.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '')
     
     setForm({
       ...form,
