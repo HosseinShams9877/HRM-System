@@ -194,81 +194,87 @@ export function MonthlyWorkRecordDialog({
 
         <div className="space-y-5 py-4">
           {/* انتخاب کارمند و سال/ماه */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2 md:col-span-1">
-              <Label>کارمند *</Label>
-              {isEdit ? (
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              اطلاعات پایه
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>کارمند *</Label>
+                {isEdit ? (
+                  <Input
+                    value={selectedEmployee ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}` : ''}
+                    disabled
+                    className="bg-muted"
+                  />
+                ) : (
+                  <>
+                    <div className="relative">
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="جستجو نام یا کد..."
+                        value={empSearch}
+                        onChange={(e) => setEmpSearch(e.target.value)}
+                        className="pr-10"
+                      />
+                    </div>
+                    <Select value={employeeId} onValueChange={setEmployeeId}>
+                      <SelectTrigger className="mt-2"><SelectValue placeholder="انتخاب کارمند" /></SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {filteredEmployees.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            {empSearch ? 'کارمندی یافت نشد' : 'کارمندی موجود نیست'}
+                          </div>
+                        ) : (
+                          filteredEmployees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.firstName} {emp.lastName} ({toPersianDigits(emp.personnelCode)})
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>سال *</Label>
                 <Input
-                  value={selectedEmployee ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}` : ''}
-                  disabled
-                  className="bg-muted"
+                  type="text"
+                  inputMode="numeric"
+                  value={toPersianNumber(String(year))}
+                  onChange={(e) => {
+                    const englishNumber = toEnglishNumber(e.target.value)
+                    const numeric = englishNumber.replace(/[^0-9]/g, '')
+                    if (numeric) setYear(Number(numeric))
+                  }}
+                  dir="ltr"
                 />
-              ) : (
-                <>
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="جستجو نام یا کد..."
-                      value={empSearch}
-                      onChange={(e) => setEmpSearch(e.target.value)}
-                      className="pr-10 mb-2"
-                    />
-                  </div>
-                  <Select value={employeeId} onValueChange={setEmployeeId}>
-                    <SelectTrigger><SelectValue placeholder="انتخاب کارمند" /></SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
-                      {filteredEmployees.length === 0 ? (
-                        <div className="p-2 text-center text-sm text-muted-foreground">
-                          {empSearch ? 'کارمندی یافت نشد' : 'کارمندی موجود نیست'}
-                        </div>
-                      ) : (
-                        filteredEmployees.map(emp => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {emp.firstName} {emp.lastName} ({toPersianDigits(emp.personnelCode)})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>سال *</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={toPersianNumber(String(year))}
-                onChange={(e) => {
-                  const englishNumber = toEnglishNumber(e.target.value)
-                  const numeric = englishNumber.replace(/[^0-9]/g, '')
-                  if (numeric) setYear(Number(numeric))
-                }}
-                dir="ltr"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>ماه *</Label>
-              <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PERSIAN_MONTHS.map((m, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>ماه *</Label>
+                <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PERSIAN_MONTHS.map((m, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           <Separator />
 
-          {/* کارکرد */}
+          {/* کارکرد پایه - ردیف اول */}
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              کارکرد ماهانه
+              کارکرد پایه
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">روزهای کارکرد</Label>
                 <Input
@@ -328,17 +334,17 @@ export function MonthlyWorkRecordDialog({
             </div>
           </div>
 
-          {/* نوبت‌کاری و تعطیلات */}
+          {/* نوبت‌کاری - ردیف دوم */}
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-              نوبت‌کاری و تعطیلات
+              نوبت‌کاری
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">نوع نوبت‌کاری</Label>
                 <Select value={shiftType} onValueChange={setShiftType}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="بدون نوبت‌کاری" /></SelectTrigger>
                   <SelectContent>
                     {SHIFT_TYPES.map(st => (
                       <SelectItem key={st.value} value={st.value}>
@@ -348,6 +354,25 @@ export function MonthlyWorkRecordDialog({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-600">توضیحات</Label>
+                <Input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="توضیحات اختیاری"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* تعطیلات و مأموریت - ردیف سوم */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              تعطیلات و مأموریت
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-rose-600">جمعه‌کاری (ساعت)</Label>
                 <Input
@@ -393,7 +418,7 @@ export function MonthlyWorkRecordDialog({
             </div>
           </div>
 
-          {/* مرخصی و غیبت */}
+          {/* مرخصی و غیبت - ردیف چهارم */}
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -485,18 +510,6 @@ export function MonthlyWorkRecordDialog({
                 />
               </div>
             </div>
-          </div>
-
-          <Separator />
-
-          {/* توضیحات */}
-          <div className="space-y-2">
-            <Label>توضیحات</Label>
-            <Input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="توضیحات اختیاری"
-            />
           </div>
 
           {/* هشدار */}

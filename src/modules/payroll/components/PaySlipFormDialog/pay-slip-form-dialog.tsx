@@ -330,8 +330,8 @@ const relevantItems = useMemo(() => {
 
   // ========== ✅ کسورات ==========
   addItem('INSURANCE_EMPLOYEE', 'بیمه تامین اجتماعی', 'deduction', 999, 'محاسبه خودکار بیمه')
-  addItem('TAX_INCOME', 'مالیات بر درآمد', 'deduction', 1000, 'محاسبه خودکار مالیات')
-  addItem('TAX', 'مالیات بر درآمد', 'deduction', 1001, 'محاسبه خودکار مالیات')
+  //addItem('TAX_INCOME', 'مالیات بر درآمد', 'deduction', 1000, 'محاسبه خودکار مالیات')
+  //addItem('TAX', 'مالیات بر درآمد', 'deduction', 1001, 'محاسبه خودکار مالیات')
   addItem('LOAN_INSTALLMENT', 'قسط وام', 'deduction', 998, 'محاسبه خودکار اقساط وام')
 
   return items

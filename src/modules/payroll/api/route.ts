@@ -98,11 +98,16 @@ export async function POST(req: NextRequest) {
     const year = parseInt(String(body.year))
     const month = parseInt(String(body.month))
 
+    const employeeId = String(body.employeeId).trim()
+
+    console.log('📊 [POST] employeeId:', employeeId)
+    console.log('📊 [POST] employeeId length:', employeeId.length)
+
     // بررسی وجود فیش قبلی
     const existing = await db.paySlip.findUnique({
       where: {
         employeeId_year_month: {
-          employeeId: body.employeeId,
+          employeeId: employeeId,
           year,
           month,
         },
@@ -118,14 +123,75 @@ export async function POST(req: NextRequest) {
 
     // بررسی وجود کارمند
     const employee = await db.employee.findUnique({
-      where: { id: body.employeeId },
+      where: { id: employeeId },
     })
     if (!employee) {
       return NextResponse.json({ error: 'کارمند یافت نشد' }, { status: 404 })
     }
 
+    console.log('✅ کارمند پیدا شد:', employee.firstName, employee.lastName)
+
     const baseSalary = parseFloat(String(body.baseSalary || 0))
     const items: { title: string; category: string; amount: number; payrollItemId?: string | null; sortOrder: number }[] = body.items || []
+
+    console.log('📊 [POST] ===== بررسی آیتم‌ها =====')
+    console.log('📊 [POST] تعداد آیتم‌ها:', items.length)
+    
+    // ✅ لاگ جزییات هر آیتم
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      console.log(`📊 [POST] آیتم ${i + 1}:`, {
+        title: item.title,
+        category: item.category,
+        amount: item.amount,
+        payrollItemId: item.payrollItemId,
+        sortOrder: item.sortOrder,
+      })
+    }
+    
+    // ✅ جمع‌آوری و بررسی payrollItemId ها
+    const itemIds = items
+      .map(item => item.payrollItemId)
+      .filter(id => id !== null && id !== undefined && id !== '')
+    
+    console.log('📊 [POST] payrollItemId های موجود:', itemIds)
+    
+    // ✅ چک کن همه payrollItemId ها در دیتابیس وجود دارن
+    if (itemIds.length > 0) {
+      const existingItems = await db.payrollItem.findMany({
+        where: {
+          id: { in: itemIds },
+          year: year,
+          isActive: true
+        },
+        select: { id: true, code: true, title: true }
+      })
+      
+      console.log('📊 [POST] آیتم‌های موجود در دیتابیس:', existingItems)
+      
+      const existingIds = new Set(existingItems.map(i => i.id))
+      const invalidIds = itemIds.filter(id => !existingIds.has(id))
+      
+      if (invalidIds.length > 0) {
+        console.error('❌ payrollItemId های نامعتبر:', invalidIds)
+        
+        const invalidItems = items.filter(item => 
+          item.payrollItemId && invalidIds.includes(item.payrollItemId)
+        )
+        console.error('❌ آیتم‌های مشکل‌دار:', JSON.stringify(invalidItems, null, 2))
+        
+        return NextResponse.json(
+          { 
+            error: `آیتم‌های حقوقی با شناسه های ${invalidIds.join(', ')} یافت نشدند`,
+            invalidIds: invalidIds,
+            invalidItems: invalidItems
+          },
+          { status: 400 }
+        )
+      }
+      
+      console.log('✅ همه payrollItemId ها معتبر هستند')
+    }
 
     let totalAllowances = 0
     let totalDeductions = 0
@@ -141,9 +207,16 @@ export async function POST(req: NextRequest) {
     const grossSalary = baseSalary + totalAllowances
     const netSalary = grossSalary - totalDeductions
 
+    console.log('📊 [POST] ===== خلاصه نهایی =====')
+    console.log('📊 [POST] baseSalary:', baseSalary)
+    console.log('📊 [POST] totalAllowances:', totalAllowances)
+    console.log('📊 [POST] totalDeductions:', totalDeductions)
+    console.log('📊 [POST] grossSalary:', grossSalary)
+    console.log('📊 [POST] netSalary:', netSalary)
+
     const paySlip = await db.paySlip.create({
       data: {
-        employeeId: body.employeeId,
+        employeeId: employeeId,
         year,
         month,
         baseSalary,
@@ -180,9 +253,10 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    console.log('✅ فیش حقوقی با موفقیت ایجاد شد:', paySlip.id)
     return NextResponse.json(paySlip, { status: 201 })
   } catch (error) {
-    console.error('Create payslip error:', error)
+    console.error('❌ Create payslip error:', error)
     return NextResponse.json({ error: 'خطا در ایجاد فیش حقوقی' }, { status: 500 })
   }
 }
