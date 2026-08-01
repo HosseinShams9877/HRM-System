@@ -267,6 +267,17 @@ export async function buildFormulaContext(params: {
     employee, year, month, baseSalary, workDays, overtimeHours,
     setting, taxBrackets, preCalculatedItems, attendanceData
   } = params
+   
+   console.log('📊 [buildFormulaContext] ===== شروع =====')
+  console.log('📊 [buildFormulaContext] baseSalary:', baseSalary)
+  console.log('📊 [buildFormulaContext] year:', year, 'month:', month)
+  
+   console.log('📊 [buildFormulaContext] ===== preCalculatedItems =====')
+  console.log('📊 [buildFormulaContext] تعداد آیتم‌ها:', preCalculatedItems.length)
+
+  for (const item of preCalculatedItems) {
+    console.log(`📊 [buildFormulaContext]   ${item.code}: amount=${item.amount}, category=${item.category}, isInsurable=${item.isInsurable}`)
+  }
 
   const workHoursPerDay = setting.workHoursPerDay || 8
   const workDaysPerMonth = setting.workDaysPerMonth || 30
@@ -279,6 +290,9 @@ export async function buildFormulaContext(params: {
   let totalDeductions = 0
   let insurableAmount = 0
 
+  console.log('📊 [buildFormulaContext] ===== بررسی preCalculatedItems =====')
+  console.log('📊 [buildFormulaContext] تعداد آیتم‌ها:', params.preCalculatedItems.length)
+
   for (const item of preCalculatedItems) {
     itemAmounts[item.code] = item.amount
     if (item.category === 'allowance') {
@@ -288,6 +302,12 @@ export async function buildFormulaContext(params: {
       totalDeductions += item.amount
     }
   }
+ console.log('📊 [buildFormulaContext] ===== بعد از محاسبه جمع‌ها =====')
+  console.log('📊 [buildFormulaContext] totalAllowances:', totalAllowances)
+  console.log('📊 [buildFormulaContext] totalDeductions:', totalDeductions)
+  console.log('📊 [buildFormulaContext] insurableAmount:', insurableAmount)
+  console.log('📊 [buildFormulaContext] itemAmounts:', itemAmounts)
+  
 
   insurableAmount += baseSalary
   const insuranceCeiling = setting.minDailyWage * workDaysPerMonth * setting.insuranceCeilingMultiplier
@@ -297,6 +317,12 @@ export async function buildFormulaContext(params: {
   // taxableIncome برای محاسبه مالیات (ناخالص منهای معافیت مالیاتی)
   const taxExemptRials = (setting.taxExemptAmount || 0) * 10 // تومان → ریال
   const taxableIncome = Math.max(0, grossSalary - taxExemptRials)
+
+   console.log('📊 [buildFormulaContext] ===== محاسبه taxableIncome =====')
+  console.log('📊 [buildFormulaContext] grossSalary (پایه + مزایا):', grossSalary)
+  console.log('📊 [buildFormulaContext] taxExemptRials:', taxExemptRials)
+  console.log('📊 [buildFormulaContext] taxableIncome (نهایی):', taxableIncome)
+  console.log('📊 [buildFormulaContext] taxableIncome به تومان:', Math.round(taxableIncome / 10))
 
   // ساخت دیکشنری تنظیمات
   const settings: Record<string, number> = {
@@ -354,6 +380,8 @@ export async function buildFormulaContext(params: {
       }
     }
   }
+
+ console.log('📊 [buildFormulaContext] ===== پایان =====')
 
   return {
     baseSalary,

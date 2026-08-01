@@ -288,7 +288,7 @@ const totalRewards = useMemo(() => {
 }, [monthlyRewards])
 
   // ========== فیلتر آیتم‌ها ==========
-  // ========== فیلتر آیتم‌ها ==========
+
 const relevantItems = useMemo(() => {
   let items = [...payrollItems]
   
@@ -331,6 +331,7 @@ const relevantItems = useMemo(() => {
   // ========== ✅ کسورات ==========
   addItem('INSURANCE_EMPLOYEE', 'بیمه تامین اجتماعی', 'deduction', 999, 'محاسبه خودکار بیمه')
   addItem('TAX_INCOME', 'مالیات بر درآمد', 'deduction', 1000, 'محاسبه خودکار مالیات')
+  addItem('TAX', 'مالیات بر درآمد', 'deduction', 1001, 'محاسبه خودکار مالیات')
   addItem('LOAN_INSTALLMENT', 'قسط وام', 'deduction', 998, 'محاسبه خودکار اقساط وام')
 
   return items

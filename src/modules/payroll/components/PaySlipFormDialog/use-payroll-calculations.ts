@@ -1,6 +1,6 @@
 // src/modules/payroll/components/PaySlipFormDialog/use-payroll-calculations.ts
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import {
   calculateHourlyRate,
   calculateDailyRate,
@@ -65,7 +65,9 @@ export function usePayrollCalculations({
   const hourlyRate = calculateHourlyRate(baseSalaryNum, workDaysPerMonth, workHoursPerDay)
   const dailyRate = calculateDailyRate(baseSalaryNum, workDaysPerMonth)
 
-  const calculateFormulaItem = (item: any, tempCalculated?: Record<string, number>): number => {
+  // ✅ calculateFormulaItem را با useCallback می‌پیچیم تا یک رفرنس پایدار داشته باشد
+  // و بتوانیم آن را به‌طور صریح در وابستگی‌های useMemo قرار دهیم.
+  const calculateFormulaItem = useCallback((item: any, tempCalculated?: Record<string, number>): number => {
     const code = item.code
     const calc = tempCalculated || {}
 
@@ -170,40 +172,70 @@ export function usePayrollCalculations({
     }
 
     return Number(itemAmounts[item.id] || 0)
-  }
+  }, [
+    settings,
+    hourlyRate,
+    dailyRate,
+    overtimeHoursNum,
+    nightShiftHours,
+    fridayWorkHours,
+    holidayWorkHours,
+    missionDays,
+    unpaidLeaveDays,
+    absenceDays,
+    delayHours,
+    workDaysNum,
+    baseSalaryNum,
+    allowanceItems,
+    taxBrackets,
+    totalLoanInstallments,
+    totalRewards,
+    formYear,
+    formMonth,
+    employeeHireDate,
+    itemAmounts,
+  ])
+
+  // تابع کمکی مشترک برای محاسبه‌ی یک آیتم — چه allowance چه deduction
+  const calculateSingleItem = useCallback((item: any, calc: Record<string, number>): number => {
+    if (item.calculationType === 'fixed') {
+      const benefitKey = getBenefitKeyFromCode(item.code)
+      if (benefitKey && employeeBenefits[benefitKey] !== undefined) {
+        return employeeBenefits[benefitKey]
+      }
+      const userVal = Number(itemAmounts[item.id] || 0)
+      return item.isEditable ? userVal : RIALS_TO_TOMANS(item.value)
+    } else if (item.calculationType === 'percentage') {
+      return Math.round(baseSalaryNum * item.value / 100)
+    } else if (item.calculationType === 'formula') {
+      return calculateFormulaItem(item, calc)
+    } else if (item.calculationType === 'employee_field') {
+      const fieldName = item.employeeField || item.code
+      const benefitKey = getBenefitKeyFromCode(item.code) || fieldName
+      return employeeBenefits[benefitKey] || 0
+    }
+    return Number(itemAmounts[item.id] || 0)
+  }, [employeeBenefits, itemAmounts, baseSalaryNum, calculateFormulaItem])
 
   const calculatedAmounts = useMemo(() => {
     const calc: Record<string, number> = {}
-  
+
+    // ✅ مرحله ۱: ابتدا همه‌ی آیتم‌های «مزایا» (allowance) را محاسبه کن
+    // تا هنگام محاسبه‌ی کسورات (مثل مالیات)، مجموع مزایا کامل و درست باشد —
+    // صرف‌نظر از اینکه sortOrder هر آیتم چه عددی است.
     for (const item of relevantItems) {
-      if (item.calculationType === 'fixed') {
-        const benefitKey = getBenefitKeyFromCode(item.code)
-        if (benefitKey && employeeBenefits[benefitKey] !== undefined) {
-          calc[item.id] = employeeBenefits[benefitKey]
-        } else {
-          const userVal = Number(itemAmounts[item.id] || 0)
-          calc[item.id] = item.isEditable ? userVal : RIALS_TO_TOMANS(item.value)
-        }
-      } else if (item.calculationType === 'percentage') {
-        calc[item.id] = Math.round(baseSalaryNum * item.value / 100)
-      } else if (item.calculationType === 'formula') {
-        calc[item.id] = calculateFormulaItem(item, calc)
-      } else if (item.calculationType === 'employee_field') {
-        // ✅ از اطلاعات کارمند (employee_financial)
-        const fieldName = item.employeeField || item.code
-        const benefitKey = getBenefitKeyFromCode(item.code) || fieldName
-        calc[item.id] = employeeBenefits[benefitKey] || 0
-      } else {
-        calc[item.id] = Number(itemAmounts[item.id] || 0)
-      }
+      if (item.category !== 'allowance') continue
+      calc[item.id] = calculateSingleItem(item, calc)
     }
-  
+
+    // ✅ مرحله ۲: حالا که calc همه‌ی مزایا را دارد، کسورات (deduction) را حساب کن
+    for (const item of relevantItems) {
+      if (item.category === 'allowance') continue
+      calc[item.id] = calculateSingleItem(item, calc)
+    }
+
     return calc
-  }, [relevantItems, itemAmounts, baseSalaryNum, employeeBenefits,
-      overtimeHoursNum, nightShiftHours, fridayWorkHours, holidayWorkHours,
-      missionDays, unpaidLeaveDays, absenceDays, delayHours,
-      workDaysNum, hourlyRate, dailyRate, settings, taxBrackets, allowanceItems,
-      totalLoanInstallments, totalRewards, formYear, formMonth, employeeHireDate])
+  }, [relevantItems, calculateSingleItem])
 
   const totalAllowances = useMemo(() => {
     return relevantItems

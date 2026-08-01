@@ -69,8 +69,37 @@ export function PayrollItemFormDialog({
     includeInLeaveBalance: initialData?.includeInLeaveBalance ?? false,
   })
 
+  // ============================================
+  // ✅ وقتی کاربر فیلد رو انتخاب میکنه، title و code خودکار پر میشه
+  // ============================================
+  const handleFieldSelect = (fieldValue: string) => {
+    const selectedField = EMPLOYEE_FIELDS.find(f => f.value === fieldValue)
+    // ساخت کد خودکار از employeeField (مثلاً housingAllowance → HOUSING_ALLOWANCE)
+    const autoCode = fieldValue.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '')
+    
+    setForm({
+      ...form,
+      employeeField: fieldValue,
+      title: form.title || selectedField?.label || '',
+      code: autoCode,  // ← کد همیشه از فیلد ساخته میشه
+    })
+  }
+
+  // ============================================
+  // ✅ وقتی نوع محاسبه عوض میشه، employeeField رو ریست کن
+  // ============================================
+  const handleCalculationTypeChange = (value: string) => {
+    setForm({
+      ...form,
+      calculationType: value,
+      employeeField: value === 'employee_field' ? form.employeeField : '',
+      // اگر از employee_field خارج شد، کد رو پاک نکن
+    })
+  }
+
   const handleSubmit = () => {
     if (!form.title || !form.code) return
+
     const data: Record<string, unknown> = {
       ...form,
       year,
@@ -111,6 +140,7 @@ export function PayrollItemFormDialog({
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="مثلاً: حق مسکن"
+                disabled={isEdit}
               />
             </div>
             <div className="space-y-2">
@@ -118,10 +148,15 @@ export function PayrollItemFormDialog({
               <Input
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
-                placeholder="مثلاً: HOUSING"
+                placeholder="مثلاً: HOUSING_ALLOWANCE"
                 dir="ltr"
-                disabled={isEdit}
+                disabled={isEdit || form.calculationType === 'employee_field'}  // ✅ غیرفعال برای employee_field
               />
+              {form.calculationType === 'employee_field' && form.employeeField && (
+                <p className="text-[10px] text-muted-foreground">
+                  🔒 کد به‌طور خودکار از فیلد <code className="bg-muted px-1 rounded">{form.employeeField}</code> ساخته می‌شود
+                </p>
+              )}
             </div>
           </div>
 
@@ -147,7 +182,7 @@ export function PayrollItemFormDialog({
               <Label>نوع محاسبه</Label>
               <Select
                 value={form.calculationType}
-                onValueChange={(v) => setForm({ ...form, calculationType: v })}
+                onValueChange={handleCalculationTypeChange}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -161,26 +196,30 @@ export function PayrollItemFormDialog({
             </div>
           </div>
 
-          {/* مقدار */}
-          <div className="space-y-2">
-            <Label>{getValueLabel()}</Label>
-            <Input
-              type="number"
-              value={form.value}
-              onChange={(e) => setForm({ ...form, value: e.target.value })}
-              dir="ltr"
-            />
-          </div>
+          {/* مقدار - فقط برای fixed و percentage و formula */}
+          {form.calculationType !== 'employee_field' && (
+            <div className="space-y-2">
+              <Label>{getValueLabel()}</Label>
+              <Input
+                type="number"
+                value={form.value}
+                onChange={(e) => setForm({ ...form, value: e.target.value })}
+                dir="ltr"
+              />
+            </div>
+          )}
 
-          {/* فیلد کارمند */}
+          {/* فیلد کارمند - فقط برای employee_field */}
           {form.calculationType === 'employee_field' && (
             <div className="space-y-2">
-              <Label>فیلد اطلاعات کارمند</Label>
+              <Label>فیلد اطلاعات مالی کارمند</Label>
               <Select
                 value={form.employeeField}
-                onValueChange={(v) => setForm({ ...form, employeeField: v })}
+                onValueChange={handleFieldSelect}
               >
-                <SelectTrigger><SelectValue placeholder="انتخاب فیلد" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب فیلد..." />
+                </SelectTrigger>
                 <SelectContent>
                   {EMPLOYEE_FIELDS.map((field) => (
                     <SelectItem key={field.value} value={field.value}>
@@ -189,6 +228,11 @@ export function PayrollItemFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {form.employeeField && (
+                <p className="text-[10px] text-muted-foreground">
+                  📁 مقدار از فیلد <code className="bg-muted px-1 rounded">{form.employeeField}</code> در اطلاعات مالی کارمند خوانده میشود
+                </p>
+              )}
             </div>
           )}
 
