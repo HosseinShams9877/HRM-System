@@ -60,6 +60,8 @@ export function PaySlipFormDialog({
   const [editUnpaidLeaveDays, setEditUnpaidLeaveDays] = useState('0')
   const [editAbsenceDays, setEditAbsenceDays] = useState('0')
   const [editDelayHours, setEditDelayHours] = useState('0')
+  const [yearsOfService, setYearsOfService] = useState('')  // سال سابقه کار برای سنوات
+const [workDaysInYear, setWorkDaysInYear] = useState('')  // روزهای کارکرد در سال برای عیدی
 
   // ========== Stateهای وام، پاداش، تاریخ استخدام ==========
   const [activeLoans, setActiveLoans] = useState<any[]>([])
@@ -703,6 +705,11 @@ const relevantItems = useMemo(() => {
               onNotesChange={setNotes}
               isLoading={isLoading}
               isEditing={isEditingWorkRecord}
+              yearsOfService={yearsOfService}
+  onYearsOfServiceChange={setYearsOfService}
+  workDaysInYear={workDaysInYear}
+  onWorkDaysInYearChange={setWorkDaysInYear}
+  formMonth={formMonth}
             />
           </div>
 

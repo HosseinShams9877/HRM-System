@@ -34,6 +34,9 @@ interface UsePayrollCalculationsProps {
   formYear: number
   formMonth: number
   employeeHireDate: string
+  // ✅ اضافه شد
+  yearsOfService?: string
+  workDaysInYear?: string
 }
 
 export function usePayrollCalculations({
@@ -58,6 +61,9 @@ export function usePayrollCalculations({
   formYear,
   formMonth,
   employeeHireDate,
+  // ✅ اضافه شد
+  yearsOfService = '',
+  workDaysInYear = '',
 }: UsePayrollCalculationsProps) {
   const workDaysPerMonth = settings?.workDaysPerMonth || 30
   const workHoursPerDay = settings?.workHoursPerDay || 8
@@ -65,8 +71,6 @@ export function usePayrollCalculations({
   const hourlyRate = calculateHourlyRate(baseSalaryNum, workDaysPerMonth, workHoursPerDay)
   const dailyRate = calculateDailyRate(baseSalaryNum, workDaysPerMonth)
 
-  // ✅ calculateFormulaItem را با useCallback می‌پیچیم تا یک رفرنس پایدار داشته باشد
-  // و بتوانیم آن را به‌طور صریح در وابستگی‌های useMemo قرار دهیم.
   const calculateFormulaItem = useCallback((item: any, tempCalculated?: Record<string, number>): number => {
     const code = item.code
     const calc = tempCalculated || {}
@@ -161,16 +165,26 @@ export function usePayrollCalculations({
       return totalRewards
     }
 
-    // عیدی
+    // ✅ عیدی
     if (code === 'EIDI' || code === 'YEAR_END_BONUS') {
-      return calculateEidi(settings, formYear, formMonth, employeeHireDate)
+      const workDaysInYearNum = Number(workDaysInYear) || 0
+      return calculateEidi(settings, formYear, formMonth, employeeHireDate, baseSalaryNum, workDaysInYearNum)
     }
 
-    // سنوات
+    // ✅ سنوات
     if (code === 'SANAVAT' || code === 'SENIORITY') {
-      return calculateSanavat(baseSalaryNum, settings, employeeHireDate, formYear)
+      const yearsOfServiceNum = Number(yearsOfService) || 0
+      const workDaysInYearNum = Number(workDaysInYear) || 0
+      return calculateSanavat(
+        baseSalaryNum,
+        settings,
+        employeeHireDate,
+        formYear,
+        formMonth,
+        yearsOfServiceNum,
+        workDaysInYearNum  // ✅ پاس دادن روزهای کارکرد
+      )
     }
-
     return Number(itemAmounts[item.id] || 0)
   }, [
     settings,
@@ -194,9 +208,11 @@ export function usePayrollCalculations({
     formMonth,
     employeeHireDate,
     itemAmounts,
+    // ✅ اضافه کن
+    yearsOfService,
+    workDaysInYear,
   ])
 
-  // تابع کمکی مشترک برای محاسبه‌ی یک آیتم — چه allowance چه deduction
   const calculateSingleItem = useCallback((item: any, calc: Record<string, number>): number => {
     if (item.calculationType === 'fixed') {
       const benefitKey = getBenefitKeyFromCode(item.code)
@@ -220,15 +236,11 @@ export function usePayrollCalculations({
   const calculatedAmounts = useMemo(() => {
     const calc: Record<string, number> = {}
 
-    // ✅ مرحله ۱: ابتدا همه‌ی آیتم‌های «مزایا» (allowance) را محاسبه کن
-    // تا هنگام محاسبه‌ی کسورات (مثل مالیات)، مجموع مزایا کامل و درست باشد —
-    // صرف‌نظر از اینکه sortOrder هر آیتم چه عددی است.
     for (const item of relevantItems) {
       if (item.category !== 'allowance') continue
       calc[item.id] = calculateSingleItem(item, calc)
     }
 
-    // ✅ مرحله ۲: حالا که calc همه‌ی مزایا را دارد، کسورات (deduction) را حساب کن
     for (const item of relevantItems) {
       if (item.category === 'allowance') continue
       calc[item.id] = calculateSingleItem(item, calc)

@@ -296,34 +296,37 @@ await prisma.user.upsert({
   console.log(`✅ ${attendanceData.length} رکورد حضور`)
 
   // ============================================
-  // تنظیمات حقوقی ۱۴۰۵ (دینامیک)
-  // ============================================
+// تنظیمات حقوقی ۱۴۰۵ (دینامیک)
+// ============================================
 
-  const YEAR = 1405
+const YEAR = 1405
 
-  // ==== تنظیمات سیستمی ====
-  await prisma.payrollSetting.upsert({
-    where: { year: YEAR },
-    update: {},
-    create: {
-      year: YEAR,
-      minDailyWage: 5541850,           // حداقل دستمزد روزانه (ریال)
-      insuranceRate: 7,                 // نرخ بیمه سهم کارمند %
-      employerInsRate: 23,              // نرخ بیمه سهم کارفرما %
-      insuranceCeilingMultiplier: 7,    // ضریب سقف بیمه
-      overtimeMultiplier: 1.4,          // ضریب اضافه‌کاری
-      nightShiftMultiplier: 1.15,       // ضریب شب‌کاری نوبتی
-      mixedNightMultiplier: 1.35,       // ضریب شب‌کاری مختلط
-      fridayWorkMultiplier: 1.4,        // ضریب جمعه‌کاری
-      holidayWorkMultiplier: 1.4,       // ضریب تعطیل‌کاری
-      eidiMinDays: 60,                  // حداقل روز عیدی
-      eidiMaxDays: 90,                  // حداکثر روز عیدی
-      taxExemptAmount: 3333333,        // معافیت مالیاتی ماهانه (تومان) ≈ 40M/12
-      workHoursPerDay: 8,
-      workDaysPerMonth: 30,
-    },
-  })
-  console.log('✅ تنظیمات حقوقی ۱۴۰۵')
+// ==== تنظیمات سیستمی ====
+await prisma.payrollSetting.upsert({
+  where: { year: YEAR },
+  update: {},
+  create: {
+    year: YEAR,
+    minDailyWage: 5541850,           // حداقل دستمزد روزانه (ریال)
+    insuranceRate: 7,                 // نرخ بیمه سهم کارمند %
+    employerInsRate: 23,              // نرخ بیمه سهم کارفرما %
+    insuranceCeilingMultiplier: 7,    // ضریب سقف بیمه
+    overtimeMultiplier: 1.4,          // ضریب اضافه‌کاری
+    nightShiftMultiplier: 1.15,       // ضریب شب‌کاری نوبتی
+    mixedNightMultiplier: 1.35,       // ضریب شب‌کاری مختلط
+    fridayWorkMultiplier: 1.4,        // ضریب جمعه‌کاری
+    holidayWorkMultiplier: 1.4,       // ضریب تعطیل‌کاری
+    eidiMinDays: 60,                  // حداقل روز عیدی
+    eidiMaxDays: 90,                  // حداکثر روز عیدی
+    taxExemptAmount: 3333333,        // معافیت مالیاتی ماهانه (تومان)
+    workHoursPerDay: 8,
+    workDaysPerMonth: 30,
+    // ✅ اضافه کردن سنوات
+    sanavatRate: 3,                   // نرخ سنوات (۳٪)
+    sanavatMaxYears: 30,              // حداکثر سال سابقه مشمول
+  },
+})
+console.log('✅ تنظیمات حقوقی ۱۴۰۵')
 
   // ==== آیتم‌های حقوقی (مزایا) ====
   // ⚠️ کدها (code) بین seed.ts و API seed route باید یکسان باشند

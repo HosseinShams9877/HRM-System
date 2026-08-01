@@ -32,6 +32,7 @@ import { MonthlyWorkListTab } from './monthly-work-list-tab'
 import { Calendar } from 'lucide-react'
 import { ReportsTab } from './payroll-reports-tab'
 import { useActiveEmployees } from '@/modules/employees/hooks/use-employees-list'
+
 // ============================================
 // Main PayrollModule
 // ============================================
@@ -55,6 +56,30 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
   const [showGenerate, setShowGenerate] = useState(false)
   const [activeTab, setActiveTab] = useState(initialTab === 'settings' ? 'settings' : initialTab === 'reports' ? 'reports' : 'payslips')
   const { toast } = useToast()
+  
+  // ✅ دپارتمان‌ها
+  const [departments, setDepartments] = useState<Record<string, string>>({})
+
+  // ✅ fetch دپارتمان‌ها
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await fetch('/api/departments')
+        if (res.ok) {
+          const json = await res.json()
+          const deptMap: Record<string, string> = {}
+          const deptList = json.data || json || []
+          deptList.forEach((dept: any) => {
+            deptMap[dept.id] = dept.name || dept.title || dept.code || dept.id
+          })
+          setDepartments(deptMap)
+        }
+      } catch (e) {
+        console.error('Error fetching departments:', e)
+      }
+    }
+    fetchDepartments()
+  }, [])
 
   const fetchPayroll = useCallback(async () => {
     try {
@@ -89,6 +114,7 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
       console.error('Fetch payroll items error:', err)
     }
   }, [yearFilter])
+  
   useEffect(() => {
     fetchPayroll()
     fetchPayrollItems()
@@ -298,9 +324,9 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
             فیش حقوقی
           </TabsTrigger>
           <TabsTrigger value="work-records" className="gap-1">
-  <Calendar className="w-3.5 h-3.5" />
-  کارکرد ماهانه
-</TabsTrigger>
+            <Calendar className="w-3.5 h-3.5" />
+            کارکرد ماهانه
+          </TabsTrigger>
           <TabsTrigger value="formulas" className="gap-1">
             <Calculator className="w-3.5 h-3.5" />
             فرمول‌ها
@@ -434,78 +460,83 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
                     </tr>
                   </thead>
                   <tbody>
-                    {payslips.map((slip, idx) => (
-                      <tr key={slip.id} className="border-b hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-2.5 text-muted-foreground">{toPersianDigits(idx + 1)}</td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-7 h-7">
-                              <AvatarFallback className="text-[10px] bg-gradient-to-br from-emerald-400 to-teal-500 text-white">
-                                {slip.employee?.firstName?.[0] || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-sm">{slip.employee?.firstName} {slip.employee?.lastName}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-xs">{toPersianDigits(slip.employee?.personnelCode || '')}</td>
-                        <td className="px-3 py-2.5 text-xs text-muted-foreground">{slip.employee?.department || '—'}</td>
-                        <td className="px-3 py-2.5 font-mono text-xs">{formatCurrency(RIALS_TO_TOMANS(slip.baseSalary))}</td>
-                        <td className="px-3 py-2.5 font-mono text-xs text-teal-700 dark:text-teal-300">{formatCurrency(RIALS_TO_TOMANS(slip.totalAllowances))}</td>
-                        <td className="px-3 py-2.5 font-mono text-xs text-rose-700 dark:text-rose-300">{formatCurrency(RIALS_TO_TOMANS(slip.totalDeductions))}</td>
-                        <td className="px-3 py-2.5 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(RIALS_TO_TOMANS(slip.netSalary))}</td>
-                        <td className="px-3 py-2.5">
-                          <PaySlipStatusBadge status={slip.status} />
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreVertical className="w-3.5 h-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="min-w-[140px]">
-                              <DropdownMenuItem onClick={() => handleViewDetail(slip.id)} className="gap-2">
-                                <Eye className="w-3.5 h-3.5" />
-                                مشاهده
-                              </DropdownMenuItem>
-                              {slip.status === 'draft' && (
-                                <DropdownMenuItem onClick={() => setEditPayslip(slip)} className="gap-2">
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  ویرایش
+                    {payslips.map((slip, idx) => {
+                      // ✅ دریافت نام دپارتمان از مپ
+                      const departmentName = departments[slip.employee?.department || ''] || slip.employee?.department || '—'
+                      
+                      return (
+                        <tr key={slip.id} className="border-b hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2.5 text-muted-foreground">{toPersianDigits(idx + 1)}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-7 h-7">
+                                <AvatarFallback className="text-[10px] bg-gradient-to-br from-emerald-400 to-teal-500 text-white">
+                                  {slip.employee?.firstName?.[0] || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium text-sm">{slip.employee?.firstName} {slip.employee?.lastName}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-xs">{toPersianDigits(slip.employee?.personnelCode || '')}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{departmentName}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs">{formatCurrency(RIALS_TO_TOMANS(slip.baseSalary))}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs text-teal-700 dark:text-teal-300">{formatCurrency(RIALS_TO_TOMANS(slip.totalAllowances))}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs text-rose-700 dark:text-rose-300">{formatCurrency(RIALS_TO_TOMANS(slip.totalDeductions))}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(RIALS_TO_TOMANS(slip.netSalary))}</td>
+                          <td className="px-3 py-2.5">
+                            <PaySlipStatusBadge status={slip.status} />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="min-w-[140px]">
+                                <DropdownMenuItem onClick={() => handleViewDetail(slip.id)} className="gap-2">
+                                  <Eye className="w-3.5 h-3.5" />
+                                  مشاهده
                                 </DropdownMenuItem>
-                              )}
-                              {slip.status === 'draft' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(slip.id, 'confirmed')} className="gap-2">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  تأیید
-                                </DropdownMenuItem>
-                              )}
-                              {slip.status === 'confirmed' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(slip.id, 'paid')} className="gap-2">
-                                  <CreditCard className="w-3.5 h-3.5" />
-                                  ثبت پرداخت
-                                </DropdownMenuItem>
-                              )}
-                              {slip.status === 'paid' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(slip.id, 'closed')} className="gap-2">
-                                  <Lock className="w-3.5 h-3.5" />
-                                  بستن
-                                </DropdownMenuItem>
-                              )}
-                              {slip.status === 'draft' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleDelete(slip.id)} className="gap-2 text-rose-600 focus:text-rose-700">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    حذف
+                                {slip.status === 'draft' && (
+                                  <DropdownMenuItem onClick={() => setEditPayslip(slip)} className="gap-2">
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    ویرایش
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
+                                )}
+                                {slip.status === 'draft' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(slip.id, 'confirmed')} className="gap-2">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    تأیید
+                                  </DropdownMenuItem>
+                                )}
+                                {slip.status === 'confirmed' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(slip.id, 'paid')} className="gap-2">
+                                    <CreditCard className="w-3.5 h-3.5" />
+                                    ثبت پرداخت
+                                  </DropdownMenuItem>
+                                )}
+                                {slip.status === 'paid' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(slip.id, 'closed')} className="gap-2">
+                                    <Lock className="w-3.5 h-3.5" />
+                                    بستن
+                                  </DropdownMenuItem>
+                                )}
+                                {slip.status === 'draft' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleDelete(slip.id)} className="gap-2 text-rose-600 focus:text-rose-700">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      حذف
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -514,8 +545,8 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
         </TabsContent>
 
         <TabsContent value="work-records" className="space-y-4">
-  <MonthlyWorkListTab employees={employees} year={yearFilter} />
-</TabsContent>
+          <MonthlyWorkListTab employees={employees} year={yearFilter} />
+        </TabsContent>
 
         {/* فرمول‌ها Tab */}
         <TabsContent value="formulas">

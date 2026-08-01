@@ -618,10 +618,11 @@ export const SYSTEM_FORMULAS = [
   {
     code: 'sanavat',
     name: 'سنوات',
-    description: 'محاسبه خودکار بر اساس سال سابقه کار',
-    expression: '{sanavatRate} / 100 * {baseSalary} * MIN({yearsOfService}, {sanavatMaxYears}) / 12',
+    description: 'محاسبه خودکار بر اساس سال سابقه کار (فقط اسفند)',
+    expression: 'IF({month}==12, {sanavatRate} / 100 * {baseSalary} * MIN({yearsOfService}, {sanavatMaxYears}) / 12, 0)',
     variables: [
-      { varName: 'sanavatRate', sourceType: 'setting', sourceId: null, label: 'نرخ سنوات' },
+      { varName: 'month', sourceType: 'computed', sourceId: null, label: 'ماه جاری' },
+      { varName: 'sanavatRate', sourceType: 'setting', sourceId: null, label: 'نرخ سنوات (درصد)' },
       { varName: 'baseSalary', sourceType: 'computed', sourceId: null, label: 'حقوق پایه' },
       { varName: 'yearsOfService', sourceType: 'employee_field', sourceId: null, label: 'سال سابقه کار' },
       { varName: 'sanavatMaxYears', sourceType: 'setting', sourceId: null, label: 'حداکثر سال سابقه مشمول' },
