@@ -137,6 +137,7 @@ export const calculateHourlyRate = (
       // بن کارگری
       'FOOD': 'workAllowance',
       'FOOD_ALLOWANCE': 'workAllowance',
+      'WORK_ALLOWANCE': 'workAllowance',
       'BEN': 'workAllowance',
       'BENEFIT': 'workAllowance',
       // حق تاهل

@@ -46,6 +46,7 @@ const getBenefitKey = (code: string): string | null => {
     'HOUSING_ALLOWANCE': 'housingAllowance',
     'FOOD': 'workAllowance',
     'FOOD_ALLOWANCE': 'workAllowance',
+    'WORK_ALLOWANCE': 'workAllowance',
     'BEN': 'workAllowance',
     'SPOUSE': 'spouseAllowance',
     'SPOUSE_ALLOWANCE': 'spouseAllowance',
