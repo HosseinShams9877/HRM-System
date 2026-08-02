@@ -387,6 +387,8 @@ const relevantItems = useMemo(() => {
     formYear,
     formMonth,
     employeeHireDate,
+    yearsOfService,
+    workDaysInYear,
   })
 
   // ========== ذخیره کارکرد ==========

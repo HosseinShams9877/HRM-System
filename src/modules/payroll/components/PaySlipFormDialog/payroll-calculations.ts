@@ -71,7 +71,6 @@ export const calculateHourlyRate = (
   
     return Math.round(annualTax / 12)
   }
-  
 
 export const calculateEidi = (
   settings: any,
@@ -79,100 +78,127 @@ export const calculateEidi = (
   month: number,
   hireDate: string,
   baseSalary: number,
-  workDaysInYearInput?: number  // ← مقدار دستی از کاربر
+  workDaysInYearInput?: number
 ): number => {
   // ✅ فقط در اسفند
   if (month !== 12) return 0
 
-  // ✅ اولویت ۱: مقدار دستی کاربر
+  // ✅ حداقل دستمزد روزانه از تنظیمات (ریال)
+  const minDailyWage = settings?.minDailyWage || 5541850
+
+  // ✅ دریافت روزهای کارکرد در سال از ورودی کاربر
   let workDaysInYear = workDaysInYearInput || 0
 
-  // ✅ اولویت ۲: محاسبه از تاریخ استخدام
+  // اگر کاربر مقدار وارد نکرده، از تاریخ استخدام محاسبه کن
   if (workDaysInYear === 0 && hireDate) {
     const parts = hireDate.split('/')
     if (parts.length === 3) {
       const hireYear = parseInt(parts[0])
-      // محاسبه روزهای کارکرد در سال (حداکثر ۳۶۵)
-      // اگر در سال جاری استخدام شده، روزهای باقیمانده تا امروز
-      const currentYear = year
-      if (hireYear === currentYear) {
-        // استخدام در سال جاری - از تاریخ استخدام تا الان
+      if (hireYear === year) {
         const hireMonth = parseInt(parts[1])
         const hireDay = parseInt(parts[2])
-        // ساده‌سازی: تقریباً (ماه فعلی - ماه استخدام) × ۳۰ + روز
         workDaysInYear = 365 - ((hireMonth - 1) * 30 + hireDay)
       } else {
-        workDaysInYear = 365  // کل سال
+        workDaysInYear = 365
       }
     }
   }
 
-  // محدود کردن به حداقل و حداکثر
-  if (workDaysInYear <= 0) workDaysInYear = 0
+  // محدود کردن به بازه ۰ تا ۳۶۵
+  if (workDaysInYear < 0) workDaysInYear = 0
   if (workDaysInYear > 365) workDaysInYear = 365
 
-  const eidiMinDays = settings?.eidiMinDays || 60
-  const eidiMaxDays = settings?.eidiMaxDays || 90
-  
-  // تعداد روزهای عیدی بین حداقل و حداکثر
-  const effectiveDays = Math.min(Math.max(workDaysInYear, eidiMinDays), eidiMaxDays)
+  // ✅ محاسبه تعداد روزهای عیدی (متناسب با روزهای کارکرد)
+  // برای هر روز کارکرد، (۹۰/۳۶۵) روز عیدی تعلق می‌گیرد
+  let eidiDays = (workDaysInYear / 365) * 90
 
-  // عیدی = (حقوق پایه / ۳۰) × روزهای عیدی
-  return Math.round((baseSalary / 30) * effectiveDays)
+  // ❌ حذف حداقل ۶۰ روز!
+  // فقط سقف ۹۰ روز رو اعمال کن
+  if (eidiDays > 90) eidiDays = 90
+
+  // ✅ محاسبه عیدی نهایی به ریال
+  // عیدی = حداقل دستمزد روزانه × تعداد روزهای عیدی
+  const eidiAmount = minDailyWage * eidiDays
+
+  console.log('📊 [calculateEidi]', {
+    minDailyWage,
+    workDaysInYear,
+    eidiDays: Math.round(eidiDays * 10) / 10,
+    eidiAmount: Math.round(eidiAmount),
+    maxEidi: Math.round(minDailyWage * 90)
+  })
+
+  return Math.round(eidiAmount/10)
 }
 
 export const calculateSanavat = (
-  baseSalary: number,
+  baseSalary: number,        // حقوق پایه کارمند (ریال)
   settings: any,
   hireDate: string,
   year: number,
   month: number,
   yearsOfServiceInput?: number,   // سال سابقه کار (از کاربر)
-  workDaysInYearInput?: number    // ✅ روزهای کارکرد در سال (از کاربر)
+  workDaysInYearInput?: number    // روزهای کارکرد در سال جاری (از کاربر)
 ): number => {
   // ✅ فقط در اسفند
   if (month !== 12) return 0
 
-  // ۱. محاسبه سال سابقه کار
-  let yearsOfService = yearsOfServiceInput || 0
+  // ۱. محاسبه سال‌های کامل سابقه کار
+  let fullYears = yearsOfServiceInput || 0
 
-  // اگر کاربر مقدار وارد نکرده، از تاریخ استخدام محاسبه کن
-  if (yearsOfService === 0 && hireDate) {
+  if (fullYears === 0 && hireDate) {
     const parts = hireDate.split('/')
     if (parts.length === 3) {
       const hireYear = parseInt(parts[0])
-      yearsOfService = year - hireYear
+      fullYears = year - hireYear
     }
   }
 
-  if (yearsOfService <= 0) return 0
+  if (fullYears < 0) fullYears = 0
 
-  // ۲. محاسبه روزهای کارکرد در سال
+  // ۲. محاسبه روزهای کارکرد در سال جاری
   let workDaysInYear = workDaysInYearInput || 0
 
-  // اگر کاربر مقدار وارد نکرده، ۳۶۵ روز در نظر بگیر (یک سال کامل)
-  if (workDaysInYear === 0) {
-    workDaysInYear = 365
+  if (workDaysInYear === 0 && hireDate) {
+    const parts = hireDate.split('/')
+    if (parts.length === 3) {
+      const hireYear = parseInt(parts[0])
+      if (hireYear === year) {
+        const hireMonth = parseInt(parts[1])
+        const hireDay = parseInt(parts[2])
+        workDaysInYear = 365 - ((hireMonth - 1) * 30 + hireDay)
+      } else {
+        workDaysInYear = 365
+      }
+    }
   }
 
-  // محدود کردن به حداکثر ۳۶۵ روز
-  if (workDaysInYear > 365) workDaysInYear = 365
+  // محدود کردن به ۳۶۵ روز
   if (workDaysInYear < 0) workDaysInYear = 0
+  if (workDaysInYear > 365) workDaysInYear = 365
 
-  // ۳. محاسبه سنوات
-  const sanavatRate = settings?.sanavatRate || 3
+  // ۳. محاسبه کل سابقه به سال (سال کامل + کسر روز)
+  const totalYears = fullYears + (workDaysInYear / 365)
+
+  // ۴. اعمال حداکثر سال سابقه
   const maxYears = settings?.sanavatMaxYears || 30
-  const effectiveYears = Math.min(yearsOfService, maxYears)
+  const effectiveYears = Math.min(totalYears, maxYears)
 
-  // ✅ فرمول کامل: (حقوق پایه × نرخ × سال سابقه × روزهای کارکرد) / (۱۲ × ۳۶۵)
-  const sanavat = (baseSalary * sanavatRate * effectiveYears * workDaysInYear) / (100 * 12 * 365)
+  // ۵. نرخ سنوات (درصد)
+  const sanavatRate = settings?.sanavatRate || 3  // ۳٪
+
+  // ۶. محاسبه سنوات ماهانه
+  // (حقوق پایه × نرخ سنوات × سال سابقه) / ۱۲
+  const sanavat = (baseSalary * sanavatRate * effectiveYears) / (100 * 12)
 
   console.log('📊 [calculateSanavat]', {
     baseSalary,
-    sanavatRate,
-    effectiveYears,
+    fullYears,
     workDaysInYear,
-    result: Math.round(sanavat)
+    totalYears: Math.round(totalYears * 100) / 100,
+    effectiveYears: Math.round(effectiveYears * 100) / 100,
+    sanavatRate,
+    sanavat: Math.round(sanavat)
   })
 
   return Math.round(sanavat)
