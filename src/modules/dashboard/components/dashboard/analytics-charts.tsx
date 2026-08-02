@@ -18,9 +18,6 @@ import { toPersianDigits } from '@/core/lib/utils-fa';
 import { UserRole } from "@/core/lib/auth";
 import { useQuery } from '@tanstack/react-query';
 
-// ✅ استفاده از هوک موجود
-import { useEmployeesList } from '@/modules/employees/hooks/use-employees-list';
-
 // ============================================
 // Types
 // ============================================
@@ -51,12 +48,6 @@ interface Employee {
     role: string;
     isActive: boolean;
   } | null;
-}
-
-interface Department {
-  id: string;
-  name: string;
-  code: string;
 }
 
 // ============================================
@@ -150,6 +141,7 @@ function getStartDate(range: string): Date {
       startDate.setMonth(startDate.getMonth() - 1);
   }
   
+  console.log('📅 [Analytics] بازه زمانی:', startDate.toLocaleDateString(), 'تا', now.toLocaleDateString());
   return startDate;
 }
 
@@ -162,27 +154,47 @@ function processTurnoverData(
   range: 'week' | 'month' | 'halfYear' | 'year',
   departmentId?: string
 ) {
+  console.log('📊 [Analytics] ===== شروع پردازش جذب و خروج =====');
+  console.log('📊 [Analytics] تعداد کارمندان:', employees.length);
+  console.log('📊 [Analytics] بازه:', range);
+  console.log('📊 [Analytics] فیلتر دپارتمان:', departmentId || 'همه');
+
   let filtered = employees;
   if (departmentId) {
     filtered = employees.filter(emp => emp.department === departmentId);
+    console.log('📊 [Analytics] بعد از فیلتر دپارتمان:', filtered.length);
   }
 
   const now = new Date();
   const startDate = getStartDate(range);
 
-  // ✅ جذب‌ها: کارمندانی که hireDate در بازه هست
+  // ✅ جذب: استفاده از hireDate
   const hired = filtered.filter(emp => {
-    if (!emp.hireDate) return false;
+    if (!emp.hireDate) {
+      console.log(`⚠️ ${emp.firstName} ${emp.lastName} فاقد hireDate`);
+      return false;
+    }
     const hireDate = convertShamsiToGregorian(emp.hireDate);
-    return hireDate >= startDate && hireDate <= now;
+    const isInRange = hireDate >= startDate && hireDate <= now;
+    if (isInRange) {
+      console.log(`  ✅ جذب: ${emp.firstName} ${emp.lastName} - hireDate: ${emp.hireDate}`);
+    }
+    return isInRange;
   });
 
-  // ✅ خروج‌ها: کارمندانی که status === 'inactive'
+  // ✅ خروج: استفاده از status === 'inactive'
   const left = filtered.filter(emp => {
     if (emp.status !== 'inactive') return false;
     const updatedAt = new Date(emp.updatedAt);
-    return updatedAt >= startDate && updatedAt <= now;
+    const isInRange = updatedAt >= startDate && updatedAt <= now;
+    if (isInRange) {
+      console.log(`  ❌ خروج: ${emp.firstName} ${emp.lastName} - updatedAt: ${emp.updatedAt}`);
+    }
+    return isInRange;
   });
+
+  console.log('📊 [Analytics] تعداد جذب:', hired.length);
+  console.log('📊 [Analytics] تعداد خروج:', left.length);
 
   // گروه‌بندی بر اساس بازه زمانی
   const groups = new Map<string, { hired: number; left: number; period: string }>();
@@ -227,6 +239,8 @@ function processTurnoverData(
     });
   }
 
+  console.log('📊 [Analytics] نتیجه نهایی trend:', trend);
+  
   return {
     trend,
     summary: {
@@ -239,12 +253,20 @@ function processTurnoverData(
 }
 
 function calculateRetentionRate(employees: Employee[], departmentId?: string) {
+  console.log('📈 [Analytics] ===== شروع محاسبه نرخ ماندگاری =====');
+  
   let filtered = employees;
   if (departmentId) {
     filtered = employees.filter(emp => emp.department === departmentId);
   }
 
   const totalActive = filtered.filter(emp => emp.status === 'active').length;
+  console.log('📈 [Analytics] کارمندان فعال:', totalActive);
+
+  if (totalActive === 0) {
+    console.log('📈 [Analytics] ❌ هیچ کارمند فعالی وجود ندارد');
+    return { current: 0, longTerm: 0, totalActive: 0, retainedSixMonths: 0, retainedOneYear: 0 };
+  }
 
   // نرخ ماندگاری ۶ ماه
   const sixMonthsAgo = new Date();
@@ -257,7 +279,8 @@ function calculateRetentionRate(employees: Employee[], departmentId?: string) {
     return hireDate <= sixMonthsAgo;
   }).length;
 
-  const currentRate = totalActive > 0 ? (retainedSixMonths / totalActive) * 100 : 0;
+  const currentRate = (retainedSixMonths / totalActive) * 100;
+  console.log('📈 [Analytics] نرخ ۶ ماهه:', currentRate.toFixed(1) + '%');
 
   // نرخ ماندگاری ۱ سال
   const oneYearAgo = new Date();
@@ -270,55 +293,63 @@ function calculateRetentionRate(employees: Employee[], departmentId?: string) {
     return hireDate <= oneYearAgo;
   }).length;
 
-  const longTermRate = totalActive > 0 ? (retainedOneYear / totalActive) * 100 : 0;
+  const longTermRate = (retainedOneYear / totalActive) * 100;
+  console.log('📈 [Analytics] نرخ ۱ ساله:', longTermRate.toFixed(1) + '%');
 
-  return {
+  const result = {
     current: Math.round(currentRate * 10) / 10,
     longTerm: Math.round(longTermRate * 10) / 10,
     totalActive,
     retainedSixMonths,
     retainedOneYear,
   };
+  
+  console.log('📈 [Analytics] نتیجه نهایی:', result);
+  return result;
 }
 
-// ✅ محاسبه توزیع دپارتمان از داده‌های کارمندان
-function calculateDepartmentDistribution(
-  employees: Employee[]
-) {
+function calculateDepartmentDistribution(employees: Employee[]) {
+  console.log('🎯 [Analytics] ===== شروع محاسبه توزیع دپارتمان =====');
+  console.log('🎯 [Analytics] تعداد کارمندان:', employees.length);
+
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
-  // ✅ محاسبه تعداد کارمندان فعال هر دپارتمان
+  // ✅ کلید: departmentName (چون بعضی کارمندان به جای ID، اسم دپارتمان رو دارن)
   const deptMap = new Map<string, { name: string; count: number }>();
   
   employees.forEach(emp => {
-    if (emp.status === 'active' && emp.department) {
-      const deptId = emp.department;
-      const deptName = emp.departmentName || deptId;
-      if (!deptMap.has(deptId)) {
-        deptMap.set(deptId, { name: deptName, count: 0 });
+    if (emp.status === 'active') {
+      // ✅ از departmentName استفاده کن، اگه null بود از department استفاده کن
+      const deptKey = emp.departmentName || emp.department || 'بدون دپارتمان';
+      
+      if (!deptMap.has(deptKey)) {
+        deptMap.set(deptKey, { name: deptKey, count: 0 });
       }
-      deptMap.get(deptId)!.count++;
+      deptMap.get(deptKey)!.count++;
     }
   });
 
-  // ساخت لیست توزیع
-  let distribution = Array.from(deptMap.entries()).map(([deptId, data], index) => ({
-    departmentId: deptId,
+  console.log('🎯 [Analytics] تعداد کارمندان هر دپارتمان:', 
+    Array.from(deptMap.entries()).map(([key, data]) => ({ name: key, count: data.count }))
+  );
+
+  let distribution = Array.from(deptMap.entries()).map(([deptKey, data], index) => ({
+    departmentId: deptKey,
     name: data.name,
     value: data.count,
     color: colors[index % colors.length],
   }));
 
-  // مرتب‌سازی بر اساس تعداد (نزولی)
   distribution.sort((a, b) => b.value - a.value);
 
-  // محاسبه درصد
   const total = distribution.reduce((sum, item) => sum + item.value, 0);
   const distributionWithPercent = distribution.map(item => ({
     ...item,
     percentage: total > 0 ? Math.round((item.value / total) * 100) : 0,
   }));
 
+  console.log('🎯 [Analytics] نتیجه نهایی:', distributionWithPercent);
+  
   return {
     distribution: distributionWithPercent,
     total,
@@ -332,19 +363,82 @@ function calculateDepartmentDistribution(
 function AnalyticsCharts({ userRole, departmentId }: AnalyticsChartsProps) {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'halfYear' | 'year'>('month');
   
+  console.log('🚀 [Analytics] ===== شروع رندر کامپوننت =====');
+  console.log('🚀 [Analytics] userRole:', userRole);
+  console.log('🚀 [Analytics] departmentId:', departmentId);
+
   const isDesktop = useIsDesktop();
   const isAdminOrHR = userRole === 'admin' || userRole === 'hr_manager';
 
-  // ✅ استفاده از هوک موجود برای دریافت همه کارمندان
-  const { 
-    data: employeesData = [], 
-    isLoading: isLoadingEmployees, 
-    error: employeesError,
-    isFetching: isFetchingEmployees,
-  } = useEmployeesList({ status: 'all' }); // همه کارمندان (فعال + غیرفعال)
+  console.log('🚀 [Analytics] isDesktop:', isDesktop);
+  console.log('🚀 [Analytics] isAdminOrHR:', isAdminOrHR);
 
-  // ✅ تبدیل داده‌ها به فرمت استاندارد
+  // ✅ استفاده از useQuery دقیقاً مثل EmployeesModule
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['analytics-employees', departmentId],
+    queryFn: async () => {
+      console.log('🔄 [Analytics] ===== شروع fetch از /api/employees =====');
+      
+      const params = new URLSearchParams()
+      // گرفتن همه کارمندان بدون صفحه‌بندی
+      params.set('limit', '1000')
+      if (departmentId && departmentId !== 'all') {
+        params.set('department', departmentId)
+      }
+      
+      const url = `/api/employees?${params.toString()}`
+      console.log('🔄 [Analytics] آدرس درخواست:', url);
+      
+      const res = await fetch(url)
+      console.log('🔄 [Analytics] پاسخ status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.log('🔄 [Analytics] ❌ خطا:', errorText);
+        throw new Error(`Failed to fetch: ${res.status}`)
+      }
+      
+      const result = await res.json()
+      console.log('🔄 [Analytics] 📦 کل پاسخ:', result);
+      console.log('🔄 [Analytics] 🔑 کلیدهای پاسخ:', Object.keys(result));
+      console.log('🔄 [Analytics] result.data:', result.data);
+      console.log('🔄 [Analytics] result.data?.length:', result.data?.length);
+      
+      // پردازش مثل EmployeesModule
+      let employees = Array.isArray(result) ? result : (result.data || [])
+      
+      console.log('🔄 [Analytics] ✅ تعداد کارمندان دریافت شده:', employees.length);
+      if (employees.length > 0) {
+        console.log('🔄 [Analytics] نمونه اول:', {
+          id: employees[0].id,
+          firstName: employees[0].firstName,
+          lastName: employees[0].lastName,
+          status: employees[0].status,
+          hireDate: employees[0].hireDate,
+          department: employees[0].department,
+          departmentName: employees[0].departmentName,
+        });
+      }
+      
+      return {
+        employees: employees,
+        pagination: result.pagination || null
+      }
+    },
+    staleTime: 5000, // 5 ثانیه کش
+    enabled: isDesktop && isAdminOrHR,
+  })
+
+  // استخراج داده‌ها
+  const employeesData = data?.employees || []
+  const pagination = data?.pagination || null
+
+  console.log('📦 [Analytics] employeesData:', employeesData);
+  console.log('📦 [Analytics] employeesData.length:', employeesData.length);
+
+  // تبدیل داده‌ها به فرمت استاندارد
   const employees = useMemo(() => {
+    console.log('🔄 [Analytics] تبدیل داده‌ها به فرمت استاندارد...');
     return employeesData.map((emp: any) => ({
       id: emp.id,
       firstName: emp.firstName || '',
@@ -364,28 +458,34 @@ function AnalyticsCharts({ userRole, departmentId }: AnalyticsChartsProps) {
     }));
   }, [employeesData]);
 
+  console.log('📦 [Analytics] پس از تبدیل - تعداد:', employees.length);
+  console.log('📦 [Analytics] نمونه اول پس از تبدیل:', employees[0]);
+
   // پردازش داده‌ها
   const turnoverData = useMemo(() => {
+    console.log('🔄 [Analytics] محاسبه turnoverData...');
     return processTurnoverData(employees, timeRange, departmentId);
   }, [employees, timeRange, departmentId]);
 
   const retentionData = useMemo(() => {
+    console.log('🔄 [Analytics] محاسبه retentionData...');
     return calculateRetentionRate(employees, departmentId);
   }, [employees, departmentId]);
 
   const distributionData = useMemo(() => {
+    console.log('🔄 [Analytics] محاسبه distributionData...');
     return calculateDepartmentDistribution(employees);
   }, [employees]);
 
   // فقط در دسکتاپ و برای نقش‌های مجاز نمایش بده
   if (!isDesktop || !isAdminOrHR) {
+    console.log('⛔ [Analytics] نمایش داده نشد - شرط نقش یا دسکتاپ برقرار نیست');
     return null;
   }
 
   // نمایش لودینگ
-  const isLoading = isLoadingEmployees || isFetchingEmployees;
-  
   if (isLoading) {
+    console.log('⏳ [Analytics] در حال بارگذاری...');
     return (
       <Card className="border-0 shadow-xl overflow-hidden h-full flex flex-col bg-white dark:bg-gray-800">
         <CardContent className="flex-1 flex items-center justify-center flex-col gap-4 p-8">
@@ -397,12 +497,13 @@ function AnalyticsCharts({ userRole, departmentId }: AnalyticsChartsProps) {
   }
 
   // نمایش خطا
-  if (employeesError) {
+  if (isError) {
+    console.log('❌ [Analytics] خطا:', error);
     return (
       <Card className="border-0 shadow-xl overflow-hidden h-full flex flex-col bg-white dark:bg-gray-800">
         <CardContent className="flex-1 flex items-center justify-center flex-col gap-4 p-8">
           <p className="text-red-500 text-sm">خطا در دریافت لیست کارمندان</p>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
             تلاش مجدد
           </Button>
         </CardContent>
@@ -414,6 +515,12 @@ function AnalyticsCharts({ userRole, departmentId }: AnalyticsChartsProps) {
   const retention = retentionData || { current: 0, longTerm: 0, totalActive: 0 };
   const distribution = distributionData?.distribution || [];
   const totalEmployees = employees.length;
+
+  console.log('✅ [Analytics] ===== رندر نهایی =====');
+  console.log('✅ [Analytics] chartData:', chartData);
+  console.log('✅ [Analytics] retention:', retention);
+  console.log('✅ [Analytics] distribution:', distribution);
+  console.log('✅ [Analytics] totalEmployees:', totalEmployees);
 
   // ============================================
   // رندر اصلی
