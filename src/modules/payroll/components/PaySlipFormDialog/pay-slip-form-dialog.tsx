@@ -14,7 +14,6 @@ import { WorkDetailsSection } from './work-details-section'
 import { AllowanceItemsSection } from './allowance-items-section'
 import { DeductionItemsSection } from './deduction-items-section'
 import { SummarySection } from './summary-section'
-import { OrderSection } from './order-section'
 import { useEmployeeData } from './use-employee-data'
 import { usePayrollCalculations } from './use-payroll-calculations'
 import { getOrderTitle } from './payroll-calculations'
@@ -750,22 +749,6 @@ const relevantItems = useMemo(() => {
             totalDeductions={totalDeductions}
             grossSalary={grossSalary}
             netSalary={netSalary}
-          />
-
-          <OrderSection
-            generateOrder={generateOrder}
-            onGenerateOrderChange={setGenerateOrder}
-            orderType={orderType}
-            onOrderTypeChange={setOrderType}
-            orderEffectiveDate={orderEffectiveDate}
-            onOrderEffectiveDateChange={setOrderEffectiveDate}
-            orderDescription={orderDescription}
-            onOrderDescriptionChange={setOrderDescription}
-            orderNewPosition={orderNewPosition}
-            onOrderNewPositionChange={setOrderNewPosition}
-            orderNewDepartment={orderNewDepartment}
-            onOrderNewDepartmentChange={setOrderNewDepartment}
-            baseSalaryNum={baseSalaryNum}
           />
         </div>
 
