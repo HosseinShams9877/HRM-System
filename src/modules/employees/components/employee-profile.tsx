@@ -22,7 +22,11 @@ import {
 import { DocumentManager } from './document-manager'
 import { WorkHistoryList } from './work-history-list'
 import { EmployeeContracts } from './employee-contracts'
-
+import { EmployeeWelfareTab } from './employee-welfare-tab'
+import { EmployeeTrainingTab } from './employee-training-tab';
+import { EmployeePerformanceTab } from './employee-performance-tab';
+import { EmployeePayrollTab } from './employee-payroll-tab';
+import { EmployeeAttendanceTab } from './employee-attendance-tab';
 // ============================================
 // Types
 // ============================================
@@ -361,24 +365,40 @@ const { data: workHistory = [], isLoading: isLoadingHistory } = useWorkHistory(e
 
         {/* Placeholders for other tabs */}
         <TabsContent value="training" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><GraduationCap className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">آموزش‌های کارمند</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+  <EmployeeTrainingTab
+    employeeId={employee.id}
+    employeeName={`${employee.firstName} ${employee.lastName}`}
+  />
+</TabsContent>
 
-        <TabsContent value="welfare" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><Award className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">رفاهی و پاداش‌ها</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+<TabsContent value="welfare" className="mt-4">
+  <EmployeeWelfareTab
+    employeeId={employee.id}
+    employeeName={`${employee.firstName} ${employee.lastName}`}
+    employeeDepartment={employee.departmentName || employee.department}
+  />
+</TabsContent>
 
-        <TabsContent value="performance" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><BarChart3 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">ارزیابی عملکرد</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+<TabsContent value="performance" className="mt-4">
+  <EmployeePerformanceTab
+    employeeId={employee.id}
+    employeeName={`${employee.firstName} ${employee.lastName}`}
+  />
+</TabsContent>
 
-        <TabsContent value="salary" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><DollarSign className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">سوابق حقوق و دستمزد</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+<TabsContent value="salary" className="mt-4">
+  <EmployeePayrollTab
+    employeeId={employee.id}
+    employeeName={`${employee.firstName} ${employee.lastName}`}
+  />
+</TabsContent>
 
-        <TabsContent value="attendance" className="mt-4">
-          <Card className="border-0 shadow-sm"><CardContent className="py-12 text-center"><Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" /><p className="text-muted-foreground">سوابق حضور و غیاب</p><p className="text-xs text-muted-foreground mt-1">در حال توسعه</p></CardContent></Card>
-        </TabsContent>
+<TabsContent value="attendance" className="mt-4">
+  <EmployeeAttendanceTab
+    employeeId={employee.id}
+    employeeName={`${employee.firstName} ${employee.lastName}`}
+  />
+</TabsContent>
 
         <TabsContent value="contracts" className="mt-4">
   <Card className="border-0 shadow-sm">
