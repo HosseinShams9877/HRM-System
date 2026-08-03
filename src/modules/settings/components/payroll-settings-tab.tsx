@@ -1,69 +1,76 @@
-'use client'
+// src/modules/settings/components/payroll-settings-tab.tsx
 
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2, Calendar, Plus, Pencil, Trash2, Loader2,
   Repeat, Sun, Handshake, AlertCircle, Check, X, Lock,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
-import { Button } from '@/core/components/ui/button'
-import { Input } from '@/core/components/ui/input'
-import { Textarea } from '@/core/components/ui/textarea'
-import { Badge } from '@/core/components/ui/badge'
-import { Switch } from '@/core/components/ui/switch'
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { Button } from '@/core/components/ui/button';
+import { Input } from '@/core/components/ui/input';
+import { Textarea } from '@/core/components/ui/textarea';
+import { Badge } from '@/core/components/ui/badge';
+import { Switch } from '@/core/components/ui/switch';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/core/components/ui/table'
+} from '@/core/components/ui/table';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/core/components/ui/dialog'
+} from '@/core/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/core/components/ui/alert-dialog'
+} from '@/core/components/ui/alert-dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/core/components/ui/select'
-import { toPersianDigits } from '@/core/lib/utils-fa'
-import { formatShamsi } from '@/core/lib/utils-fa'
-import type { Department, Holiday, HolidayStats } from '../index'
-import { HOLIDAY_TYPE_MAP, ROLES_DATA, DEPT_COLORS } from '../constants'
+} from '@/core/components/ui/select';
+import { toPersianDigits } from '@/core/lib/utils-fa';
+import { formatShamsi } from '@/core/lib/utils-fa';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { HolidaysList } from '@/modules/shifts/components/holidays-list';
+import { HolidayFormDialog } from '@/modules/shifts/components/holiday-form-dialog';
+import type { Department, Holiday, HolidayStats } from '../index';
+import { HOLIDAY_TYPE_MAP, ROLES_DATA, DEPT_COLORS } from '../constants';
+import { toast } from 'sonner';
 
 // ============================================
 // Helper
 // ============================================
 
 function getTypeBadge(type: string) {
-  const info = HOLIDAY_TYPE_MAP[type]
-  if (!info) return null
-  const Icon = info.icon
+  const info = HOLIDAY_TYPE_MAP[type];
+  if (!info) return null;
+  const Icon = info.icon;
   return (
     <Badge variant="outline" className={`${info.bgClass} ${info.color} border gap-1 text-[11px]`}>
       <Icon className="w-3 h-3" />
       {info.label}
     </Badge>
-  )
+  );
 }
 
 // ============================================
-// Departments Section
+// Departments Section (همون قبلی)
 // ============================================
 
 interface DepartmentsSectionProps {
-  departments: Department[]
-  deptLoading: boolean
-  deptDialogOpen: boolean
-  editingDept: Department | null
-  deptForm: { name: string; code: string; managerId: string; parentId: string }
-  deptSaving: boolean
-  deleteDeptDialog: Department | null
-  employees: { id: string; firstName: string; lastName: string; personnelCode: string }[]
-  onOpenAddDept: () => void
-  onOpenEditDept: (dept: Department) => void
-  onSetDeptDialogOpen: (open: boolean) => void
-  onDeptFormChange: (form: { name: string; code: string; managerId: string; parentId: string }) => void
-  onSaveDepartment: () => void
-  onSetDeleteDeptDialog: (dept: Department | null) => void
-  onConfirmDeleteDept: () => void
+  departments: Department[];
+  deptLoading: boolean;
+  deptDialogOpen: boolean;
+  editingDept: Department | null;
+  deptForm: { name: string; code: string; managerId: string; parentId: string };
+  deptSaving: boolean;
+  deleteDeptDialog: Department | null;
+  employees: { id: string; firstName: string; lastName: string; personnelCode: string }[];
+  onOpenAddDept: () => void;
+  onOpenEditDept: (dept: Department) => void;
+  onSetDeptDialogOpen: (open: boolean) => void;
+  onDeptFormChange: (form: { name: string; code: string; managerId: string; parentId: string }) => void;
+  onSaveDepartment: () => void;
+  onSetDeleteDeptDialog: (dept: Department | null) => void;
+  onConfirmDeleteDept: () => void;
 }
 
 export function DepartmentsSection({
@@ -83,14 +90,13 @@ export function DepartmentsSection({
   onSetDeleteDeptDialog,
   onConfirmDeleteDept,
 }: DepartmentsSectionProps) {
-  const getDeptColor = (idx: number) => DEPT_COLORS[idx % DEPT_COLORS.length]
+  const getDeptColor = (idx: number) => DEPT_COLORS[idx % DEPT_COLORS.length];
 
-  // پیدا کردن نام مدیر بر اساس managerId
   const getManagerName = (managerId: string | null) => {
-    if (!managerId) return '—'
-    const manager = employees.find(emp => emp.id === managerId)
-    return manager ? `${manager.firstName} ${manager.lastName}` : 'تعیین شده'
-  }
+    if (!managerId) return '—';
+    const manager = employees.find(emp => emp.id === managerId);
+    return manager ? `${manager.firstName} ${manager.lastName}` : 'تعیین شده';
+  };
 
   return (
     <>
@@ -163,14 +169,16 @@ export function DepartmentsSection({
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost" size="sm"
+                          variant="ghost"
+                          size="sm"
                           className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                           onClick={() => onOpenEditDept(dept)}
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button
-                          variant="ghost" size="sm"
+                          variant="ghost"
+                          size="sm"
                           className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
                           onClick={() => onSetDeleteDeptDialog(dept)}
                         >
@@ -186,7 +194,6 @@ export function DepartmentsSection({
         </CardContent>
       </Card>
 
-      {/* Department Add/Edit Dialog */}
       <Dialog open={deptDialogOpen} onOpenChange={onSetDeptDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -218,46 +225,46 @@ export function DepartmentsSection({
               />
             </div>
             <div>
-  <label className="text-xs font-medium mb-1.5 block">مدیر دپارتمان</label>
-  <Select
-    value={deptForm.managerId || 'none'}
-    onValueChange={(v) => onDeptFormChange({ ...deptForm, managerId: v === 'none' ? '' : v })}
-  >
-    <SelectTrigger className="text-xs">
-      <SelectValue placeholder="انتخاب مدیر..." />
-    </SelectTrigger>
-    <SelectContent className="max-h-[300px]">
-      <div className="sticky top-0 bg-white dark:bg-gray-950 p-2 border-b z-10">
-        <Input
-          placeholder="جستجوی کارمند..."
-          className="text-xs h-8"
-          onChange={(e) => {
-            const searchTerm = e.target.value.toLowerCase()
-            const items = document.querySelectorAll('.employee-select-item')
-            items.forEach(item => {
-              const text = item.textContent?.toLowerCase() || ''
-              if (text.includes(searchTerm)) {
-                (item as HTMLElement).style.display = 'flex'
-              } else {
-                (item as HTMLElement).style.display = 'none'
-              }
-            })
-          }}
-        />
-      </div>
-      <SelectItem value="none">بدون مدیر</SelectItem>
-      {employees && employees.length > 0 ? (
-        employees.map(emp => (
-          <SelectItem key={emp.id} value={emp.id} className="employee-select-item">
-            {emp.firstName} {emp.lastName} ({emp.personnelCode})
-          </SelectItem>
-        ))
-      ) : (
-        <SelectItem value="none" disabled>کارمندی یافت نشد</SelectItem>
-      )}
-    </SelectContent>
-  </Select>
-</div>
+              <label className="text-xs font-medium mb-1.5 block">مدیر دپارتمان</label>
+              <Select
+                value={deptForm.managerId || 'none'}
+                onValueChange={(v) => onDeptFormChange({ ...deptForm, managerId: v === 'none' ? '' : v })}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="انتخاب مدیر..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <div className="sticky top-0 bg-white dark:bg-gray-950 p-2 border-b z-10">
+                    <Input
+                      placeholder="جستجوی کارمند..."
+                      className="text-xs h-8"
+                      onChange={(e) => {
+                        const searchTerm = e.target.value.toLowerCase();
+                        const items = document.querySelectorAll('.employee-select-item');
+                        items.forEach(item => {
+                          const text = item.textContent?.toLowerCase() || '';
+                          if (text.includes(searchTerm)) {
+                            (item as HTMLElement).style.display = 'flex';
+                          } else {
+                            (item as HTMLElement).style.display = 'none';
+                          }
+                        });
+                      }}
+                    />
+                  </div>
+                  <SelectItem value="none">بدون مدیر</SelectItem>
+                  {employees && employees.length > 0 ? (
+                    employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id} className="employee-select-item">
+                        {emp.firstName} {emp.lastName} ({emp.personnelCode})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>کارمندی یافت نشد</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="text-xs font-medium mb-1.5 block">دپارتمان والد</label>
               <Select
@@ -295,7 +302,6 @@ export function DepartmentsSection({
         </DialogContent>
       </Dialog>
 
-      {/* Department Delete Confirmation */}
       <AlertDialog open={!!deleteDeptDialog} onOpenChange={(open) => !open && onSetDeleteDeptDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -313,43 +319,119 @@ export function DepartmentsSection({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }
 
 // ============================================
-// Holidays Section
+// Holidays Section - با لاگ کامل
 // ============================================
 
 interface HolidaysSectionProps {
-  holidays: Holiday[]
-  holidayStats: HolidayStats
-  holidayLoading: boolean
-  holidayYearFilter: string
-  holidayTypeFilter: string
-  holidayDialogOpen: boolean
-  editingHoliday: Holiday | null
-  holidayForm: { title: string; date: string; type: string; isRecurring: boolean; description: string }
-  holidaySaving: boolean
-  deleteHolidayDialog: Holiday | null
-  onSetHolidayYearFilter: (val: string) => void
-  onSetHolidayTypeFilter: (val: string) => void
-  onOpenAddHoliday: () => void
-  onOpenEditHoliday: (h: Holiday) => void
-  onSetHolidayDialogOpen: (open: boolean) => void
-  onHolidayFormChange: (form: { title: string; date: string; type: string; isRecurring: boolean; description: string }) => void
-  onSaveHoliday: () => void
-  onSetDeleteHolidayDialog: (h: Holiday | null) => void
-  onConfirmDeleteHoliday: () => void
+  holidayTypeFilter: string;
+  holidayDialogOpen: boolean;
+  editingHoliday: Holiday | null;
+  holidayForm: { title: string; date: string; type: string; isRecurring: boolean; description: string };
+  holidaySaving: boolean;
+  deleteHolidayDialog: Holiday | null;
+  onSetHolidayTypeFilter: (val: string) => void;
+  onOpenAddHoliday: () => void;
+  onOpenEditHoliday: (h: Holiday) => void;
+  onSetHolidayDialogOpen: (open: boolean) => void;
+  onHolidayFormChange: (form: { title: string; date: string; type: string; isRecurring: boolean; description: string }) => void;
+  onSaveHoliday: () => void;
+  onSetDeleteHolidayDialog: (h: Holiday | null) => void;
+  onConfirmDeleteHoliday: () => void;
 }
 
+// src/modules/settings/components/payroll-settings-tab.tsx
+
+// ============================================
+// Holidays Section - با لاگ کامل و fetch اجباری
+// ============================================
+
+// ============================================
+// Holidays Section - با refetch داخلی
+// ============================================
+
 function HolidaysSection({
-  holidays, holidayStats, holidayLoading, holidayYearFilter, holidayTypeFilter,
-  holidayDialogOpen, editingHoliday, holidayForm, holidaySaving, deleteHolidayDialog,
-  onSetHolidayYearFilter, onSetHolidayTypeFilter, onOpenAddHoliday, onOpenEditHoliday, onSetHolidayDialogOpen,
-  onHolidayFormChange, onSaveHoliday, onSetDeleteHolidayDialog, onConfirmDeleteHoliday,
+  holidayTypeFilter,
+  holidayDialogOpen,
+  editingHoliday,
+  holidayForm,
+  holidaySaving,
+  deleteHolidayDialog,
+  onSetHolidayTypeFilter,
+  onOpenAddHoliday,
+  onOpenEditHoliday,
+  onSetHolidayDialogOpen,
+  onHolidayFormChange,
+  onSaveHoliday,
+  onSetDeleteHolidayDialog,
+  onConfirmDeleteHoliday,
 }: HolidaysSectionProps) {
+  
+
+  // ✅ دریافت تعطیلات
+  const { 
+    data: holidays = [], 
+    isLoading: holidayLoading,
+    error: holidayError,
+    refetch: refetchHolidays,
+    status: holidayStatus,
+  } = useQuery({
+    queryKey: ['holidays'],
+    queryFn: async () => {
+ 
+      try {
+        const res = await fetch(`/api/holidays`);
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.log('🔄 [Holidays] ❌ خطا:', errorText);
+          throw new Error(`خطا در دریافت تعطیلات: ${res.status}`);
+        }
+        
+        const json = await res.json();
+       
+        return json.data || json || [];
+      } catch (error) {
+        console.error('🔄 [Holidays] ❌ خطای fetch:', error);
+        return [];
+      }
+    },
+    initialData: [],
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  
+
+  // ✅ فیلتر بر اساس نوع
+  const filteredHolidays = useMemo(() => {
+    if (holidayTypeFilter === 'all') return holidays;
+    return holidays.filter((h: any) => h.type === holidayTypeFilter);
+  }, [holidays, holidayTypeFilter]);
+
+ 
+
+  // ✅ آمار تعطیلات
+  const holidayStats = useMemo(() => {
+    const total = holidays.length;
+    const official = holidays.filter((h: any) => h.type === 'official').length;
+    const agreed = holidays.filter((h: any) => h.type === 'agreed').length;
+    const occasional = holidays.filter((h: any) => h.type === 'occasional').length;
+    console.log('📊 [Holidays] آمار:', { total, official, agreed, occasional });
+    return { total, official, agreed, occasional };
+  }, [holidays]);
+
+  console.log('🎯 [Holidays] شرط نمایش:');
+  console.log('🎯 [Holidays] holidayLoading:', holidayLoading);
+  console.log('🎯 [Holidays] filteredHolidays.length === 0:', filteredHolidays.length === 0);
+  console.log('🎯 [Holidays] باید HolidaysList رندر بشه؟', !holidayLoading && filteredHolidays.length > 0);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir='rtl'>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="border-0 shadow-sm">
@@ -409,17 +491,11 @@ function HolidaysSection({
       {/* Filters + Add Button */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" dir='ltr'>
             <div className="flex items-center gap-2 flex-wrap">
-              <Input
-                value={holidayYearFilter}
-                onChange={e => onSetHolidayYearFilter(e.target.value)}
-                placeholder="سال شمسی (مثلاً 1404)"
-                className="text-xs w-40"
-              />
               <Select value={holidayTypeFilter} onValueChange={onSetHolidayTypeFilter}>
                 <SelectTrigger className="text-xs w-36">
-                  <SelectValue />
+                  <SelectValue placeholder="نوع تعطیلی" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all" className="text-xs">همه</SelectItem>
@@ -440,170 +516,43 @@ function HolidaysSection({
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
-          ) : holidays.length === 0 ? (
+          ) : holidayError ? (
+            <div className="text-center py-12 text-red-500 text-xs">
+              <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <p>خطا در دریافت تعطیلات</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => refetchHolidays()}>
+                تلاش مجدد
+              </Button>
+            </div>
+          ) : filteredHolidays.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-xs">
               <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p>تعطیلی ثبت نشده</p>
               <p className="text-[10px] mt-1">با کلیک روی دکمه افزودن، تعطیلی جدید ثبت کنید</p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">عنوان</TableHead>
-                    <TableHead className="text-xs">تاریخ</TableHead>
-                    <TableHead className="text-xs">نوع</TableHead>
-                    <TableHead className="text-xs">تکرار سالانه</TableHead>
-                    <TableHead className="text-xs">توضیحات</TableHead>
-                    <TableHead className="text-xs text-left">اقدامات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {holidays.map(holiday => (
-                    <TableRow key={holiday.id}>
-                      <TableCell className="text-sm font-medium">{holiday.title}</TableCell>
-                      <TableCell className="text-xs">
-                        {formatShamsi(holiday.date)}
-                      </TableCell>
-                      <TableCell>{getTypeBadge(holiday.type)}</TableCell>
-                      <TableCell>
-                        {holiday.isRecurring ? (
-                          <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 gap-1 text-[11px]">
-                            <Repeat className="w-3 h-3" />
-                            بله
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">خیر</span>
-                          )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">
-                        {holiday.description || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost" size="sm"
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                            onClick={() => onOpenEditHoliday(holiday)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost" size="sm"
-                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-                            onClick={() => onSetDeleteHolidayDialog(holiday)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div>
+              <p className="text-xs text-emerald-600 mb-2">✅ {filteredHolidays.length} تعطیلی یافت شد</p>
+              <HolidaysList
+                holidays={filteredHolidays}
+                onEdit={onOpenEditHoliday}
+                onDelete={(id) => {
+                  const holiday = holidays.find((h: any) => h.id === id);
+                  if (holiday) onSetDeleteHolidayDialog(holiday);
+                }}
+              />
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Holiday Add/Edit Dialog */}
-      <Dialog open={holidayDialogOpen} onOpenChange={onSetHolidayDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-sm">
-              {editingHoliday ? 'ویرایش تعطیلی' : 'افزودن تعطیلی جدید'}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              {editingHoliday ? 'اطلاعات تعطیلی را ویرایش کنید' : 'اطلاعات تعطیلی جدید را وارد کنید'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium mb-1.5 block">عنوان *</label>
-              <Input
-                value={holidayForm.title}
-                onChange={e => onHolidayFormChange({ ...holidayForm, title: e.target.value })}
-                className="text-xs"
-                placeholder="مثال: عید نوروز"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium mb-1.5 block">تاریخ (شمسی) *</label>
-              <Input
-                value={holidayForm.date}
-                onChange={e => onHolidayFormChange({ ...holidayForm, date: e.target.value })}
-                className="text-xs"
-                placeholder="مثال: 1404/01/01"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium mb-1.5 block">نوع *</label>
-              <Select
-                value={holidayForm.type}
-                onValueChange={val => onHolidayFormChange({ ...holidayForm, type: val })}
-              >
-                <SelectTrigger className="text-xs w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="official" className="text-xs">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      رسمی
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="agreed" className="text-xs">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      توافقی
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="occasional" className="text-xs">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      اتفاقی
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-xs font-medium block">تکرار سالانه</label>
-                <p className="text-[10px] text-muted-foreground">این تعطیلی هر سال تکرار می‌شود</p>
-              </div>
-              <Switch
-                checked={holidayForm.isRecurring}
-                onCheckedChange={checked => onHolidayFormChange({ ...holidayForm, isRecurring: checked })}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium mb-1.5 block">توضیحات</label>
-              <Textarea
-                value={holidayForm.description}
-                onChange={e => onHolidayFormChange({ ...holidayForm, description: e.target.value })}
-                className="text-xs min-h-16"
-                placeholder="توضیحات اختیاری..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => onSetHolidayDialogOpen(false)} className="text-xs">
-              انصراف
-            </Button>
-            <Button
-              size="sm"
-              onClick={onSaveHoliday}
-              disabled={!holidayForm.title || !holidayForm.date || !holidayForm.type || holidaySaving}
-              className="text-xs gap-1.5"
-            >
-              {holidaySaving && <Loader2 className="w-3 h-3 animate-spin" />}
-              {editingHoliday ? 'بروزرسانی' : 'افزودن'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Holiday Form Dialog */}
+      <HolidayFormDialog
+        open={holidayDialogOpen}
+        onClose={() => onSetHolidayDialogOpen(false)}
+        onSubmit={onSaveHoliday}
+        initialData={editingHoliday}
+      />
 
       {/* Holiday Delete Confirmation */}
       <AlertDialog open={!!deleteHolidayDialog} onOpenChange={(open) => !open && onSetDeleteHolidayDialog(null)}>
@@ -623,7 +572,7 @@ function HolidaysSection({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }
 
 // ============================================
@@ -633,7 +582,6 @@ function HolidaysSection({
 function RolesSection() {
   return (
     <div className="space-y-4">
-      {/* Info Banner */}
       <Card className="border-0 shadow-sm bg-muted/30">
         <CardContent className="p-4 flex items-start gap-3">
           <Lock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -646,15 +594,13 @@ function RolesSection() {
         </CardContent>
       </Card>
 
-      {/* Roles Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {ROLES_DATA.map(role => {
-          const RoleIcon = role.icon
-          const accessCount = Object.values(role.modules).filter(Boolean).length
-          const totalModules = Object.keys(role.modules).length
+          const RoleIcon = role.icon;
+          const accessCount = Object.values(role.modules).filter(Boolean).length;
+          const totalModules = Object.keys(role.modules).length;
           return (
             <Card key={role.id} className="border-0 shadow-sm overflow-hidden">
-              {/* Role Header */}
               <div className={`bg-gradient-to-l ${role.color} p-4`}>
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-white/20">
@@ -677,8 +623,6 @@ function RolesSection() {
                   </span>
                 </div>
               </div>
-
-              {/* Module Access Grid */}
               <CardContent className="p-4">
                 <div className="space-y-2">
                   {Object.entries(role.modules).map(([mod, hasAccess]) => (
@@ -700,66 +644,61 @@ function RolesSection() {
                 </div>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
 // ============================================
 // Payroll Settings Tab — Unified Export
 // ============================================
 
-export type PayrollSection = 'departments' | 'holidays' | 'roles'
+export type PayrollSection = 'departments' | 'holidays' | 'roles';
 
 interface PayrollSettingsTabProps {
-  section: PayrollSection
-  // Departments props
-  departments: Department[]
-  deptLoading: boolean
-  deptDialogOpen: boolean
-  editingDept: Department | null
-  deptForm: { name: string; code: string; managerId: string; parentId: string }
-  deptSaving: boolean
-  deleteDeptDialog: Department | null
-  employees: { id: string; firstName: string; lastName: string; personnelCode: string }[]
-  onOpenAddDept: () => void
-  onOpenEditDept: (dept: Department) => void
-  onSetDeptDialogOpen: (open: boolean) => void
-  onDeptFormChange: (form: { name: string; code: string; managerId: string; parentId: string }) => void
-  onSaveDepartment: () => void
-  onSetDeleteDeptDialog: (dept: Department | null) => void
-  onConfirmDeleteDept: () => void
-  // Holidays props
-  holidays: Holiday[]
-  holidayStats: HolidayStats
-  holidayLoading: boolean
-  holidayYearFilter: string
-  holidayTypeFilter: string
-  holidayDialogOpen: boolean
-  editingHoliday: Holiday | null
-  holidayForm: { title: string; date: string; type: string; isRecurring: boolean; description: string }
-  holidaySaving: boolean
-  deleteHolidayDialog: Holiday | null
-  onSetHolidayYearFilter: (val: string) => void
-  onSetHolidayTypeFilter: (val: string) => void
-  onOpenAddHoliday: () => void
-  onOpenEditHoliday: (h: Holiday) => void
-  onSetHolidayDialogOpen: (open: boolean) => void
-  onHolidayFormChange: (form: { title: string; date: string; type: string; isRecurring: boolean; description: string }) => void
-  onSaveHoliday: () => void
-  onSetDeleteHolidayDialog: (h: Holiday | null) => void
-  onConfirmDeleteHoliday: () => void
+  section: PayrollSection;
+  departments: Department[];
+  deptLoading: boolean;
+  deptDialogOpen: boolean;
+  editingDept: Department | null;
+  deptForm: { name: string; code: string; managerId: string; parentId: string };
+  deptSaving: boolean;
+  deleteDeptDialog: Department | null;
+  employees: { id: string; firstName: string; lastName: string; personnelCode: string }[];
+  onOpenAddDept: () => void;
+  onOpenEditDept: (dept: Department) => void;
+  onSetDeptDialogOpen: (open: boolean) => void;
+  onDeptFormChange: (form: { name: string; code: string; managerId: string; parentId: string }) => void;
+  onSaveDepartment: () => void;
+  onSetDeleteDeptDialog: (dept: Department | null) => void;
+  onConfirmDeleteDept: () => void;
+  holidayTypeFilter: string;
+  holidayDialogOpen: boolean;
+  editingHoliday: Holiday | null;
+  holidayForm: { title: string; date: string; type: string; isRecurring: boolean; description: string };
+  holidaySaving: boolean;
+  deleteHolidayDialog: Holiday | null;
+  onSetHolidayTypeFilter: (val: string) => void;
+  onOpenAddHoliday: () => void;
+  onOpenEditHoliday: (h: Holiday) => void;
+  onSetHolidayDialogOpen: (open: boolean) => void;
+  onHolidayFormChange: (form: { title: string; date: string; type: string; isRecurring: boolean; description: string }) => void;
+  onSaveHoliday: () => void;
+  onSetDeleteHolidayDialog: (h: Holiday | null) => void;
+  onConfirmDeleteHoliday: () => void;
 }
 
 export function PayrollSettingsTab({ section, ...props }: PayrollSettingsTabProps) {
   switch (section) {
     case 'departments':
-      return <DepartmentsSection {...props} />
+      return <DepartmentsSection {...props} />;
     case 'holidays':
-      return <HolidaysSection {...props} />
+      return <HolidaysSection {...props} />;
     case 'roles':
-      return <RolesSection />
+      return <RolesSection />;
+    default:
+      return null;
   }
 }

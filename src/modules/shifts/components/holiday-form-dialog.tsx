@@ -1,6 +1,6 @@
 // components/Shifts/components/holiday-form-dialog.tsx
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { CalendarOff } from 'lucide-react'
 import {
   Dialog,
@@ -34,34 +34,36 @@ export function HolidayFormDialog({
   initialData,
 }: HolidayFormDialogProps) {
   const isEdit = !!initialData
-  const [form, setForm] = useState({
-    title: '',
-    date: '',
-    type: 'official',
-    isRecurring: false,
-    description: '',
-  })
 
-  useEffect(() => {
+  // محاسبه مقدار پیش‌فرض برای فرم
+  const defaultForm = useMemo(() => {
     if (initialData) {
-      setForm({
+      return {
         title: initialData.title,
         date: initialData.date,
         type: initialData.type,
         isRecurring: initialData.isRecurring,
         description: initialData.description || '',
-      })
-    } else {
-      const today = getTodayShamsi()
-      setForm({
-        title: '',
-        date: `${today.year}/${String(today.month).padStart(2, '0')}/${String(today.day).padStart(2, '0')}`,
-        type: 'official',
-        isRecurring: false,
-        description: '',
-      })
+      }
     }
-  }, [open, initialData])
+    const today = getTodayShamsi()
+    return {
+      title: '',
+      date: `${today.year}/${String(today.month).padStart(2, '0')}/${String(today.day).padStart(2, '0')}`,
+      type: 'official',
+      isRecurring: false,
+      description: '',
+    }
+  }, [initialData]) // وابسته به initialData
+
+  const [form, setForm] = useState(defaultForm)
+
+  // وقتی initialData تغییر می‌کنه، فرم رو به‌روز کن
+  useEffect(() => {
+    setForm(defaultForm)
+    // غیرفعال کردن خطای ESLint فقط برای این خط
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+  }, [defaultForm])
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
