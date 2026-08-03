@@ -66,6 +66,43 @@ function PerformanceDetailDialog({
   onClose: () => void;
   performance: Performance | null;
 }) {
+  const [departmentName, setDepartmentName] = useState<string | null>(null);
+  const [positionName, setPositionName] = useState<string | null>(null);
+
+  // ✅ دریافت نام دپارتمان و سمت
+  useEffect(() => {
+    const fetchNames = async () => {
+      if (!performance?.employee) return;
+
+      // دریافت نام دپارتمان
+      if (performance.employee.department && !performance.employee.department.startsWith('_')) {
+        try {
+          const res = await fetch(`/api/departments/${performance.employee.department}`);
+          if (res.ok) {
+            const data = await res.json();
+            setDepartmentName(data.name || data.title || performance.employee.department);
+          }
+        } catch (e) {
+          console.error('Error fetching department:', e);
+        }
+      }
+
+      // دریافت نام سمت
+      if (performance.employee.position && !performance.employee.position.startsWith('_')) {
+        try {
+          const res = await fetch(`/api/positions/${performance.employee.position}`);
+          if (res.ok) {
+            const data = await res.json();
+            setPositionName(data.title || data.name || performance.employee.position);
+          }
+        } catch (e) {
+          console.error('Error fetching position:', e);
+        }
+      }
+    };
+    fetchNames();
+  }, [performance?.employee?.department, performance?.employee?.position]);
+
   if (!performance) return null;
 
   const statusInfo = STATUS_MAP[performance.status] || STATUS_MAP.pending;
@@ -81,6 +118,9 @@ function PerformanceDetailDialog({
     ? +(kpiValues.reduce((s, v) => s + v, 0) / kpiValues.length).toFixed(2)
     : null;
 
+  const displayDepartment = departmentName || performance.employee?.department || null;
+  const displayPosition = positionName || performance.employee?.position || null;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -92,7 +132,7 @@ function PerformanceDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Employee Info */}
+          {/* Employee Info با نام دپارتمان و سمت */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm">
               {performance.employee?.firstName?.[0] || '?'}
@@ -102,8 +142,8 @@ function PerformanceDetailDialog({
                 {performance.employee?.firstName} {performance.employee?.lastName}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {performance.employee?.department || 'بدون دپارتمان'}
-                {performance.employee?.position && ` • ${performance.employee.position}`}
+                {displayDepartment || 'بدون دپارتمان'}
+                {displayPosition && ` • ${displayPosition}`}
               </p>
             </div>
           </div>

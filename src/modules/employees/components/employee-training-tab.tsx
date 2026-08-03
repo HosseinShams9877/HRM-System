@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/core/components/ui/dialog';
-import { toPersianDigits } from '@/core/lib/utils-fa';
+import { formatShamsi, toPersianDigits } from '@/core/lib/utils-fa';
 import { STATUS_MAP, CATEGORY_MAP, PARTICIPANT_STATUS_MAP } from '@/modules/training/constants';
 
 // ============================================
@@ -147,7 +147,7 @@ function TrainingDetailDialog({
                 تاریخ شروع
               </div>
               <p className="text-xs font-medium mt-0.5">
-                {toPersianDigits(new Date(training.startDate).toLocaleDateString('fa-IR'))}
+                {formatShamsi(training.startDate)}
               </p>
             </div>
             {training.endDate && (
@@ -157,7 +157,7 @@ function TrainingDetailDialog({
                   تاریخ پایان
                 </div>
                 <p className="text-xs font-medium mt-0.5">
-                  {toPersianDigits(new Date(training.endDate).toLocaleDateString('fa-IR'))}
+                  {formatShamsi(training.endDate)}
                 </p>
               </div>
             )}
@@ -383,7 +383,7 @@ export function EmployeeTrainingTab({ employeeId, employeeName = '' }: EmployeeT
                       )}
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {toPersianDigits(new Date(training.startDate).toLocaleDateString('fa-IR'))}
+                        {formatShamsi(training.startDate)}
                       </span>
                       {training.duration && (
                         <span className="flex items-center gap-1">

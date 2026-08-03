@@ -232,7 +232,7 @@ function WelfareDetailDialog({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                       <Clock className="w-3.5 h-3.5" />
@@ -240,15 +240,6 @@ function WelfareDetailDialog({
                     </div>
                     <p className="text-sm font-medium mt-0.5">
                       {toPersianDigits(new Date(data.createdAt).toLocaleDateString('fa-IR'))}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/20">
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                      <Calendar className="w-3.5 h-3.5" />
-                      تاریخ
-                    </div>
-                    <p className="text-sm font-medium mt-0.5">
-                      {toPersianDigits(data.date ? new Date(data.date).toLocaleDateString('fa-IR') : '—')}
                     </p>
                   </div>
                 </div>
