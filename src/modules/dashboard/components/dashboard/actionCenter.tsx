@@ -1,4 +1,5 @@
 // app/components/dashboard/actionCenter.tsx
+
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -9,10 +10,10 @@ import {
   UserPlus, UserMinus, CalendarCheck, FileText, Clock,
   ClipboardList, AlertCircle, CheckCircle, Eye, Send,
   Briefcase, GraduationCap, Users, Award, Gift,
-  TrendingUp, Zap, Filter, ChevronLeft,Loader2  
+  TrendingUp, Zap, Filter, ChevronLeft, Loader2
 } from 'lucide-react';
 import { toPersianDigits } from '@/core/lib/utils-fa';
-import { UserRole } from "@/core/lib/auth"
+import { UserRole } from "@/core/lib/auth";
 
 // ============================================
 // Types
@@ -30,63 +31,25 @@ interface ActionItem {
 
 interface ActionCenterProps {
   userRole: UserRole;
+  userId?: string;
   onNavigate?: (id: string) => void;
 }
 
-const fetchPendingRequests = async (userRole: UserRole, userId?: string): Promise<{ leaves: any[], missions: any[] }> => {
-  if (userRole === 'employee') return { leaves: [], missions: [] };
-  
-  try {
-    const leavesRes = await fetch(`/api/leaves?status=pending&limit=10`)
-    const leavesData = await leavesRes.json()
-    const leaves = leavesData.data || leavesData.records || []
-    const pendingLeaves = Array.isArray(leaves) ? leaves.filter((l: any) => l.status === 'pending') : []
-    
-    const missionsRes = await fetch(`/api/missions?status=pending&limit=10`)
-    const missionsData = await missionsRes.json()
-    const missions = missionsData.data || missionsData.records || []
-    const pendingMissions = Array.isArray(missions) ? missions.filter((m: any) => m.status === 'pending') : []
-    
-    return { leaves: pendingLeaves, missions: pendingMissions }
-  } catch (error) {
-    console.error('Error fetching pending requests:', error)
-    return { leaves: [], missions: [] }
-  }
-}
+// ============================================
+// داده‌های Mock برای کارمند
+// ============================================
 
-// داده‌های دمو (در پروژه واقعی از API میاد)
-// داده‌های دمو برای ادمین و مدیر
-const ADMIN_ACTIONS: ActionItem[] = [
-  { id: 'onboarding', title: 'تأیید انبوردینگ', count: 3, icon: UserPlus, priority: 'urgent', action: () => console.log('onboarding') },
-  { id: 'leave', title: 'تأیید مرخصی', count: 5, icon: CalendarCheck, priority: 'urgent', action: () => console.log('leave') },
-  { id: 'overtime', title: 'تأیید اضافه‌کاری', count: 2, icon: Clock, priority: 'today', action: () => console.log('overtime') },
-  { id: 'training', title: 'پایان دوره آموزشی', count: 8, icon: GraduationCap, priority: 'today', action: () => console.log('training') },
-  { id: 'evaluation', title: 'ارزیابی عملکرد معوق', count: 12, icon: ClipboardList, priority: 'urgent', action: () => console.log('evaluation') },
-  { id: 'documents', title: 'مدارک ناقص کارکنان', count: 7, icon: FileText, priority: 'week', action: () => console.log('documents') },
-  { id: 'salary', title: 'تأیید افزایش حقوق', count: 4, icon: TrendingUp, priority: 'week', action: () => console.log('salary') },
-  { id: 'mission', title: 'تأیید ماموریت', count: 3, icon: Briefcase, priority: 'today', action: () => console.log('mission') },
-  { id: 'hiring', title: 'درخواست استخدام', count: 6, icon: Users, priority: 'urgent', action: () => console.log('hiring') },
+const EMPLOYEE_ACTIONS: ActionItem[] = [
+  { id: 'leave', title: 'درخواست مرخصی', count: 1, icon: CalendarCheck, priority: 'normal', action: () => console.log('leave') },
+  { id: 'overtime', title: 'درخواست اضافه‌کاری', count: 1, icon: Clock, priority: 'normal', action: () => console.log('overtime') },
+  { id: 'mission', title: 'درخواست ماموریت', count: 0, icon: Briefcase, priority: 'normal', action: () => console.log('mission') },
+  { id: 'payslip', title: 'مشاهده فیش حقوقی', count: 1, icon: FileText, priority: 'normal', action: () => console.log('payslip') },
 ];
 
-const MANAGER_ACTIONS: ActionItem[] = [
-  { id: 'leave', title: 'تأیید مرخصی', count: 3, icon: CalendarCheck, priority: 'urgent', action: () => console.log('leave') },
-  { id: 'overtime', title: 'تأیید اضافه‌کاری', count: 2, icon: Clock, priority: 'today', action: () => console.log('overtime') },
-  { id: 'mission', title: 'تأیید ماموریت', count: 1, icon: Briefcase, priority: 'today', action: () => console.log('mission') },
-  { id: 'evaluation', title: 'ارزیابی تیم', count: 8, icon: ClipboardList, priority: 'urgent', action: () => console.log('evaluation') },
-];
-
-// ✅ داده‌های کارمند - باید از API بیاید (اینجا نمونه)
-const getEmployeeActions = (employeeId: string): ActionItem[] => {
-  // در پروژه واقعی، این داده‌ها از API می‌آیند
-  return [
-    { id: 'leave', title: 'درخواست مرخصی', count: 1, icon: CalendarCheck, priority: 'normal', action: () => console.log('leave'), userId: employeeId },
-    { id: 'overtime', title: 'درخواست اضافه‌کاری', count: 1, icon: Clock, priority: 'normal', action: () => console.log('overtime'), userId: employeeId },
-    { id: 'mission', title: 'درخواست ماموریت', count: 0, icon: Briefcase, priority: 'normal', action: () => console.log('mission'), userId: employeeId },
-    { id: 'payslip', title: 'مشاهده فیش حقوقی', count: 1, icon: FileText, priority: 'normal', action: () => console.log('payslip'), userId: employeeId },
-  ];
-};
-
+// ============================================
 // فیلترها
+// ============================================
+
 type FilterType = 'all' | 'urgent' | 'today' | 'week' | 'normal';
 
 const filterLabels: Record<FilterType, string> = {
@@ -100,31 +63,119 @@ const filterLabels: Record<FilterType, string> = {
 // ============================================
 // کامپوننت اصلی
 // ============================================
-export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps & { userId?: string }) {
+
+export function ActionCenter({ userRole, userId, onNavigate }: ActionCenterProps) {
   const [filter, setFilter] = useState<FilterType>('all');
-  const [pendingData, setPendingData] = useState<{ leaves: any[], missions: any[] }>({ leaves: [], missions: [] })
-  const [loadingActions, setLoadingActions] = useState(true)
+  const [loading, setLoading] = useState(true);
+  const [pendingData, setPendingData] = useState({
+    leaves: [],
+    missions: [],
+    overtime: [],
+    onboarding: [],
+    performance: [],
+    orders: [],
+    interviews: [],
+  });
+
+  // ============================================
+  // دریافت داده‌های واقعی برای مدیر و ادمین
+  // ============================================
 
   useEffect(() => {
-    const loadPendingRequests = async () => {
-      setLoadingActions(true)
-      const data = await fetchPendingRequests(userRole, userId)
-      setPendingData({ leaves: data.leaves || [], missions: data.missions || [] })
-      setLoadingActions(false)
-    }
-    loadPendingRequests()
-  }, [userRole, userId])
-  
-  // در actionCenter.tsx
+    const fetchAllPendingRequests = async () => {
+      // اگر کارمند هست، نیازی به fetch نیست
+      if (userRole === 'employee') {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      
+      try {
+        const [
+          leavesRes,
+          missionsRes,
+          overtimeRes,
+          onboardingRes,
+          performanceRes,
+          ordersRes,
+          interviewsRes, 
+        ] = await Promise.all([
+          fetch('/api/leaves?status=pending'),
+          fetch('/api/missions?status=pending'),
+          fetch('/api/overtime?status=pending'),
+          fetch('/api/onboarding?status=in_progress'),
+          fetch('/api/performance?status=pending'),
+          fetch('/api/orders?status=pending'),
+          fetch('/api/interviews?status=scheduled'),
+        ]);
+
+        const [
+          leavesData,
+          missionsData,
+          overtimeData,
+          onboardingData,
+          performanceData,
+          ordersData,
+          interviewsData,
+        ] = await Promise.all([
+          leavesRes.ok ? leavesRes.json() : { data: [] },
+          missionsRes.ok ? missionsRes.json() : { data: [] },
+          overtimeRes.ok ? overtimeRes.json() : { data: [] },
+          onboardingRes.ok ? onboardingRes.json() : { data: [] },
+          performanceRes.ok ? performanceRes.json() : { data: [] },
+          ordersRes.ok ? ordersRes.json() : { data: [] },
+          interviewsRes.ok ? interviewsRes.json() : { data: [] },
+        ]);
+
+        const allInterviews = interviewsData.data || interviewsData || [];
+        const uniqueCandidates = new Map();
+        
+        allInterviews.forEach((interview: any) => {
+          if (interview.candidateId && !uniqueCandidates.has(interview.candidateId)) {
+            uniqueCandidates.set(interview.candidateId, {
+              id: interview.candidateId,
+              name: interview.candidate ? `${interview.candidate.firstName} ${interview.candidate.lastName}` : 'نامشخص',
+              email: interview.candidate?.email || '',
+              jobTitle: interview.job?.title || '',
+            });
+          }
+        });
+
+        const interviewingCandidates = Array.from(uniqueCandidates.values());
+
+        setPendingData({
+          leaves: leavesData.data || leavesData || [],
+          missions: missionsData.data || missionsData || [],
+          overtime: overtimeData.data || overtimeData || [],
+          onboarding: onboardingData.data || onboardingData || [],
+          performance: performanceData.data || performanceData || [],
+          orders: ordersData.data || ordersData || [],
+          interviews: interviewingCandidates,
+        });
+      } catch (error) {
+        console.error('Error fetching pending requests:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllPendingRequests();
+  }, [userRole]);
+
+  // ============================================
+  // ساخت لیست اقدامات بر اساس نقش
+  // ============================================
+
   const actions = useMemo(() => {
-    if (userRole === 'employee' && userId) {
-      return getEmployeeActions(userId);
+    // ✅ برای کارمند: از داده‌های Mock استفاده کن
+    if (userRole === 'employee') {
+      return EMPLOYEE_ACTIONS;
     }
-    
-    // برای مدیر و ادمین، از داده‌های API استفاده کن
+
     const actionsList: ActionItem[] = [];
-    
-    // اضافه کردن مرخصی‌های در انتظار
+
+    // 1️⃣ مرخصی‌های در انتظار
     if (pendingData.leaves.length > 0) {
       actionsList.push({
         id: 'leave',
@@ -132,11 +183,11 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
         count: pendingData.leaves.length,
         icon: CalendarCheck,
         priority: 'urgent',
-        action: () => onNavigate?.('att-leave')
+        action: () => onNavigate?.('att-leave'),
       });
     }
-    
-    // اضافه کردن ماموریت‌های در انتظار
+
+    // 2️⃣ ماموریت‌های در انتظار
     if (pendingData.missions.length > 0) {
       actionsList.push({
         id: 'mission',
@@ -144,28 +195,98 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
         count: pendingData.missions.length,
         icon: Briefcase,
         priority: 'today',
-        action: () => onNavigate?.('att-mission')
+        action: () => onNavigate?.('att-mission'),
       });
     }
-    
-    // اضافه کردن اقدامات پیش‌فرض برای مدیر (اگر داده واقعی نبود)
-    if (actionsList.length === 0 && userRole !== 'admin') {
-      return MANAGER_ACTIONS;
-    }
-    if (actionsList.length === 0 && userRole === 'admin') {
-      return ADMIN_ACTIONS;
-    }
-    
-    return actionsList;
-  }, [userRole, userId, pendingData, onNavigate]);
 
+    // 3️⃣ اضافه‌کاری‌های در انتظار
+    if (pendingData.overtime.length > 0) {
+      actionsList.push({
+        id: 'overtime',
+        title: 'تأیید اضافه‌کاری',
+        count: pendingData.overtime.length,
+        icon: Clock,
+        priority: 'today',
+        action: () => onNavigate?.('att-overtime'),
+      });
+    }
+
+    // 4️⃣ انبوردینگ‌های ناقص (فقط برای ادمین)
+    if (userRole === 'admin' && pendingData.onboarding.length > 0) {
+      actionsList.push({
+        id: 'onboarding',
+        title: 'تکمیل انبوردینگ',
+        count: pendingData.onboarding.length,
+        icon: UserPlus,
+        priority: 'urgent',
+        action: () => onNavigate?.('onboarding'),
+      });
+    }
+
+    // 5️⃣ ارزیابی‌های در انتظار
+    if (pendingData.performance.length > 0) {
+      actionsList.push({
+        id: 'performance',
+        title: 'تکمیل ارزیابی',
+        count: pendingData.performance.length,
+        icon: ClipboardList,
+        priority: 'urgent',
+        action: () => onNavigate?.('performance'),
+      });
+    }
+
+    // 6️⃣ احکام در انتظار (فقط برای ادمین)
+    if (userRole === 'admin' && pendingData.orders.length > 0) {
+      actionsList.push({
+        id: 'orders',
+        title: 'تأیید حکم',
+        count: pendingData.orders.length,
+        icon: FileText,
+        priority: 'week',
+        action: () => onNavigate?.('orders'),
+      });
+    }
+
+    // 7️⃣ درخواست‌های استخدام (فقط برای ادمین)
+    if (userRole === 'admin' && pendingData.interviews.length > 0) {
+      actionsList.push({
+        id: 'hiring',
+        title: 'درخواست استخدام',
+        count: pendingData.interviews.length,
+        icon: Users,
+        priority: 'urgent',
+        action: () => onNavigate?.('recruitment-jobs'),
+      });
+    }
+
+    // ✅ اگر هیچ داده‌ای نبود، یک پیام نمایش بده
+    if (actionsList.length === 0) {
+      actionsList.push({
+        id: 'empty',
+        title: 'هیچ اقدامی برای تایید وجود ندارد',
+        count: 0,
+        icon: CheckCircle,
+        priority: 'normal',
+        action: () => {},
+      });
+    }
+
+    return actionsList;
+  }, [userRole, pendingData, onNavigate]);
+
+  // ============================================
   // فیلتر کردن تسک‌ها
+  // ============================================
+
   const filteredActions = actions.filter(action => {
     if (filter === 'all') return true;
     return action.priority === filter;
   });
 
+  // ============================================
   // آمار برای هر فیلتر
+  // ============================================
+
   const stats = {
     all: actions.length,
     urgent: actions.filter(a => a.priority === 'urgent').length,
@@ -174,8 +295,26 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
     normal: actions.filter(a => a.priority === 'normal').length,
   };
 
-  // دکمه‌های فیلتر
   const filters: FilterType[] = ['all', 'urgent', 'today', 'week', 'normal'];
+
+  // ============================================
+  // نمایش لودینگ
+  // ============================================
+
+  if (loading && userRole !== 'employee') {
+    return (
+      <Card className="border-0 shadow-xl overflow-hidden h-full flex flex-col dark:bg-gray-900">
+        <CardContent className="flex-1 flex items-center justify-center flex-col gap-4 p-8">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+          <p className="text-gray-500 text-sm">در حال بارگذاری اقدامات...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================
+  // رندر اصلی
+  // ============================================
 
   return (
     <Card className="border-0 shadow-xl overflow-hidden h-full flex flex-col dark:bg-gray-900">
@@ -185,7 +324,7 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
           <div className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-blue-500 rounded-full" />
           <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">مرکز اقدامات شما</h3>
         </div>
-  
+
         {/* فیلترها */}
         <div className="flex flex-wrap gap-2">
           {filters.map((f) => (
@@ -210,10 +349,10 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
           ))}
         </div>
       </div>
-  
+
       {/* لیست تسک‌ها */}
       <CardContent className="p-4 flex-1 overflow-y-auto dark:bg-gray-900">
-        {filteredActions.length === 0 ? (
+        {filteredActions.length === 0 || (filteredActions.length === 1 && filteredActions[0].id === 'empty') ? (
           <div className="text-center py-8">
             <CheckCircle className="w-10 h-10 text-green-300 dark:text-green-700 mx-auto mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">هیچ اقدامی در این دسته وجود ندارد</p>
@@ -228,16 +367,21 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
                 week: 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-400',
                 normal: 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400',
               };
-              
+
+              // اگر action.id === 'empty' باشه، نباید کلیک‌پذیر باشه
+              const isClickable = action.id !== 'empty';
+
               return (
                 <motion.div
                   key={action.id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileHover={isClickable ? { scale: 1.02, y: -2 } : {}}
                   transition={{ delay: idx * 0.03, duration: 0.2 }}
-                  onClick={action.action}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all ${priorityColors[action.priority]} hover:shadow-md`}
+                  onClick={isClickable ? action.action : undefined}
+                  className={`p-3 rounded-xl border transition-all ${
+                    isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+                  } ${priorityColors[action.priority]}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -258,7 +402,7 @@ export function ActionCenter({ userRole,userId , onNavigate }: ActionCenterProps
           </div>
         )}
       </CardContent>
-  
+
       {/* دکمه تمام عرض - مشاهده همه اقدامات */}
       <div className="p-4 pt-0 border-t mt-auto dark:border-gray-800">
         <Button
