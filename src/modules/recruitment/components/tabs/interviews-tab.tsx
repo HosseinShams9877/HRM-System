@@ -2,7 +2,7 @@
 
 'use client'
 
-import { Plus, Calendar, CheckCircle, XCircle, User, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Calendar, CheckCircle, XCircle, User, Loader2, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import { Card, CardContent } from '@/core/components/ui/card'
 import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
@@ -11,12 +11,16 @@ import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { getStatusBadge, getInterviewTypeLabel, toPersianNumber } from '../../helpers'
 import { useState, useMemo } from 'react'
 import type { Interview } from '../../types/type'
+import { InterviewDialog } from '../dialogs/interview-dialog'
 
 interface InterviewsTabProps {
   interviews: Interview[]
   loading: boolean
   onAdd: () => void
   onUpdate: (id: string, data: Record<string, unknown>) => void
+  applications?: any[]
+  onCreateInterview?: (data: any) => void
+  submitting?: boolean
 }
 
 
@@ -41,7 +45,6 @@ export const formatDateTime = (date: string | Date): string => {
   
   const parts = persianDate.split('،')
   if (parts.length === 2) {
-    // ✅ ساعت اول، تاریخ دوم: "۲۰:۳۰ - ۱۴۰۵/۱۲/۲۹"
     return `${toPersianNumber(parts[1].trim())} - ${toPersianNumber(parts[0].trim())}`
   }
   
@@ -49,11 +52,22 @@ export const formatDateTime = (date: string | Date): string => {
 }
 
 
-export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: InterviewsTabProps) {
+export function InterviewsTab({ 
+  interviews, 
+  loading, 
+  onAdd, 
+  onUpdate,
+  applications = [],
+  onCreateInterview,
+  submitting = false
+}: InterviewsTabProps) {
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [showInterviewDialog, setShowInterviewDialog] = useState(false)
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(null)
   const itemsPerPage = 7
 
+  // 👈 حذف مرتب‌سازی - خود API بر اساس scheduledAt مرتب کرده
   const totalItems = interviews.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
 
@@ -69,10 +83,66 @@ export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: Intervie
     }
   }
 
-  // Reset to first page when interviews change (filtering)
   useMemo(() => {
     setCurrentPage(1)
   }, [interviews.length])
+
+  const handleOpenEditDialog = (interview: Interview) => {
+    setEditingInterview(interview)
+    setShowInterviewDialog(true)
+  }
+
+  const handleCloseDialog = () => {
+    setShowInterviewDialog(false)
+    setEditingInterview(null)
+  }
+
+  const handleSubmitInterview = (data: any) => {
+    if (editingInterview) {
+      // 👇 همه فیلدها رو برای آپدیت می‌فرستیم
+      onUpdate(editingInterview.id, {
+        type: data.type,
+        scheduledAt: data.scheduledAt,
+        duration: data.duration,
+        location: data.location,
+        meetingLink: data.link || data.meetingLink,
+        notes: data.notes,
+      })
+      handleCloseDialog()
+    } else if (onCreateInterview) {
+      onCreateInterview(data)
+      handleCloseDialog()
+    }
+  }
+
+  // تابع برای پیدا کردن نام کاندیدا
+  const getCandidateName = (interview: Interview) => {
+    if (interview.candidate) {
+      return `${interview.candidate.firstName || ''} ${interview.candidate.lastName || ''}`.trim() || 'نامشخص'
+    }
+    // اگر interview.candidate وجود نداشت، از application پیدا کن
+    if (interview.application?.candidate) {
+      return `${interview.application.candidate.firstName || ''} ${interview.application.candidate.lastName || ''}`.trim() || 'نامشخص'
+    }
+    return 'نامشخص'
+  }
+
+  const getCandidateEmail = (interview: Interview) => {
+    if (interview.candidate) {
+      return interview.candidate.email || '—'
+    }
+    if (interview.application?.candidate) {
+      return interview.application.candidate.email || '—'
+    }
+    return '—'
+  }
+
+  const getInitials = (interview: Interview) => {
+    const name = getCandidateName(interview)
+    if (name === 'نامشخص') return '??'
+    const parts = name.split(' ')
+    return parts.map(p => p[0]).join('').toUpperCase().slice(0, 2)
+  }
 
   return (
     <div className="space-y-4 mt-6">
@@ -123,22 +193,22 @@ export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: Intervie
                         <div className="flex items-center gap-2 flex-row-reverse">
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 text-xs">
-                              {interview.candidate?.firstName?.[0]}{interview.candidate?.lastName?.[0]}
+                              {getInitials(interview)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="text-right">
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {interview.candidate?.firstName} {interview.candidate?.lastName}
+                              {getCandidateName(interview)}
                             </p>
                             <p className="text-xs text-gray-400 dark:text-gray-500">
-                              {interview.candidate?.email || '—'}
+                              {getCandidateEmail(interview)}
                             </p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {interview.jobPosting?.title || interview.job?.title || '—'}
+                          {interview.jobPosting?.title || interview.job?.title || interview.application?.jobPosting?.title || '—'}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -166,6 +236,16 @@ export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: Intervie
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                            onClick={() => handleOpenEditDialog(interview)}
+                            title="ویرایش"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+
                           {interview.status === 'scheduled' && (
                             <>
                               <Button
@@ -247,67 +327,79 @@ export function InterviewsTab({ interviews, loading, onAdd, onUpdate }: Intervie
           </div>
         </CardContent>
       </Card>
-      {/* ✅ Pagination - کاملاً راست‌چین و وسط */}
-{totalItems > 0 && (
-  <div className="flex items-center justify-center gap-4 px-2 py-3">
-    <div className="flex items-center gap-1">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => goToPage(currentPage - 1)}
-        disabled={currentPage <= 1}
-        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
       
-      <div className="flex items-center gap-1">
-        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-          let pageNum
-          if (totalPages <= 5) {
-            pageNum = i + 1
-          } else if (currentPage <= 3) {
-            pageNum = i + 1
-          } else if (currentPage >= totalPages - 2) {
-            pageNum = totalPages - 4 + i
-          } else {
-            pageNum = currentPage - 2 + i
-          }
-          
-          return (
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <div className="flex items-center justify-center gap-4 px-2 py-3">
+          <div className="flex items-center gap-1">
             <Button
-              key={pageNum}
-              variant={currentPage === pageNum ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              onClick={() => goToPage(pageNum)}
-              className={`h-8 w-8 p-0 text-sm ${
-                currentPage === pageNum 
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                        : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
-              }`}
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              {toPersianNumber(pageNum)}
+              <ChevronRight className="h-4 w-4" />
             </Button>
-          )
-        }).reverse()}
-      </div>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum
+                if (totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i
+                } else {
+                  pageNum = currentPage - 2 + i
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => goToPage(pageNum)}
+                    className={`h-8 w-8 p-0 text-sm ${
+                      currentPage === pageNum 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                      : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {toPersianNumber(pageNum)}
+                  </Button>
+                )
+              }).reverse()}
+            </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => goToPage(currentPage + 1)}
-        disabled={currentPage >= totalPages}
-        className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-    </div>
-    
-    <p className="text-sm text-gray-500 dark:text-gray-400">
-      نمایش {toPersianNumber(paginatedInterviews.length)} از {toPersianNumber(totalItems)} مصاحبه
-    </p>
-  </div>
-)}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="h-8 w-8 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            نمایش {toPersianNumber(paginatedInterviews.length)} از {toPersianNumber(totalItems)} مصاحبه
+          </p>
+        </div>
+      )}
+
+      {/* Interview Dialog */}
+      <InterviewDialog
+        open={showInterviewDialog}
+        onClose={handleCloseDialog}
+        onSubmit={handleSubmitInterview}
+        applications={applications}
+        submitting={submitting}
+        initialData={editingInterview}
+        isEdit={!!editingInterview}
+      />
     </div>
   )
 }

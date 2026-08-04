@@ -3,7 +3,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, MapPin, Video, Loader2 } from 'lucide-react'
+import { Calendar, Clock, MapPin, Video, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/core/components/ui/button'
 import { Input } from '@/core/components/ui/input'
 import { Label } from '@/core/components/ui/label'
@@ -18,13 +18,24 @@ interface InterviewDialogProps {
   onSubmit: (data: any) => void
   applications: any[]
   submitting?: boolean
+  initialData?: any // برای ویرایش
+  isEdit?: boolean // برای تشخیص حالت ویرایش
 }
 
-export function InterviewDialog({ open, onClose, onSubmit, applications, submitting = false }: InterviewDialogProps) {
+export function InterviewDialog({ 
+  open, 
+  onClose, 
+  onSubmit, 
+  applications, 
+  submitting = false,
+  initialData = null,
+  isEdit = false
+}: InterviewDialogProps) {
   const [form, setForm] = useState({
     applicationId: '',
     type: 'in_person',
     scheduledAt: null as Date | null,
+    scheduledTime: '09:00', // 👈 فیلد زمان اضافه شد
     duration: 60,
     location: '',
     link: '',
@@ -32,29 +43,63 @@ export function InterviewDialog({ open, onClose, onSubmit, applications, submitt
   })
 
   useEffect(() => {
-    if (!open) {
+    if (open && initialData) {
+      // استخراج زمان از scheduledAt
+      const scheduledDate = initialData.scheduledAt ? new Date(initialData.scheduledAt) : null
+      const time = scheduledDate 
+        ? `${String(scheduledDate.getHours()).padStart(2, '0')}:${String(scheduledDate.getMinutes()).padStart(2, '0')}`
+        : '09:00'
+      
+      setForm({
+        applicationId: initialData.applicationId || initialData.application?.id || '',
+        type: initialData.type || 'in_person',
+        scheduledAt: scheduledDate,
+        scheduledTime: time, // 👈 مقدار زمان
+        duration: initialData.duration || 60,
+        location: initialData.location || '',
+        link: initialData.link || initialData.meetingLink || '',
+        notes: initialData.notes || '',
+      })
+    } else if (!open) {
       setForm({
         applicationId: '',
         type: 'in_person',
         scheduledAt: null,
+        scheduledTime: '09:00',
         duration: 60,
         location: '',
         link: '',
         notes: '',
       })
     }
-  }, [open])
+  }, [open, initialData])
 
   const handleSubmit = () => {
-    if (!form.applicationId) {
+    if (!form.applicationId && !isEdit) {
       toast.error('لطفاً کاندیدا را انتخاب کنید')
       return
     }
     if (!form.scheduledAt) {
-      toast.error('لطفاً تاریخ و زمان مصاحبه را انتخاب کنید')
+      toast.error('لطفاً تاریخ مصاحبه را انتخاب کنید')
       return
     }
-    onSubmit(form)
+    if (!form.scheduledTime) {
+      toast.error('لطفاً ساعت مصاحبه را وارد کنید')
+      return
+    }
+
+    // ترکیب تاریخ و زمان
+    const [hours, minutes] = form.scheduledTime.split(':').map(Number)
+    const finalDate = new Date(form.scheduledAt)
+    finalDate.setHours(hours || 0, minutes || 0, 0, 0)
+
+    const submitData = {
+      ...form,
+      scheduledAt: finalDate,
+      applicationId: isEdit ? (initialData?.applicationId || initialData?.application?.id) : form.applicationId,
+    }
+    
+    onSubmit(submitData)
   }
 
   // فقط کاندیداهایی که در مرحله مصاحبه هستن یا قبلاً مصاحبه نداشتن
@@ -67,40 +112,53 @@ export function InterviewDialog({ open, onClose, onSubmit, applications, submitt
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-purple-500" />
-            زمان‌بندی مصاحبه
+            {isEdit ? (
+              <Pencil className="h-5 w-5 text-purple-500" />
+            ) : (
+              <Calendar className="h-5 w-5 text-purple-500" />
+            )}
+            {isEdit ? 'ویرایش مصاحبه' : 'زمان‌بندی مصاحبه'}
           </DialogTitle>
           <DialogDescription>
-            زمان و مکان مصاحبه را مشخص کنید
+            {isEdit ? 'اطلاعات مصاحبه را ویرایش کنید' : 'زمان و مکان مصاحبه را مشخص کنید'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* انتخاب کاندیدا */}
-          <div className="space-y-2">
-            <Label>کاندیدا <span className="text-red-500">*</span></Label>
-            <Select 
-              value={form.applicationId} 
-              onValueChange={(v) => setForm({ ...form, applicationId: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="انتخاب کاندیدا..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableApplications.length === 0 ? (
-                  <div className="px-2 py-4 text-center text-gray-500 text-sm">
-                    کاندیدایی در مرحله مصاحبه وجود ندارد
-                  </div>
-                ) : (
-                  availableApplications.map((app) => (
-                    <SelectItem key={app.id} value={app.id}>
-                      {app.candidate?.firstName} {app.candidate?.lastName} - {app.job?.title}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          {isEdit ? (
+            <div className="space-y-2">
+              <Label>کاندیدا</Label>
+              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                {applications.find(a => a.id === (initialData?.applicationId || initialData?.application?.id))?.candidate?.firstName} {applications.find(a => a.id === (initialData?.applicationId || initialData?.application?.id))?.candidate?.lastName || 'نامشخص'}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>کاندیدا <span className="text-red-500">*</span></Label>
+              <Select 
+                value={form.applicationId} 
+                onValueChange={(v) => setForm({ ...form, applicationId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب کاندیدا..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableApplications.length === 0 ? (
+                    <div className="px-2 py-4 text-center text-gray-500 text-sm">
+                      کاندیدایی در مرحله مصاحبه وجود ندارد
+                    </div>
+                  ) : (
+                    availableApplications.map((app) => (
+                      <SelectItem key={app.id} value={app.id}>
+                        {app.candidate?.firstName} {app.candidate?.lastName} - {app.job?.title}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* نوع مصاحبه */}
           <div className="space-y-2">
@@ -120,14 +178,29 @@ export function InterviewDialog({ open, onClose, onSubmit, applications, submitt
             </Select>
           </div>
 
-          {/* تاریخ و زمان */}
-          <div className="space-y-2">
-            <Label>تاریخ و زمان <span className="text-red-500">*</span></Label>
-            <PersianDatePicker
-              value={form.scheduledAt}
-              onChange={(date) => setForm({ ...form, scheduledAt: date })}
-              placeholder="انتخاب تاریخ و زمان"
-            />
+          {/* تاریخ و زمان - با فیلد زمان اضافه شده */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>تاریخ <span className="text-red-500">*</span></Label>
+              <PersianDatePicker
+                value={form.scheduledAt}
+                onChange={(date) => setForm({ ...form, scheduledAt: date })}
+                placeholder="انتخاب تاریخ"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ساعت <span className="text-red-500">*</span></Label>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                <Input
+                  type="time"
+                  value={form.scheduledTime}
+                  onChange={(e) => setForm({ ...form, scheduledTime: e.target.value })}
+                  className="w-full"
+                  dir="ltr"
+                />
+              </div>
+            </div>
           </div>
 
           {/* مدت زمان */}
@@ -194,11 +267,11 @@ export function InterviewDialog({ open, onClose, onSubmit, applications, submitt
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || !form.applicationId || !form.scheduledAt}
+            disabled={submitting || (!isEdit && !form.applicationId) || !form.scheduledAt || !form.scheduledTime}
             className="bg-purple-600 hover:bg-purple-700"
           >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
-            {submitting ? 'در حال ذخیره...' : 'زمان‌بندی مصاحبه'}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? <Pencil className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
+            {submitting ? 'در حال ذخیره...' : isEdit ? 'ویرایش مصاحبه' : 'زمان‌بندی مصاحبه'}
           </Button>
         </DialogFooter>
       </DialogContent>

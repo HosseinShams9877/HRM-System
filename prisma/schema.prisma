@@ -256,6 +256,7 @@ model Interview {
   scheduledAt    DateTime
   duration       Int?      // دقیقه
   location       String?   // آدرس یا لینک
+  meetingLink    String?
   status         String    @default("scheduled") // scheduled, completed, cancelled, rescheduled
   feedback       String?
   notes          String?

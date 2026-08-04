@@ -25,6 +25,8 @@ export async function PUT(
     if (body.duration) data.duration = parseInt(body.duration)
     if (body.location) data.location = body.location
     if (body.meetingLink) data.meetingLink = body.meetingLink
+    if (body.link) data.link = body.link
+    if (body.type) data.type = body.type
 
     const interview = await db.interview.update({
       where: { id },
@@ -95,8 +97,6 @@ export async function PUT(
     return NextResponse.json({ error: 'خطا در بروزرسانی مصاحبه' }, { status: 500 })
   }
 }
-
-
 
 export async function DELETE(
   req: NextRequest,
