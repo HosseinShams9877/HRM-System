@@ -132,9 +132,87 @@ const fetchPerformanceStats = async () => {
     const data = await res.json();
     const performances = data.data || data || [];
 
-    const unmetKpi = performances.filter((p: any) => p.score < p.target).length;
-    const riskOfExit = performances.filter((p: any) => p.score < p.target * 0.5).length;
-    const highPerformers = performances.filter((p: any) => p.score >= p.target * 1.2).length;
+    console.log('═══════════════════════════════════════');
+    console.log('📊 شروع تحلیل آمار عملکرد');
+    console.log('═══════════════════════════════════════');
+    console.log(`📌 تعداد کل ارزیابی‌ها: ${performances.length}`);
+
+    if (performances.length === 0) {
+      return { unmetKpi: 0, riskOfExit: 0, highPerformers: 0 };
+    }
+
+    // ============================================
+    // ❌ فقط ارزیابی‌های تکمیل‌شده یا بررسی‌شده را در نظر بگیر
+    // ============================================
+    const validStatuses = ['completed', 'reviewed'];
+    const validItems = performances
+      .filter((p: any) => validStatuses.includes(p.status))
+      .filter((p: any) => {
+        // فقط مواردی که نمره و هدف معتبر دارند
+        const hasValidScore = p.score !== null && p.score !== undefined && p.score > 0;
+        const hasValidTarget = p.target !== null && p.target !== undefined && p.target > 0;
+        return hasValidScore && hasValidTarget;
+      });
+
+    console.log(`\n📌 ارزیابی‌های معتبر (completed/reviewed): ${validItems.length} عدد`);
+    console.log(`📌 ارزیابی‌های نادیده گرفته شده (pending): ${performances.length - validItems.length} عدد`);
+
+    if (validItems.length === 0) {
+      console.log('⚠️ هیچ ارزیابی معتبری برای تحلیل وجود ندارد!');
+      return { unmetKpi: 0, riskOfExit: 0, highPerformers: 0 };
+    }
+
+    // ============================================
+    // 📊 تحلیل هر آیتم
+    // ============================================
+    console.log('\n🔍 بررسی تک تک ارزیابی‌های معتبر:');
+    console.log('─────────────────────────────────────');
+
+    let riskOfExit = 0;
+    let highPerformers = 0;
+    let unmetKpi = 0;
+
+    validItems.forEach((p: any) => {
+      const score = p.score;
+      const target = p.target;
+      const ratio = score / target;
+
+      console.log(`\n📌 ${p.employee?.firstName} ${p.employee?.lastName}:`);
+      console.log(`  ├─ وضعیت: ${p.status}`);
+      console.log(`  ├─ نمره: ${score}`);
+      console.log(`  ├─ هدف: ${target}`);
+      console.log(`  └─ نسبت: ${ratio.toFixed(2)}`);
+
+      // ============================================
+      // 🎯 دسته‌بندی
+      // ============================================
+      
+      // شرط High Performer: نمره >= 4.5 یا نسبت >= 1.2
+      if (score >= 4.5 || ratio >= 1.2) {
+        highPerformers++;
+        console.log(`  ✅ High Performer (نمره ${score} >= 4.5 یا نسبت ${ratio.toFixed(2)} >= 1.2)`);
+      }
+      // شرط ریسک خروج: نمره < 2 یا نسبت < 0.5
+      else if (score < 2 || ratio < 0.5) {
+        riskOfExit++;
+        console.log(`  ⚠️ ریسک خروج (نمره ${score} < 2 یا نسبت ${ratio.toFixed(2)} < 0.5)`);
+      }
+      // شرط KPI محقق نشده: نمره < هدف
+      else if (score < target) {
+        unmetKpi++;
+        console.log(`  ❌ KPI محقق نشده (${score} < ${target})`);
+      } else {
+        console.log(`  ✅ موفق (${score} >= ${target})`);
+      }
+    });
+
+    console.log('\n─────────────────────────────────────');
+    console.log('📊 نتایج نهایی:');
+    console.log('─────────────────────────────────────');
+    console.log(`  ├─ KPI محقق نشده: ${unmetKpi}`);
+    console.log(`  ├─ در ریسک خروج: ${riskOfExit}`);
+    console.log(`  └─ High Performer: ${highPerformers}`);
+    console.log('═══════════════════════════════════════\n');
 
     return {
       unmetKpi: unmetKpi || 0,
@@ -142,7 +220,7 @@ const fetchPerformanceStats = async () => {
       highPerformers: highPerformers || 0,
     };
   } catch (error) {
-    console.error('Error fetching performance stats:', error);
+    console.error('❌ Error fetching performance stats:', error);
     return { unmetKpi: 0, riskOfExit: 0, highPerformers: 0 };
   }
 };
@@ -154,19 +232,48 @@ const fetchTrainingStats = async () => {
     const data = await res.json();
     const trainings = data.data || data || [];
 
+    console.log('═══════════════════════════════════════');
+    console.log('📊 شروع تحلیل آمار آموزش');
+    console.log('═══════════════════════════════════════');
+    console.log(`📌 تعداد کل دوره‌ها: ${trainings.length}`);
+
+    // ============================================
+    // 1️⃣ آزمون معوق
+    // ============================================
+    const now = new Date();
+    
     const overdueTests = trainings.filter((t: any) => {
       const endDate = new Date(t.endDate);
-      const now = new Date();
       return t.status === 'in_progress' && endDate < now;
     }).length;
 
-    const totalParticipants = trainings.reduce((sum: number, t: any) => sum + (t.participants?.length || 0), 0);
-    const completedParticipants = trainings.reduce((sum: number, t: any) => {
+    console.log(`\n📌 آزمون معوق: ${overdueTests} عدد`);
+
+    // ============================================
+    // 2️⃣ نرخ مشارکت (فقط دوره‌های تکمیل‌شده)
+    // ============================================
+    
+    // ✅ فقط دوره‌هایی که وضعیت completed دارند
+    const completedTrainings = trainings.filter((t: any) => t.status === 'completed');
+    
+    const totalParticipants = completedTrainings.reduce((sum: number, t: any) => {
+      return sum + (t.participants?.length || 0);
+    }, 0);
+
+    const completedParticipants = completedTrainings.reduce((sum: number, t: any) => {
       return sum + (t.participants?.filter((p: any) => p.status === 'completed').length || 0);
     }, 0);
+
     const participationRate = totalParticipants > 0 
       ? Math.round((completedParticipants / totalParticipants) * 100) 
       : 0;
+
+    console.log(`\n📌 نرخ مشارکت (فقط دوره‌های تکمیل‌شده):`);
+    console.log(`  ├─ تعداد دوره‌های تکمیل‌شده: ${completedTrainings.length}`);
+    console.log(`  ├─ کل شرکت‌کنندگان: ${totalParticipants}`);
+    console.log(`  ├─ تکمیل‌کنندگان: ${completedParticipants}`);
+    console.log(`  └─ نرخ مشارکت: ${participationRate}%`);
+    console.log('═══════════════════════════════════════\n');
 
     return {
       overdueTests: overdueTests || 0,
@@ -177,7 +284,6 @@ const fetchTrainingStats = async () => {
     return { overdueTests: 0, participationRate: '0%' };
   }
 };
-
 // 5️⃣ دریافت آمار حضور و غیاب
 const fetchAttendanceStats = async () => {
   try {

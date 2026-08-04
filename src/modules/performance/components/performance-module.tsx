@@ -69,7 +69,7 @@ const itemsPerPage = 7
 
   useEffect(() => {
     fetchItems()
-    fetch('/api/employees')
+    fetch('/api/employees?status=active')
       .then(r => r.ok ? r.json() : [])
       .then(result => {
         const d = Array.isArray(result) ? result : (result.data || result.employees || [])
