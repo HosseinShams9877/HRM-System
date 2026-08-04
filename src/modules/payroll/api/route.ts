@@ -100,8 +100,6 @@ export async function POST(req: NextRequest) {
 
     const employeeId = String(body.employeeId).trim()
 
-    console.log('📊 [POST] employeeId:', employeeId)
-    console.log('📊 [POST] employeeId length:', employeeId.length)
 
     // بررسی وجود فیش قبلی
     const existing = await db.paySlip.findUnique({

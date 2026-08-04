@@ -3,7 +3,7 @@ import { db } from '@/core/lib/db'
 import { validateWithZod } from '@/core/lib/validators'
 import { performanceCreateSchema } from '../lib/validators'
 import { parsePagination, createPaginationMeta } from '@/core/lib/pagination'
-
+//api/performance
 export async function GET(req: NextRequest) {
   try {
     const url = req.nextUrl

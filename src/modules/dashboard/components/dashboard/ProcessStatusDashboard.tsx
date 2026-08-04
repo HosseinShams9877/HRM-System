@@ -1,7 +1,7 @@
 // src/modules/dashboard/components/process-status-grid.tsx
 
 'use client';
-
+import * as jalaali from 'jalaali-js';
 import { useQuery } from '@tanstack/react-query';
 import {
   UserPlus, Rocket, TrendingUp, GraduationCap, Clock, DollarSign, LogOut,
@@ -132,10 +132,6 @@ const fetchPerformanceStats = async () => {
     const data = await res.json();
     const performances = data.data || data || [];
 
-    console.log('═══════════════════════════════════════');
-    console.log('📊 شروع تحلیل آمار عملکرد');
-    console.log('═══════════════════════════════════════');
-    console.log(`📌 تعداد کل ارزیابی‌ها: ${performances.length}`);
 
     if (performances.length === 0) {
       return { unmetKpi: 0, riskOfExit: 0, highPerformers: 0 };
@@ -154,8 +150,6 @@ const fetchPerformanceStats = async () => {
         return hasValidScore && hasValidTarget;
       });
 
-    console.log(`\n📌 ارزیابی‌های معتبر (completed/reviewed): ${validItems.length} عدد`);
-    console.log(`📌 ارزیابی‌های نادیده گرفته شده (pending): ${performances.length - validItems.length} عدد`);
 
     if (validItems.length === 0) {
       console.log('⚠️ هیچ ارزیابی معتبری برای تحلیل وجود ندارد!');
@@ -165,8 +159,7 @@ const fetchPerformanceStats = async () => {
     // ============================================
     // 📊 تحلیل هر آیتم
     // ============================================
-    console.log('\n🔍 بررسی تک تک ارزیابی‌های معتبر:');
-    console.log('─────────────────────────────────────');
+ 
 
     let riskOfExit = 0;
     let highPerformers = 0;
@@ -177,11 +170,6 @@ const fetchPerformanceStats = async () => {
       const target = p.target;
       const ratio = score / target;
 
-      console.log(`\n📌 ${p.employee?.firstName} ${p.employee?.lastName}:`);
-      console.log(`  ├─ وضعیت: ${p.status}`);
-      console.log(`  ├─ نمره: ${score}`);
-      console.log(`  ├─ هدف: ${target}`);
-      console.log(`  └─ نسبت: ${ratio.toFixed(2)}`);
 
       // ============================================
       // 🎯 دسته‌بندی
@@ -190,29 +178,23 @@ const fetchPerformanceStats = async () => {
       // شرط High Performer: نمره >= 4.5 یا نسبت >= 1.2
       if (score >= 4.5 || ratio >= 1.2) {
         highPerformers++;
-        console.log(`  ✅ High Performer (نمره ${score} >= 4.5 یا نسبت ${ratio.toFixed(2)} >= 1.2)`);
+      
       }
       // شرط ریسک خروج: نمره < 2 یا نسبت < 0.5
       else if (score < 2 || ratio < 0.5) {
         riskOfExit++;
-        console.log(`  ⚠️ ریسک خروج (نمره ${score} < 2 یا نسبت ${ratio.toFixed(2)} < 0.5)`);
+       
       }
       // شرط KPI محقق نشده: نمره < هدف
       else if (score < target) {
         unmetKpi++;
-        console.log(`  ❌ KPI محقق نشده (${score} < ${target})`);
+      
       } else {
         console.log(`  ✅ موفق (${score} >= ${target})`);
       }
     });
 
-    console.log('\n─────────────────────────────────────');
-    console.log('📊 نتایج نهایی:');
-    console.log('─────────────────────────────────────');
-    console.log(`  ├─ KPI محقق نشده: ${unmetKpi}`);
-    console.log(`  ├─ در ریسک خروج: ${riskOfExit}`);
-    console.log(`  └─ High Performer: ${highPerformers}`);
-    console.log('═══════════════════════════════════════\n');
+   
 
     return {
       unmetKpi: unmetKpi || 0,
@@ -232,10 +214,6 @@ const fetchTrainingStats = async () => {
     const data = await res.json();
     const trainings = data.data || data || [];
 
-    console.log('═══════════════════════════════════════');
-    console.log('📊 شروع تحلیل آمار آموزش');
-    console.log('═══════════════════════════════════════');
-    console.log(`📌 تعداد کل دوره‌ها: ${trainings.length}`);
 
     // ============================================
     // 1️⃣ آزمون معوق
@@ -247,7 +225,6 @@ const fetchTrainingStats = async () => {
       return t.status === 'in_progress' && endDate < now;
     }).length;
 
-    console.log(`\n📌 آزمون معوق: ${overdueTests} عدد`);
 
     // ============================================
     // 2️⃣ نرخ مشارکت (فقط دوره‌های تکمیل‌شده)
@@ -268,13 +245,6 @@ const fetchTrainingStats = async () => {
       ? Math.round((completedParticipants / totalParticipants) * 100) 
       : 0;
 
-    console.log(`\n📌 نرخ مشارکت (فقط دوره‌های تکمیل‌شده):`);
-    console.log(`  ├─ تعداد دوره‌های تکمیل‌شده: ${completedTrainings.length}`);
-    console.log(`  ├─ کل شرکت‌کنندگان: ${totalParticipants}`);
-    console.log(`  ├─ تکمیل‌کنندگان: ${completedParticipants}`);
-    console.log(`  └─ نرخ مشارکت: ${participationRate}%`);
-    console.log('═══════════════════════════════════════\n');
-
     return {
       overdueTests: overdueTests || 0,
       participationRate: `${participationRate}%`,
@@ -287,79 +257,75 @@ const fetchTrainingStats = async () => {
 // 5️⃣ دریافت آمار حضور و غیاب
 const fetchAttendanceStats = async () => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/attendance?date=${today}`);
+    // ✅ از همان API داشبورد استفاده می‌کنیم
+    const res = await fetch('/api/dashboard');
     const data = await res.json();
-    const records = data.data || data || [];
+    
+    if (!data || !data.stats) {
+      return { lateToday: 0, absentToday: 0, leavesToday: 0 };
+    }
 
-    const lateToday = records.filter((r: any) => r.status === 'late').length;
-    const absentToday = records.filter((r: any) => r.status === 'absent').length;
-    const unapprovedOvertime = records.filter((r: any) => r.overtime > 0 && !r.approved).length;
+    const stats = data.stats;
+
 
     return {
-      lateToday: lateToday || 0,
-      absentToday: absentToday || 0,
-      unapprovedOvertime: unapprovedOvertime || 0,
+      lateToday: stats.lateToday || 0,
+      absentToday: stats.absentToday || 0,
+      leavesToday: stats.leaveToday || 0,
     };
   } catch (error) {
     console.error('Error fetching attendance stats:', error);
-    return { lateToday: 0, absentToday: 0, unapprovedOvertime: 0 };
+    return { lateToday: 0, absentToday: 0, leavesToday: 0 };
   }
 };
 
 // 6️⃣ دریافت آمار حقوق و دستمزد
 const fetchPayrollStats = async () => {
   try {
-    const res = await fetch('/api/payroll');
+    // 📅 تبدیل تاریخ امروز به شمسی
+    const now = new Date();
+    const { jy, jm } = jalaali.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const currentYear = jy;
+    const currentMonth = jm;
+
+    // 📊 دریافت فیش‌های حقوقی ماه جاری (با سال و ماه شمسی)
+    const res = await fetch(`/api/payroll?year=${currentYear}&month=${currentMonth}`);
     const data = await res.json();
     const payslips = data.payslips || [];
 
-    const pendingPayments = payslips.filter((p: any) => p.status === 'confirmed').length;
-    const insuranceMismatch = payslips.filter((p: any) => {
-      const insurance = p.items?.find((i: any) => i.code === 'INSURANCE');
-      return insurance && insurance.amount !== p.baseSalary * 0.07;
-    }).length;
-    const taxMismatch = payslips.filter((p: any) => {
-      const tax = p.items?.find((i: any) => i.code === 'TAX');
-      return tax && tax.amount !== p.baseSalary * 0.1;
-    }).length;
+    // ✅ فقط پرداخت نشده‌های این ماه (draft یا confirmed)
+    const pendingPayments = payslips.filter((p: any) => 
+      p.status === 'draft' || p.status === 'confirmed'
+    ).length;
 
     return {
       pendingPayments: pendingPayments || 0,
-      insuranceMismatch: insuranceMismatch || 0,
-      taxMismatch: taxMismatch || 0,
     };
   } catch (error) {
     console.error('Error fetching payroll stats:', error);
-    return { pendingPayments: 0, insuranceMismatch: 0, taxMismatch: 0 };
+    return { pendingPayments: 0 };
   }
 };
 
 // 7️⃣ دریافت آمار آفبوردینگ
 const fetchOffboardingStats = async () => {
   try {
+    // ✅ دریافت همه آفبوردینگ‌های در حال انجام
     const res = await fetch('/api/offboarding');
     const data = await res.json();
     const offboardings = data.data || data || [];
 
-    const incompleteSettlement = offboardings.filter((o: any) => {
-      const tasks = o.tasks ? JSON.parse(o.tasks) : [];
-      return tasks.some((t: any) => t.category === 'settlement' && t.status !== 'completed');
-    }).length;
-    const unreturnedEquipment = offboardings.filter((o: any) => {
-      const tasks = o.tasks ? JSON.parse(o.tasks) : [];
-      return tasks.some((t: any) => t.category === 'equipment' && t.status !== 'completed');
-    }).length;
-    const exitInterviews = offboardings.filter((o: any) => o.status === 'in_progress').length;
+    // ✅ تسویه ناقص = تعداد آفبوردینگ‌های در حال انجام
+    const incompleteSettlement = offboardings.filter((o: any) => 
+      o.status === 'in_progress'
+    ).length;
 
     return {
       incompleteSettlement: incompleteSettlement || 0,
-      unreturnedEquipment: unreturnedEquipment || 0,
-      exitInterviews: exitInterviews || 0,
     };
   } catch (error) {
     console.error('Error fetching offboarding stats:', error);
-    return { incompleteSettlement: 0, unreturnedEquipment: 0, exitInterviews: 0 };
+    return { incompleteSettlement: 0 };
   }
 };
 
@@ -367,7 +333,7 @@ const fetchOffboardingStats = async () => {
 // Process Card Component
 // ============================================
 
-function ProcessCard({ data }: { data: ProcessCardProps }) {
+function ProcessCard({ data, onNavigate }: { data: ProcessCardProps; onNavigate: (id: string) => void }) {
   if (data.isLoading) {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex items-center justify-center h-[200px]">
@@ -375,7 +341,23 @@ function ProcessCard({ data }: { data: ProcessCardProps }) {
       </div>
     );
   }
+  const getNavigatePath = (name: string) => {
+    const map: Record<string, string> = {
+      'جذب و استخدام': 'recruitment',
+      'آنبوردینگ': 'onboarding',
+      'عملکرد': 'performance',
+      'آموزش': 'training',
+      'حضور و غیاب': 'att-today',
+      'حقوق و دستمزد': 'payroll',
+      'آفبوردینگ': 'offboarding',
+    };
+    return map[name] || 'dashboard';
+  };
 
+  const handleNavigate = () => {
+    const path = getNavigatePath(data.name);
+    onNavigate(path);  // ← هدایت به صفحه مربوطه
+  };
   return (
     <div className="group bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden">
       <div className={`px-4 py-3 ${data.bgColor} border-b border-gray-100 dark:border-gray-800 relative overflow-hidden`}>
@@ -409,7 +391,9 @@ function ProcessCard({ data }: { data: ProcessCardProps }) {
       </div>
 
       <div className="px-4 pb-4 pt-0">
-        <button className="w-full py-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 group/btn">
+        <button 
+        onClick={handleNavigate}
+        className="w-full py-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 group/btn">
           <ArrowLeft size={12} className="group-hover/btn:-translate-x-1 transition-transform duration-200" />
           <span>مشاهده جزئیات</span>
         </button>
@@ -422,7 +406,7 @@ function ProcessCard({ data }: { data: ProcessCardProps }) {
 // Main Component
 // ============================================
 
-export default function ProcessStatusGrid() {
+export default function ProcessStatusGrid({ onNavigate }: { onNavigate: (id: string) => void }) {
   // 1️⃣ جذب و استخدام
   const { data: recruitmentStats, isLoading: recruitmentLoading } = useQuery({
     queryKey: ['recruitment-stats'],
@@ -577,16 +561,16 @@ export default function ProcessStatusGrid() {
           color: 'text-amber-600 dark:text-amber-400' 
         },
         { 
-          label: 'غیبت غیرمجاز', 
+          label: 'غیبت امروز', 
           value: attendanceStats?.absentToday || 0, 
           icon: <XCircle size={12} />, 
           color: 'text-red-500 dark:text-red-400' 
         },
         { 
-          label: 'اضافه‌کاری تأیید نشده', 
-          value: attendanceStats?.unapprovedOvertime || 0, 
-          icon: <CheckCircle size={12} />, 
-          color: 'text-orange-500 dark:text-orange-400' 
+          label: 'مرخصی امروز',  
+          value: attendanceStats?.leavesToday || 0, 
+          icon: <Calendar size={12} />, 
+          color: 'text-blue-600 dark:text-blue-400' 
         },
       ]
     },
@@ -598,22 +582,10 @@ export default function ProcessStatusGrid() {
       isLoading: payrollLoading,
       metrics: [
         { 
-          label: 'پرداخت در انتظار', 
+          label: 'پرداخت نشده این ماه', 
           value: payrollStats?.pendingPayments || 0, 
           icon: <CreditCard size={12} />, 
           color: 'text-amber-600 dark:text-amber-400' 
-        },
-        { 
-          label: 'مغایرت بیمه', 
-          value: payrollStats?.insuranceMismatch || 0, 
-          icon: <Shield size={12} />, 
-          color: 'text-red-500 dark:text-red-400' 
-        },
-        { 
-          label: 'مغایرت مالیاتی', 
-          value: payrollStats?.taxMismatch || 0, 
-          icon: <FileSpreadsheet size={12} />, 
-          color: 'text-orange-500 dark:text-orange-400' 
         },
       ]
     },
@@ -630,18 +602,6 @@ export default function ProcessStatusGrid() {
           icon: <Calculator size={12} />, 
           color: 'text-red-500 dark:text-red-400' 
         },
-        { 
-          label: 'تجهیزات برگشتی نشده', 
-          value: offboardingStats?.unreturnedEquipment || 0, 
-          icon: <Package size={12} />, 
-          color: 'text-amber-600 dark:text-amber-400' 
-        },
-        { 
-          label: 'مصاحبه خروج', 
-          value: offboardingStats?.exitInterviews || 0, 
-          icon: <Users size={12} />, 
-          color: 'text-emerald-600 dark:text-emerald-400' 
-        },
       ]
     },
   ];
@@ -655,7 +615,7 @@ export default function ProcessStatusGrid() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {processCards.map((card, index) => (
-          <ProcessCard key={index} data={card} />
+          <ProcessCard key={index} data={card} onNavigate={onNavigate} />
         ))}
       </div>
     </div>

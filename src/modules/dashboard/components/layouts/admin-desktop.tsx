@@ -189,7 +189,7 @@ export default function AdminDesktop({
       {!isMobile && (
         <motion.div variants={sectionVariants}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <ProcessStatusGrid />
+            <ProcessStatusGrid onNavigate={onNavigate}/>
             <CalendarWithTasks
               userRole={currentUser.role}
               onTaskClick={(task) => console.log('Task clicked:', task)}

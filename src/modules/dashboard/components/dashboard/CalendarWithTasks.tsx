@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { Button } from '@/core/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,82 +14,55 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  CalendarCheck,
-  Briefcase
+  Loader2
 } from 'lucide-react';
-import { toPersianDigits, formatShamsiFull, getTodayShamsi } from '@/core/lib/utils-fa';
+import { toPersianDigits, getTodayShamsi } from '@/core/lib/utils-fa';
 import jalaali from 'jalaali-js';
 
 // ============================================
 // Types
 // ============================================
 
-interface Task {
+interface CalendarEvent {
   id: string;
   title: string;
-  type: 'interview' | 'evaluation' | 'training' | 'mission' | 'leave';
+  date: string;
+  endDate?: string;
+  type: 'interview' | 'training' | 'evaluation';
   time?: string;
   description?: string;
+  status?: string;
+  metadata?: any;
 }
 
 interface DayTasks {
-  date: string; // به فرمت شمسی: YYYY/MM/DD
-  tasks: Task[];
+  date: string;
+  tasks: CalendarEvent[];
 }
 
-interface CalendarWithTasksProps {
-  onTaskClick?: (task: Task) => void;
-  userRole?: string;
-}
-
-// داده‌های دمو با تاریخ شمسی
-const DEMO_TASKS: DayTasks[] = [
-  { 
-    date: '1405/02/28', 
-    tasks: [
-      { id: '1', title: 'مصاحبه با نامزد شماره 1', type: 'interview', time: '10:00', description: 'موقعیت: توسعه‌دهنده ارشد' },
-      { id: '2', title: 'ارزیابی عملکرد تیم فروش', type: 'evaluation', time: '14:00', description: 'ارزیابی نیم‌سال' }
-    ] 
-  },
-  { 
-    date: '1405/03/01', 
-    tasks: [
-      { id: '3', title: 'ارزیابی عملکرد تیم فروش', type: 'evaluation', time: '14:00', description: 'ارزیابی نیم‌سال' }
-    ] 
-  },
-  { 
-    date: '1405/03/05', 
-    tasks: [
-      { id: '4', title: 'پایان دوره آموزشی React', type: 'training', time: '09:00', description: 'آزمون پایانی' }
-    ] 
-  },
-  { 
-    date: '1405/03/12', 
-    tasks: [
-      { id: '5', title: 'مصاحبه فنی', type: 'interview', time: '11:30', description: 'سمت: فول‌استک' }
-    ] 
-  },
-  { 
-    date: '1405/03/15', 
-    tasks: [
-      { id: '6', title: 'ارزیابی عملکرد مدیران', type: 'evaluation', time: '09:00', description: 'ارزیابی سالانه' }
-    ] 
-  },
-  { 
-    date: '1405/03/20', 
-    tasks: [
-      { id: '7', title: 'دوره آموزشی مدیریت پروژه', type: 'training', time: '15:00', description: 'جلسه پایانی' }
-    ] 
-  },
-];
-
+// ============================================
 // نقشه آیکون‌ها بر اساس نوع تسک
+// ============================================
+
 const taskIcons = {
-  interview: { icon: Users, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30', label: 'مصاحبه' },
-  evaluation: { icon: ClipboardList, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30', label: 'ارزیابی' },
-  training: { icon: GraduationCap, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', label: 'آموزش' },
-  mission: { icon: Briefcase, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/30', label: 'ماموریت' },
-  leave: { icon: CalendarCheck, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/30', label: 'مرخصی' },
+  interview: { 
+    icon: Users, 
+    color: 'text-blue-500', 
+    bg: 'bg-blue-50 dark:bg-blue-950/30', 
+    label: 'مصاحبه' 
+  },
+  evaluation: { 
+    icon: ClipboardList, 
+    color: 'text-amber-500', 
+    bg: 'bg-amber-50 dark:bg-amber-950/30', 
+    label: 'ارزیابی' 
+  },
+  training: { 
+    icon: GraduationCap, 
+    color: 'text-emerald-500', 
+    bg: 'bg-emerald-50 dark:bg-emerald-950/30', 
+    label: 'آموزش' 
+  },
 };
 
 // نام ماه‌های شمسی
@@ -104,29 +77,184 @@ const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه',
 // ============================================
 // کامپوننت اصلی
 // ============================================
-export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksProps) {
+
+interface CalendarWithTasksProps {
+  onTaskClick?: (task: CalendarEvent) => void;
+  userRole?: string; // ✅ اضافه شد
+}
+
+export function CalendarWithTasks({ onTaskClick, userRole = 'employee' }: CalendarWithTasksProps) {
   // تاریخ جاری به شمسی
   const todayShamsi = getTodayShamsi();
   const [currentYear, setCurrentYear] = useState(todayShamsi.year);
   const [currentMonth, setCurrentMonth] = useState(todayShamsi.month);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<DayTasks[]>(DEMO_TASKS);
+  
+  // State برای دیتا
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // ============================================
+  // دریافت دیتا از API
+  // ============================================
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // دریافت همه دیتاها با Promise.all
+        const [interviewsRes, trainingsRes, evaluationsRes] = await Promise.all([
+          fetch('/api/interviews'),
+          fetch('/api/training'),
+          fetch('/api/performance')
+        ]);
+
+        // بررسی خطاها
+        if (!interviewsRes.ok || !trainingsRes.ok || !evaluationsRes.ok) {
+          throw new Error('خطا در دریافت داده‌ها');
+        }
+
+        // دریافت دیتاها
+        const interviewsData = await interviewsRes.json();
+        const trainingsData = await trainingsRes.json();
+        const evaluationsData = await evaluationsRes.json();
+
+        // تبدیل مصاحبه‌ها به فرمت تقویم
+        const interviewEvents: CalendarEvent[] = (interviewsData || [])
+          .filter((item: any) => item.status === 'scheduled' || item.status === 'rescheduled')
+          .map((item: any) => ({
+            id: `interview-${item.id}`,
+            title: `مصاحبه با ${item.candidate?.firstName || ''} ${item.candidate?.lastName || ''}`,
+            date: convertGregorianToShamsi(item.scheduledAt),
+            time: extractTime(item.scheduledAt),
+            type: 'interview',
+            description: item.job?.title ? `سمت: ${item.job.title}` : undefined,
+            status: item.status,
+            metadata: {
+              applicationId: item.applicationId,
+              candidateId: item.candidateId,
+            }
+          }));
+
+        // تبدیل آموزش‌ها به فرمت تقویم
+const trainingEvents: CalendarEvent[] = (trainingsData.data || [])
+.filter((item: any) => item.status === 'planned' || item.status === 'in_progress')
+.map((item: any) => ({
+  id: `training-${item.id}`,
+  title: item.title,
+  date: item.startDate,
+  endDate: item.endDate || undefined,
+  type: 'training',
+  description: item.location ? `مکان: ${item.location}` : undefined,
+  status: item.status,
+  metadata: {
+    instructor: item.instructor,
+    capacity: item.capacity,
+    category: item.category,
+  }
+}));
+
+        // تبدیل ارزیابی‌ها به فرمت تقویم (فقط pending و in_progress)
+        const evaluationEvents: CalendarEvent[] = (evaluationsData.data || [])
+          .filter((item: any) => item.status === 'pending' || item.status === 'in_progress')
+          .map((item: any) => ({
+            id: `evaluation-${item.id}`,
+            title: `ارزیابی عملکرد - ${item.employee?.firstName || ''} ${item.employee?.lastName || ''}`,
+            date: convertGregorianToShamsi(item.createdAt),
+            type: 'evaluation',
+            description: item.period ? `دوره: ${item.period}` : undefined,
+            status: item.status,
+            metadata: {
+              score: item.score,
+              employeeId: item.employeeId,
+            }
+          }));
+
+        // ترکیب همه رویدادها
+        let allEvents = [...interviewEvents, ...trainingEvents, ...evaluationEvents];
+        
+        // فیلتر بر اساس نقش کاربر
+        allEvents = filterEventsByRole(allEvents, userRole);
+
+        setEvents(allEvents);
+
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        setError('خطا در دریافت رویدادها');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [userRole]);
+
+  // ============================================
+  // توابع کمکی
+  // ============================================
+
+  // تبدیل تاریخ میلادی به شمسی
+  const convertGregorianToShamsi = (date: Date | string): string => {
+    const d = new Date(date);
+    const { jy, jm, jd } = jalaali.toJalaali(
+      d.getFullYear(),
+      d.getMonth() + 1,
+      d.getDate()
+    );
+    return `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')}`;
+  };
+
+  // استخراج ساعت از تاریخ
+  const extractTime = (date: Date | string): string => {
+    const d = new Date(date);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // فیلتر رویدادها بر اساس نقش
+  const filterEventsByRole = (events: CalendarEvent[], role: string): CalendarEvent[] => {
+    switch(role) {
+      case 'admin':
+        // ادمین همه چیز رو میبینه
+        return events;
+      
+      case 'hr_manager':
+        // مدیر منابع انسانی: مصاحبه و ارزیابی
+        return events.filter(e => 
+          e.type === 'interview' || 
+          e.type === 'evaluation'
+        );
+      
+      case 'manager':
+        // مدیر: ارزیابی و آموزش
+        return events.filter(e => 
+          e.type === 'evaluation' || 
+          e.type === 'training'
+        );
+      
+      case 'employee':
+        // کارمند: فقط آموزش‌ها
+        return events.filter(e => e.type === 'training');
+      
+      default:
+        return events;
+    }
+  };
 
   // گرفتن تعداد روزهای ماه شمسی
   const getDaysInMonth = (year: number, month: number): number => {
     if (month <= 6) return 31;
     if (month <= 11) return 30;
-    // اسفند: کبیسه = 30، معمولی = 29
     const remainders = [1, 5, 9, 13, 17, 22, 26, 30];
     return remainders.includes(year % 33) ? 30 : 29;
   };
 
   // گرفتن روز هفته اولین روز ماه (0 = شنبه)
   const getFirstDayOfMonth = (year: number, month: number): number => {
-    // تبدیل اول ماه شمسی به میلادی
     const { gy, gm, gd } = jalaali.toGregorian(year, month, 1);
     const firstDay = new Date(gy, gm - 1, gd).getDay();
-    // تبدیل یکشنبه (0) به شنبه (0) و غیره
     return (firstDay + 1) % 7;
   };
 
@@ -151,10 +279,22 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
     setSelectedDate(null);
   };
 
-  // گرفتن تسک‌های یک روز خاص
-  const getTasksForDate = (dateStr: string): Task[] => {
-    const dayTasks = tasks.find(t => t.date === dateStr);
-    return dayTasks?.tasks || [];
+  // گرفتن رویدادهای یک روز خاص
+  const getEventsForDate = (dateStr: string): CalendarEvent[] => {
+    return events.filter(event => {
+      // بررسی تاریخ اصلی
+      if (event.date === dateStr) return true;
+      
+      // بررسی بازه زمانی (برای رویدادهای چند روزه)
+      if (event.endDate) {
+        const start = new Date(event.date.split('/').join('/'));
+        const end = new Date(event.endDate.split('/').join('/'));
+        const current = new Date(dateStr.split('/').join('/'));
+        return current >= start && current <= end;
+      }
+      
+      return false;
+    });
   };
 
   // فرمت تاریخ به شمسی
@@ -168,8 +308,8 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
     setSelectedDate(dateKey);
   };
 
-  // تسک‌های روز انتخاب شده
-  const selectedTasks = selectedDate ? getTasksForDate(selectedDate) : [];
+  // رویدادهای روز انتخاب شده
+  const selectedEvents = selectedDate ? getEventsForDate(selectedDate) : [];
 
   // تعداد روزهای ماه جاری
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -182,6 +322,45 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
            day === todayShamsi.day;
   };
 
+  // ============================================
+  // رندرینگ
+  // ============================================
+
+  // نمایش لودینگ
+  if (loading) {
+    return (
+      <Card className="border-0 shadow-xl h-full flex flex-col bg-white dark:bg-gray-900">
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">در حال بارگذاری رویدادها...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // نمایش خطا
+  if (error) {
+    return (
+      <Card className="border-0 shadow-xl h-full flex flex-col bg-white dark:bg-gray-900">
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
+            <p className="text-red-500 dark:text-red-400">{error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => window.location.reload()}
+            >
+              تلاش مجدد
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-0 shadow-xl overflow-hidden h-full flex flex-col bg-white dark:bg-gray-900">
       <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-100 dark:border-gray-800">
@@ -189,6 +368,9 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
             <span className="text-gray-800 dark:text-gray-100">تقویم رویدادها</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">
+              ({events.length} رویداد)
+            </span>
           </CardTitle>
           
           <div className="flex items-center gap-2">
@@ -236,8 +418,8 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const dateKey = formatDateKey(currentYear, currentMonth, day);
-            const dayTasks = getTasksForDate(dateKey);
-            const hasTasks = dayTasks.length > 0;
+            const dayEvents = getEventsForDate(dateKey);
+            const hasEvents = dayEvents.length > 0;
             const isSelectedDate = selectedDate === dateKey;
             const isTodayDate = isToday(day);
             
@@ -251,15 +433,15 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
                   relative h-8 rounded-lg flex flex-col items-center justify-center
                   transition-all duration-200
                   ${isSelectedDate ? 'bg-emerald-500 text-white shadow-md' : ''}
-                  ${!isSelectedDate && hasTasks ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''}
-                  ${!isSelectedDate && !hasTasks ? 'hover:bg-gray-50 dark:hover:bg-gray-800' : ''}
+                  ${!isSelectedDate && hasEvents ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''}
+                  ${!isSelectedDate && !hasEvents ? 'hover:bg-gray-50 dark:hover:bg-gray-800' : ''}
                   ${isTodayDate && !isSelectedDate ? 'border-2 border-emerald-300 dark:border-emerald-600' : ''}
                 `}
               >
                 <span className={`text-xs font-medium ${isSelectedDate ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                   {toPersianDigits(day)}
                 </span>
-                {hasTasks && !isSelectedDate && (
+                {hasEvents && !isSelectedDate && (
                   <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                 )}
               </motion.button>
@@ -267,7 +449,7 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
           })}
         </div>
   
-        {/* تسک‌های روز انتخاب شده */}
+        {/* رویدادهای روز انتخاب شده */}
         <AnimatePresence mode="wait">
           {selectedDate && (
             <motion.div
@@ -281,26 +463,26 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  اقدامات روز {toPersianDigits(parseInt(selectedDate.split('/')[2]))} {PERSIAN_MONTHS[currentMonth - 1]}
+                  رویدادهای روز {toPersianDigits(parseInt(selectedDate.split('/')[2]))} {PERSIAN_MONTHS[currentMonth - 1]}
                 </span>
               </div>
   
-              {selectedTasks.length === 0 ? (
+              {selectedEvents.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                   <CheckCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">هیچ اقدامی برای این روز ثبت نشده است</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">هیچ رویدادی برای این روز ثبت نشده است</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {selectedTasks.map((task) => {
-                    const TaskIcon = taskIcons[task.type].icon;
-                    const colors = taskIcons[task.type];
+                  {selectedEvents.map((event) => {
+                    const TaskIcon = taskIcons[event.type].icon;
+                    const colors = taskIcons[event.type];
                     
                     return (
                       <motion.div
-                        key={task.id}
+                        key={event.id}
                         whileHover={{ scale: 1.01, x: 4 }}
-                        onClick={() => onTaskClick?.(task)}
+                        onClick={() => onTaskClick?.(event)}
                         className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${colors.bg} border-${colors.color.split('-')[1]}-200 dark:border-${colors.color.split('-')[1]}-800`}
                       >
                         <div className="flex items-start gap-3">
@@ -309,19 +491,28 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center justify-between flex-wrap gap-2">
-                              <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{task.title}</h4>
+                              <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{event.title}</h4>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.bg} ${colors.color} dark:bg-opacity-20`}>
-                                {taskIcons[task.type].label}
+                                {taskIcons[event.type].label}
                               </span>
                             </div>
-                            {task.time && (
+                            {event.time && (
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {task.time}
+                                {event.time}
                               </p>
                             )}
-                            {task.description && (
-                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-1">{task.description}</p>
+                            {event.description && (
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-1">{event.description}</p>
+                            )}
+                            {event.status && (
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                وضعیت: {event.status === 'scheduled' ? 'برنامه‌ریزی شده' : 
+                                         event.status === 'completed' ? 'تکمیل شده' :
+                                         event.status === 'planned' ? 'برنامه‌ریزی شده' :
+                                         event.status === 'in_progress' ? 'در حال اجرا' :
+                                         event.status === 'reviewed' ? 'بررسی شده' : event.status}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -333,6 +524,14 @@ export function CalendarWithTasks({ onTaskClick, userRole }: CalendarWithTasksPr
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* نمایش پیام وقتی هیچ رویدادی نیست */}
+        {events.length === 0 && !loading && !error && (
+          <div className="mt-4 text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+            <CheckCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">هیچ رویدادی برای نمایش وجود ندارد</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

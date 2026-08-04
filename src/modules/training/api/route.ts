@@ -4,7 +4,7 @@ import { validateWithZod } from '@/core/lib/validators'
 import { trainingCreateSchema } from '../lib/validators'
 import { getSessionUser, hasPermission } from '@/core/lib/auth'
 import { parsePagination, createPaginationMeta } from '@/core/lib/pagination'
-
+//api/teaining
 export async function GET(req: NextRequest) {
   try {
     const url = req.nextUrl
