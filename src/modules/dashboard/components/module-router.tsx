@@ -35,7 +35,7 @@ import { EmployeeContractsModule } from '@/modules/contracts/components/employee
 import { EmployeeLeaveBalanceModule } from '@/modules/attendance/leaves/components/employee-leave-balance'
 import { EmployeeShiftsModule } from '@/modules/shifts/components/employee-shifts-module'
 import { EmployeeWelfareModule } from '@/modules/welfare/components/employee-welfare-module'
-
+import { EmployeePayslipsModule } from '@/modules/payroll/components/employee-payslips-module'
 
 
 // ============================================
@@ -218,7 +218,10 @@ if (activeModule === 'welfare' || activeModule === 'welfare-rewards') {
   }
   return <WelfareModule initialTab="rewards" />
 }
-
+if (activeModule === 'employee-payslips') {
+  const empId = user?.employeeId || currentUser?.employeeId || ''
+  return <EmployeePayslipsModule employeeId={empId} employeeName={user?.name} />
+}
   if (activeModule === 'settings' || activeModule === 'settings-general' || activeModule === 'settings-access') return <SettingsModule />
 /*
   if (activeModule === 'employee-documents') {

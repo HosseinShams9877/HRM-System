@@ -169,6 +169,13 @@ export const NAV_ITEMS: NavItem[] = [
       { id: 'payroll-reports', label: 'گزارشات', icon: 'BarChart3' },
     ],
   },
+
+{
+  id: 'employee-payslips',
+  label: 'فیش حقوقی من',
+  icon: 'Receipt',
+  allowedRoles: ['employee', 'intern'],  
+},
   {
     id: 'training',
     label: 'آموزش',
