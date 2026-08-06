@@ -159,6 +159,12 @@ export const NAV_ITEMS: NavItem[] = [
     allowedRoles: ['admin', 'hr_manager', 'department_manager']
   },
   {
+    id: 'employee-performance',
+    label: 'عملکرد من',
+    icon: 'BarChart3',
+    allowedRoles: ['employee', 'intern'],
+  },
+  {
     id: 'payroll',
     label: 'حقوق و دستمزد',
     icon: 'DollarSign',
@@ -181,6 +187,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'آموزش',
     icon: 'GraduationCap',
     allowedRoles: ['admin', 'hr_manager', 'department_manager', 'intern'],
+  },
+  {
+    id: 'my-trainings',
+    label: 'دوره‌های من',
+    icon: 'BookOpen',
+    allowedRoles: ['employee', 'intern'],
   },
   {
     id: 'welfare',

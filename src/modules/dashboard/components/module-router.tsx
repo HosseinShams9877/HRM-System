@@ -36,8 +36,8 @@ import { EmployeeLeaveBalanceModule } from '@/modules/attendance/leaves/componen
 import { EmployeeShiftsModule } from '@/modules/shifts/components/employee-shifts-module'
 import { EmployeeWelfareModule } from '@/modules/welfare/components/employee-welfare-module'
 import { EmployeePayslipsModule } from '@/modules/payroll/components/employee-payslips-module'
-
-
+import { EmployeePerformanceModule } from '@/modules/performance/components/employee-performance-module'
+import { MyTrainingsModule } from '@/modules/training/components/my-trainings-module'
 // ============================================
 // Types
 // ============================================
@@ -156,6 +156,11 @@ export function ModuleRouter({
   if (activeModule === 'hr-settings') {
     return <HRSettings onNavigate={onNavigate} currentUser={user} />
   }
+  if (activeModule === 'employee-performance') {
+    const empId = user?.employeeId || currentUser?.employeeId || ''
+    const name = user?.name || ''
+    return <EmployeePerformanceModule employeeId={empId} employeeName={name} />
+  }
   if (activeModule === 'payslips') return <PayrollModule />
   if (activeModule === 'org-pulse') return <OrgPulseModule />
   if (activeModule === 'org-employee') {
@@ -199,6 +204,9 @@ export function ModuleRouter({
   if (activeModule === 'performance') return <PerformanceModule />
   if (activeModule === 'onboarding' || activeModule === 'offboarding') return <OnboardingOffboardingModule />
   if (activeModule === 'training') return <TrainingModule />
+  if (activeModule === 'my-trainings') {
+    return <MyTrainingsModule onNavigate={onNavigate} />
+  }
   if (activeModule === 'work-history') {
     return <EmployeeWorkHistory onNavigate={onNavigate} currentUser={user} />
   }

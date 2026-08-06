@@ -1,6 +1,6 @@
 
 import { headers } from 'next/headers'
-
+import { db } from './db' 
 export type UserRole = 'admin' | 'hr_manager' | 'department_manager' | 'employee' | 'intern'
 
 export interface SessionUser {
@@ -20,13 +20,26 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const userId = headersList.get('x-user-id')
   const role = headersList.get('x-user-role') as UserRole
   const email = headersList.get('x-user-email')
-  const employeeId = headersList.get('x-user-employee-id')
+  let employeeId = headersList.get('x-user-employee-id')
 
   console.log('🔍 getSessionUser - ALL HEADERS:', {
     'x-user-id': headersList.get('x-user-id'),
     'x-user-role': headersList.get('x-user-role'),
     'x-user-employee-id': headersList.get('x-user-employee-id'),
   })
+
+  if (!employeeId && userId) {
+    try {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { employeeId: true }
+      })
+      employeeId = user?.employeeId || null
+      console.log('🔍 Fetched employeeId from DB:', employeeId)
+    } catch (error) {
+      console.error('❌ Error fetching employeeId from DB:', error)
+    }
+  }
 
   if (!userId || !role) return null
 
