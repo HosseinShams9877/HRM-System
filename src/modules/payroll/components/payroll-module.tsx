@@ -59,7 +59,15 @@ export function PayrollModule({ initialTab }: { initialTab?: 'list' | 'settings'
   
   // ✅ دپارتمان‌ها
   const [departments, setDepartments] = useState<Record<string, string>>({})
-
+  useEffect(() => {
+    if (initialTab === 'settings') {
+      setActiveTab('settings')
+    } else if (initialTab === 'reports') {
+      setActiveTab('reports')
+    } else {
+      setActiveTab('payslips')
+    }
+  }, [initialTab])
   // ✅ fetch دپارتمان‌ها
   useEffect(() => {
     const fetchDepartments = async () => {
