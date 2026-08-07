@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/c
 import { Button } from '@/core/components/ui/button'
 import { 
   BookOpen, ChevronLeft, Clock, Award, 
-  TrendingUp, Users, Zap, Target, Loader2 
+  TrendingUp, Users, Zap, Target, Loader2 ,Star, BarChart3, CheckCircle, 
 } from 'lucide-react'
 import { toPersianDigits } from '@/core/lib/utils-fa'
 import { useRouter } from 'next/navigation'
@@ -30,9 +30,10 @@ interface TrainingStats {
 }
 
 interface PerformanceMetrics {
-  satisfactionRate: number
-  hiringEfficiency: number
-  responseTime: number
+  avgScore: number        // میانگین امتیاز
+  totalEvaluations: number // تعداد کل ارزیابی‌ها
+  completedGoals: number   // تعداد اهداف تکمیل شده
+  progress: number         // درصد پیشرفت کلی
 }
 
 // ============================================
@@ -224,35 +225,44 @@ const TrainingCard: React.FC<{
 // ============================================
 
 const PerformanceCard: React.FC<{
-  satisfactionRate: number
-  hiringEfficiency: number
-  responseTime: number
+  avgScore: number
+  totalEvaluations: number
+  completedGoals: number
+  progress: number
   isLoading: boolean
-}> = ({ satisfactionRate, hiringEfficiency, responseTime, isLoading }) => {
+}> = ({ avgScore, totalEvaluations, completedGoals, progress, isLoading }) => {
   const metrics = [
     { 
-      label: 'رضایت کارکنان', 
-      value: satisfactionRate, 
-      icon: Users, 
-      color: '#10b981',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
-      textColor: 'text-emerald-700'
-    },
-    { 
-      label: 'بهبود عملکرد استخدام', 
-      value: hiringEfficiency, 
-      icon: Target, 
+      label: 'میانگین امتیاز', 
+      value: avgScore, 
+      icon: Star, 
       color: '#8b5cf6',
       bgColor: 'bg-purple-50 dark:bg-purple-950/30',
-      textColor: 'text-purple-700'
+      format: (v: number) => v.toFixed(1)
     },
     { 
-      label: 'کاهش زمان پاسخگویی', 
-      value: responseTime, 
-      icon: Zap, 
+      label: 'تعداد ارزیابی‌ها', 
+      value: totalEvaluations, 
+      icon: BarChart3, 
+      color: '#3b82f6',
+      bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+      format: (v: number) => v.toString()
+    },
+    { 
+      label: 'اهداف تکمیل شده', 
+      value: completedGoals, 
+      icon: CheckCircle, 
+      color: '#10b981',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
+      format: (v: number) => v.toString()
+    },
+    { 
+      label: 'پیشرفت کلی', 
+      value: progress, 
+      icon: TrendingUp, 
       color: '#f59e0b',
       bgColor: 'bg-amber-50 dark:bg-amber-950/30',
-      textColor: 'text-amber-700'
+      format: (v: number) => `${v}%`
     }
   ]
 
@@ -265,31 +275,33 @@ const PerformanceCard: React.FC<{
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex-1 p-5 pt-2 space-y-4">
+      <CardContent className="flex-1 p-5 pt-2">
         {isLoading ? (
           <div className="flex items-center justify-center h-[240px]">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : (
-          metrics.map((metric, index) => (
-            <motion.div
-              key={metric.label}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`flex items-center justify-between p-3 rounded-xl ${metric.bgColor}`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/60 dark:bg-gray-800 rounded-lg shadow-sm">
-                  <metric.icon className={`w-4 h-4`} style={{ color: metric.color }} />
+          <div className="grid grid-cols-2 gap-3">
+            {metrics.map((metric, index) => (
+              <motion.div
+                key={metric.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1 }}
+                className={`p-4 rounded-xl text-center ${metric.bgColor}`}
+              >
+                <div className="flex items-center justify-center mb-2">
+                  <metric.icon className="w-5 h-5" style={{ color: metric.color }} />
                 </div>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <div className="text-xl font-bold text-gray-800 dark:text-white">
+                  {toPersianDigits(metric.format(metric.value))}
+                </div>
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                   {metric.label}
-                </span>
-              </div>
-              <MiniDonut progress={metric.value} color={metric.color} />
-            </motion.div>
-          ))
+                </div>
+              </motion.div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -311,9 +323,10 @@ export default function DashboardMetrics({ userRole, userId, onNavigate }: Dashb
     trainingProgress: 0
   })
   const [performance, setPerformance] = useState<PerformanceMetrics>({
-    satisfactionRate: 0,
-    hiringEfficiency: 0,
-    responseTime: 0
+    avgScore: 0,
+    totalEvaluations: 0,
+    completedGoals: 0,
+    progress: 0
   })
 
   const isEmployee = userRole === 'employee'
@@ -377,16 +390,64 @@ export default function DashboardMetrics({ userRole, userId, onNavigate }: Dashb
     }
   }
 
+
   const fetchPerformanceMetrics = async () => {
     try {
-      // اینجا می‌تونی از API واقعی استفاده کنی
+      console.log('📡 Fetching my performance from API...')
+      
+      const response = await fetch('/api/performance/my-performance')
+      console.log('📡 Response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error('خطا در دریافت اطلاعات عملکرد')
+      }
+      
+      const result = await response.json()
+      const performances = result.data || []
+      console.log('📊 Performances received:', performances.length)
+      
+      const sorted = [...performances].sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      
+      const total = sorted.length
+      const completed = sorted.filter((p: any) => 
+        p.status === 'completed' || p.status === 'reviewed'
+      ).length
+      
+      const avgScore = total > 0 
+        ? Math.round(sorted.reduce((acc: number, p: any) => acc + p.score, 0) / total * 10) / 10
+        : 0
+      
+      let previousAvgScore = 0
+      if (total > 1) {
+        const previousPerformances = sorted.slice(0, total - 1)
+        previousAvgScore = Math.round(
+          previousPerformances.reduce((acc: number, p: any) => acc + p.score, 0) / previousPerformances.length * 10
+        ) / 10
+      }
+      
+      let progress = 0
+      if (previousAvgScore > 0) {
+        progress = Math.round(((avgScore - previousAvgScore) / previousAvgScore) * 100)
+      } else if (avgScore > 0 && previousAvgScore === 0) {
+        progress = 100
+      }
+  
       setPerformance({
-        satisfactionRate: 78,
-        hiringEfficiency: 65,
-        responseTime: 45
+        avgScore: avgScore,
+        totalEvaluations: total,
+        completedGoals: completed,
+        progress: progress
       })
     } catch (error) {
       console.error('Error fetching performance metrics:', error)
+      setPerformance({
+        avgScore: 0,
+        totalEvaluations: 0,
+        completedGoals: 0,
+        progress: 0
+      })
     }
   }
 
@@ -434,12 +495,13 @@ export default function DashboardMetrics({ userRole, userId, onNavigate }: Dashb
         isLoading={isLoading}
       />
     
-      <PerformanceCard
-        satisfactionRate={performance.satisfactionRate}
-        hiringEfficiency={performance.hiringEfficiency}
-        responseTime={performance.responseTime}
-        isLoading={isLoading}
-      />
+    <PerformanceCard
+  avgScore={performance.avgScore}
+  totalEvaluations={performance.totalEvaluations}
+  completedGoals={performance.completedGoals}
+  progress={performance.progress}
+  isLoading={isLoading}
+/>
     </div>
   )
 }

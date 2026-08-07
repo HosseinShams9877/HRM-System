@@ -130,71 +130,30 @@ export async function GET() {
       .map(a => ({ id: a.employeeId, name: `${(a as any).employee?.firstName || ''} ${(a as any).employee?.lastName || ''}`.trim() }))
 
     // ---- Batch 2: Queries that depend on previous results ----
-    const thirtyDaysLater = new Date(today)
-    thirtyDaysLater.setDate(today.getDate() + 30)
+const thirtyDaysLater = new Date(today)
+thirtyDaysLater.setDate(today.getDate() + 30)
 
-    // تنظیم زمان برای مقایسه دقیق
-    const todayStart = new Date(today)
-    todayStart.setHours(0, 0, 0, 0)
-
-    const thirtyDaysEnd = new Date(thirtyDaysLater)
-    thirtyDaysEnd.setHours(23, 59, 59, 999)
-
-    // دریافت همه قراردادهای فعال (برای فیلتر کردن در جاوااسکریپت چون endDate شمسی هست)
-    const allActiveContracts = await db.contract.findMany({
-      where: { 
-        status: 'active', 
-        endDate: { not: null },
-        ...(isEmployee && { employeeId })
+const [paySlips, expiringContracts] = await Promise.all([
+  // Pay slips for current month
+  db.paySlip.findMany({
+    where: { year: currentYear, month: currentMonth }
+  }),
+  // Expiring contracts - فقط قراردادهایی که تا 30 روز آینده منقضی میشن
+  db.contract.findMany({
+    where: { 
+      status: 'active', 
+      endDate: { 
+        not: null,
+        gte: today,        // از امروز به بعد
+        lte: thirtyDaysLater  // تا 30 روز آینده
       },
-      include: { employee: true }
-    })
-
-    // فیلتر کردن قراردادهایی که تا 30 روز آینده منقضی میشن
-    const expiringContracts = allActiveContracts
-      .filter(c => {
-        if (!c.endDate) return false
-        
-        try {
-          const parts = c.endDate.split('/')
-          const { gy, gm, gd } = jalaali.toGregorian(
-            parseInt(parts[0]),
-            parseInt(parts[1]),
-            parseInt(parts[2])
-          )
-          const endDateObj = new Date(gy, gm - 1, gd)
-          endDateObj.setHours(23, 59, 59, 999)
-          
-          return endDateObj >= todayStart && endDateObj <= thirtyDaysEnd
-        } catch {
-          return false
-        }
-      })
-      .sort((a, b) => {
-        try {
-          const partsA = a.endDate!.split('/')
-          const partsB = b.endDate!.split('/')
-          const dateA = new Date(
-            jalaali.toGregorian(parseInt(partsA[0]), parseInt(partsA[1]), parseInt(partsA[2])).gy,
-            jalaali.toGregorian(parseInt(partsA[0]), parseInt(partsA[1]), parseInt(partsA[2])).gm - 1,
-            jalaali.toGregorian(parseInt(partsA[0]), parseInt(partsA[1]), parseInt(partsA[2])).gd
-          )
-          const dateB = new Date(
-            jalaali.toGregorian(parseInt(partsB[0]), parseInt(partsB[1]), parseInt(partsB[2])).gy,
-            jalaali.toGregorian(parseInt(partsB[0]), parseInt(partsB[1]), parseInt(partsB[2])).gm - 1,
-            jalaali.toGregorian(parseInt(partsB[0]), parseInt(partsB[1]), parseInt(partsB[2])).gd
-          )
-          return dateA.getTime() - dateB.getTime()
-        } catch {
-          return 0
-        }
-      })
-      .slice(0, isEmployee ? undefined : 5)
-
-    // Pay slips
-    const paySlips = await db.paySlip.findMany({
-      where: { year: currentYear, month: currentMonth }
-    })
+      ...(isEmployee && { employeeId })
+    },
+    include: { employee: true },
+    orderBy: { endDate: 'asc' },  // نزدیک‌ترین تاریخ اول
+    take: isEmployee ? undefined : 5,
+  }),
+])
 
     const monthlySalary = paySlips.reduce((sum, p) => sum + (p.netSalary || 0), 0)
 

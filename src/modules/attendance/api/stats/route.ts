@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
 import * as jalaali from 'jalaali-js'
-
+//api/attendance//stats/route.ts
 export async function GET() {
   try {
     const today = new Date()

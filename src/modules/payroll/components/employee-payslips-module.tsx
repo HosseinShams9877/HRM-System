@@ -39,6 +39,9 @@ import {
 import { toPersianDigits, formatCurrency } from '@/core/lib/utils-fa';
 import { RIALS_TO_TOMANS, STATUS_MAP } from '../constants';
 import { useToast } from '@/core/hooks/use-toast';
+import { PDFDownloadLink } from '@react-pdf/renderer'
+import { PayslipPDF } from './payslip-pdf'
+
 
 // ============================================
 // Types
@@ -173,159 +176,6 @@ function PayslipDetailDialog({
   const allowances = payslip.items.filter((item) => item.category === 'allowance');
   const deductions = payslip.items.filter((item) => item.category === 'deduction');
   const displayDepartment = departmentName || payslip.employee?.department || null;
-
-  const handlePrint = () => {
-    const printContent = document.getElementById('payslip-print-content')
-    if (!printContent) return
-  
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) return
-  
-    const styles = `
-      <style>
-        @page { margin: 20px; }
-        body { font-family: 'Tahoma', 'Verdana', sans-serif; direction: rtl; padding: 20px; background: #fff; }
-        .print-container { max-width: 600px; margin: 0 auto; }
-        .header { text-align: center; border-bottom: 3px solid #10b981; padding-bottom: 15px; margin-bottom: 20px; }
-        .header h1 { margin: 0; color: #065f46; font-size: 24px; }
-        .header h2 { margin: 5px 0 0; color: #6b7280; font-size: 16px; font-weight: normal; }
-        .info-row { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
-        .info-row .label { color: #6b7280; font-size: 14px; }
-        .info-row .value { font-weight: bold; font-size: 14px; }
-        .section { margin-top: 20px; }
-        .section-title { background: #f3f4f6; padding: 8px 12px; font-weight: bold; font-size: 14px; border-radius: 4px; }
-        .item-row { display: flex; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
-        .total-row { display: flex; justify-content: space-between; padding: 10px 12px; font-weight: bold; border-top: 2px solid #10b981; margin-top: 5px; font-size: 15px; }
-        .net-row { background: #ecfdf5; padding: 12px; border-radius: 6px; margin-top: 15px; display: flex; justify-content: space-between; font-size: 18px; }
-        .net-row .label { color: #065f46; }
-        .net-row .value { color: #047857; font-weight: bold; }
-        .footer { margin-top: 30px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 15px; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-        .status-draft { background: #f3f4f6; color: #6b7280; }
-        .status-confirmed { background: #dbeafe; color: #1d4ed8; }
-        .status-paid { background: #d1fae5; color: #065f46; }
-        .status-closed { background: #fef3c7; color: #92400e; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-        .text-center { text-align: center; }
-        .mb-2 { margin-bottom: 8px; }
-      </style>
-    `
-  
-    const statusClass = `status-${payslip.status || 'draft'}`
-    const statusLabel = STATUS_MAP[payslip.status]?.label || payslip.status || 'پیش‌نویس'
-  
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>فیش حقوقی ${PERSIAN_MONTHS[payslip.month - 1]} ${toPersianDigits(payslip.year)}</title>
-          ${styles}
-        </head>
-        <body>
-          <div class="print-container" id="payslip-print-content">
-            <div class="header">
-              <h1>🧾 فیش حقوقی</h1>
-              <h2>${PERSIAN_MONTHS[payslip.month - 1]} ${toPersianDigits(payslip.year)}</h2>
-            </div>
-  
-            <!-- اطلاعات کارمند -->
-            <div style="background: #f9fafb; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-              <div class="info-row">
-                <span class="label">کارمند</span>
-                <span class="value">${payslip.employee?.firstName || ''} ${payslip.employee?.lastName || ''}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">کد پرسنلی</span>
-                <span class="value">${toPersianDigits(payslip.employee?.personnelCode || '')}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">وضعیت</span>
-                <span class="value"><span class="status-badge ${statusClass}">${statusLabel}</span></span>
-              </div>
-            </div>
-  
-            <!-- اطلاعات پایه -->
-            <div style="background: #f9fafb; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-              <div class="info-row">
-                <span class="label">حقوق پایه</span>
-                <span class="value">${toPersianDigits(RIALS_TO_TOMANS(payslip.baseSalary))} تومان</span>
-              </div>
-              <div class="info-row">
-                <span class="label">کارکرد</span>
-                <span class="value">${toPersianDigits(payslip.workDays)} روز</span>
-              </div>
-              <div class="info-row">
-                <span class="label">اضافه‌کاری</span>
-                <span class="value">${toPersianDigits(payslip.overtimeHours)} ساعت</span>
-              </div>
-            </div>
-  
-            <!-- مزایا -->
-            ${allowances.length > 0 ? `
-              <div class="section">
-                <div class="section-title">✅ مزایا</div>
-                ${allowances.map(item => `
-                  <div class="item-row">
-                    <span>${item.title}</span>
-                    <span>${toPersianDigits(RIALS_TO_TOMANS(item.amount))} تومان</span>
-                  </div>
-                `).join('')}
-                <div class="total-row">
-                  <span>جمع مزایا</span>
-                  <span>${toPersianDigits(RIALS_TO_TOMANS(payslip.totalAllowances))} تومان</span>
-                </div>
-              </div>
-            ` : ''}
-  
-            <!-- کسورات -->
-            ${deductions.length > 0 ? `
-              <div class="section">
-                <div class="section-title">❌ کسورات</div>
-                ${deductions.map(item => `
-                  <div class="item-row">
-                    <span>${item.title}</span>
-                    <span>${toPersianDigits(RIALS_TO_TOMANS(item.amount))} تومان</span>
-                  </div>
-                `).join('')}
-                <div class="total-row">
-                  <span>جمع کسورات</span>
-                  <span>${toPersianDigits(RIALS_TO_TOMANS(payslip.totalDeductions))} تومان</span>
-                </div>
-              </div>
-            ` : ''}
-  
-            <!-- جمع نهایی -->
-            <div class="net-row">
-              <span class="label">💰 خالص پرداختی</span>
-              <span class="value">${toPersianDigits(RIALS_TO_TOMANS(payslip.netSalary))} تومان</span>
-            </div>
-  
-            <!-- یادداشت -->
-            ${payslip.notes ? `
-              <div style="margin-top: 16px; padding: 10px 12px; background: #f9fafb; border-radius: 6px; font-size: 13px; color: #4b5563;">
-                <strong>یادداشت:</strong> ${payslip.notes}
-              </div>
-            ` : ''}
-  
-            <!-- تاریخ -->
-            <div class="footer">
-              تاریخ ثبت: ${toPersianDigits(new Date(payslip.createdAt).toLocaleDateString('fa-IR'))}
-            </div>
-          </div>
-          <script>
-            window.onload = function() {
-              window.print()
-              window.close()
-            }
-          <\/script>
-        </body>
-      </html>
-    `
-  
-    printWindow.document.write(html)
-    printWindow.document.close()
-  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -477,28 +327,39 @@ function PayslipDetailDialog({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-5 py-3 rounded-b-2xl border-t border-gray-100/50 dark:border-gray-700/50">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              className="flex-1 text-xs gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl"
-            >
-              بستن
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrint}
-              className="text-xs gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              پرینت
-            </Button>
-          </div>
-        </div>
+       {/* Footer */}
+<div className="sticky bottom-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-5 py-3 rounded-b-2xl border-t border-gray-100/50 dark:border-gray-700/50">
+  <div className="flex gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onClose}
+      className="flex-1 text-xs gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl"
+    >
+      بستن
+    </Button>
+    <PDFDownloadLink
+      document={<PayslipPDF payslip={payslip} />}
+      fileName={`فیش-حقوقی-${PERSIAN_MONTHS[payslip.month - 1]}-${payslip.year}.pdf`}
+    >
+      {({ loading }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className="text-xs gap-2 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl"
+        >
+          {loading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Download className="w-3.5 h-3.5" />
+          )}
+          {loading ? 'در حال آماده‌سازی...' : 'دانلود PDF'}
+        </Button>
+      )}
+    </PDFDownloadLink>
+  </div>
+</div>
       </DialogContent>
     </Dialog>
   );

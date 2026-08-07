@@ -14,7 +14,6 @@ import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
 import { Progress } from '@/core/components/ui/progress'
 import { getTodayShamsi, toPersianDigits } from '@/core/lib/utils-fa'
-import { ActionCenter } from '../dashboard/actionCenter'
 import DashboardMetrics from '../dashboard/TrainingProgress'
 import { useIsMobile } from '@/core/hooks/use-mobile'
 import { toast } from 'sonner'
@@ -80,6 +79,34 @@ interface EmployeeDesktopProps {
   currentUser?: { role: string; employeeId?: string; name?: string; position?: string; department?: string }
 }
 
+
+const timeToMinutes = (time: string): number => {
+  if (!time || !time.includes(':')) return 0
+  const [hours, minutes] = time.split(':').map(Number)
+  return (hours || 0) * 60 + (minutes || 0)
+}
+
+// محاسبه کارکرد و اضافه کار
+const calculateWorkAndOvertime = (checkIn: string, checkOut: string) => {
+  if (!checkIn || !checkOut) {
+    return { work: 0, overtime: 0, total: 0 }
+  }
+  
+  const inMinutes = timeToMinutes(checkIn)
+  const outMinutes = timeToMinutes(checkOut)
+  
+  let diff = outMinutes - inMinutes
+  if (diff < 0) diff += 24 * 60 // شیفت شب
+  
+  const normalWork = Math.min(diff, 8 * 60) // حداکثر ۸ ساعت
+  const overtime = Math.max(0, diff - 8 * 60)
+  
+  return {
+    work: Math.round((normalWork / 60) * 100) / 100,
+    overtime: Math.round((overtime / 60) * 100) / 100,
+    total: Math.round((diff / 60) * 100) / 100
+  }
+}
 // ============================================
 // Helper Components
 // ============================================
@@ -124,124 +151,132 @@ function EmployeeDesktop({ employeeId, onNavigate, currentUser }: EmployeeDeskto
   // Fetch Data from API
   // ============================================
   
-  const fetchAllData = useCallback(async () => {
-    try {
-      setLoading(true)
+  // src/modules/dashboard/layouts/EmployeeDesktop.tsx
+
+const fetchAllData = useCallback(async () => {
+  try {
+    setLoading(true)
+    
+    const today = getTodayShamsi()
+    const todayStr = `${today.year}/${String(today.month).padStart(2, '0')}/${String(today.day).padStart(2, '0')}`
+    
+    // 1. دریافت وضعیت حضور امروز
+    const attendanceRes = await fetch(`/api/attendance?date=${todayStr}`)
+    
+    let hasCheckedIn = false
+    let hasCheckedOut = false
+    let checkInTime: string | undefined = undefined
+    let checkOutTime: string | undefined = undefined
+    let totalWorkHours = 0
+    let overtimeToday = 0
+    let lateMinutes = 0
+    
+    if (attendanceRes.ok) {
+      const attendanceData = await attendanceRes.json()
+      const records = attendanceData.data || attendanceData.records || []
+      const todayRecord = records.find((r: any) => r.employeeId === employeeId)
       
-      const today = getTodayShamsi()
-      const todayStr = `${today.year}/${String(today.month).padStart(2, '0')}/${String(today.day).padStart(2, '0')}`
-      
-      // 1. دریافت وضعیت حضور امروز
-      const attendanceRes = await fetch(`/api/attendance?date=${todayStr}`)
-      
-      let hasCheckedIn = false
-      let hasCheckedOut = false
-      let checkInTime: string | undefined = undefined
-      let checkOutTime: string | undefined = undefined
-      let totalWorkHours = 0
-      let overtimeToday = 0
-      let lateMinutes = 0
-      
-      if (attendanceRes.ok) {
-        const attendanceData = await attendanceRes.json()
-        const records = attendanceData.data || attendanceData.records || []
-        const todayRecord = records.find((r: any) => r.employeeId === employeeId)
+      if (todayRecord) {
+        hasCheckedIn = !!todayRecord.checkIn && todayRecord.checkIn !== 'null'
+        hasCheckedOut = !!todayRecord.checkOut && todayRecord.checkOut !== 'null'
+        checkInTime = hasCheckedIn ? todayRecord.checkIn : undefined
+        checkOutTime = hasCheckedOut ? todayRecord.checkOut : undefined
         
-        if (todayRecord) {
-          hasCheckedIn = !!todayRecord.checkIn && todayRecord.checkIn !== 'null'
-          hasCheckedOut = !!todayRecord.checkOut && todayRecord.checkOut !== 'null'
-          checkInTime = hasCheckedIn ? todayRecord.checkIn : undefined
-          checkOutTime = hasCheckedOut ? todayRecord.checkOut : undefined
+        // ✅ محاسبه از checkIn و checkOut به جای workHours و overtime
+        if (todayRecord.checkIn && todayRecord.checkOut) {
+          const calculated = calculateWorkAndOvertime(todayRecord.checkIn, todayRecord.checkOut)
+          totalWorkHours = calculated.total
+          overtimeToday = calculated.overtime
+        } else {
           totalWorkHours = todayRecord.workHours || 0
           overtimeToday = todayRecord.overtime || 0
-          lateMinutes = todayRecord.late || 0
         }
+        
+        lateMinutes = todayRecord.late || 0
       }
-      
-      // 2. دریافت مرخصی‌ها (بدون فراخوانی balance)
-      const leavesRes = await fetch(`/api/leaves?employeeId=${employeeId}&limit=50`)
-      let usedDays = 0
-      let remainingDays = 26
-      let totalLeaveDays = 26
-      let leavesPendingCount = 0
-      let recentLeaves: any[] = []
-      
-      if (leavesRes.ok) {
-        const leavesResult = await leavesRes.json()
-        const leavesList = leavesResult.data || leavesResult.records || leavesResult
-        const leavesArray = Array.isArray(leavesList) ? leavesList : []
-        
-        // فیلتر مرخصی‌های مربوط به این کارمند
-        const employeeLeaves = leavesArray.filter((l: any) => l.employeeId === employeeId)
-        
-        // محاسبه مجموع روزهای مرخصی تایید شده
-        const approvedDays = employeeLeaves
-          .filter((leave: any) => leave.status === 'approved')
-          .reduce((sum: number, leave: any) => sum + (leave.totalDays || 0), 0)
-        
-        // محاسبه تعداد در انتظار تایید
-        leavesPendingCount = employeeLeaves.filter((leave: any) => leave.status === 'pending').length
-        
-        usedDays = approvedDays
-        remainingDays = Math.max(0, totalLeaveDays - approvedDays)
-        recentLeaves = employeeLeaves.slice(0, 5)
-      }
-      
-      // 3. دریافت ماموریت‌های اخیر
-      const missionsRes = await fetch(`/api/missions?employeeId=${employeeId}&limit=5`)
-      let missionsData = { recent: [], pendingCount: 0 }
-      if (missionsRes.ok) {
-        const missionsResult = await missionsRes.json()
-        const missionsList = missionsResult.data || missionsResult.records || missionsResult
-        const missionsArray = Array.isArray(missionsList) ? missionsList : []
-        const employeeMissions = missionsArray.filter((m: any) => m.employeeId === employeeId)
-        
-        missionsData = {
-          recent: employeeMissions.slice(0, 5),
-          pendingCount: employeeMissions.filter((m: any) => m.status === 'pending').length
-        }
-      }
-      
-      // 4. دریافت تاریخچه تردد
-      const historyRes = await fetch(`/api/attendance/history?employeeId=${employeeId}&days=7`)
-      let historyRecords: AttendanceRecord[] = []
-      if (historyRes.ok) {
-        const historyData = await historyRes.json()
-        historyRecords = historyData.records || historyData.data?.records || []
-      }
-      
-      setStats({
-        hasCheckedIn,
-        hasCheckedOut,
-        checkInTime,
-        checkOutTime,
-        totalWorkHours,
-        overtimeToday,
-        lateMinutes,
-        usedLeaveDays: usedDays,
-        remainingLeaveDays: remainingDays,
-        totalLeaveDays: totalLeaveDays,
-        attendanceRate: 0,
-        perfectDays: 0,
-        activeRequests: {
-          leaves: leavesPendingCount,
-          missions: missionsData.pendingCount,
-          overtime: 0,
-          corrections: 0
-        }
-      })
-      
-      setRecentLeaveRequests(recentLeaves)
-      setRecentMissions(missionsData.recent)
-      setAttendanceHistory(historyRecords)
-      
-    } catch (error) {
-      console.error('Error fetching employee data:', error)
-      toast.error('خطا در دریافت اطلاعات')
-    } finally {
-      setLoading(false)
     }
-  }, [employeeId])
+    
+    // 2. دریافت مرخصی‌ها
+    const leavesRes = await fetch(`/api/leaves?employeeId=${employeeId}&limit=50`)
+    let usedDays = 0
+    let remainingDays = 26
+    let totalLeaveDays = 26
+    let leavesPendingCount = 0
+    let recentLeaves: any[] = []
+    
+    if (leavesRes.ok) {
+      const leavesResult = await leavesRes.json()
+      const leavesList = leavesResult.data || leavesResult.records || leavesResult
+      const leavesArray = Array.isArray(leavesList) ? leavesList : []
+      
+      const employeeLeaves = leavesArray.filter((l: any) => l.employeeId === employeeId)
+      
+      const approvedDays = employeeLeaves
+        .filter((leave: any) => leave.status === 'approved')
+        .reduce((sum: number, leave: any) => sum + (leave.totalDays || 0), 0)
+      
+      leavesPendingCount = employeeLeaves.filter((leave: any) => leave.status === 'pending').length
+      
+      usedDays = approvedDays
+      remainingDays = Math.max(0, totalLeaveDays - approvedDays)
+      recentLeaves = employeeLeaves.slice(0, 5)
+    }
+    
+    // 3. دریافت ماموریت‌های اخیر
+    const missionsRes = await fetch(`/api/missions?employeeId=${employeeId}&limit=5`)
+    let missionsData = { recent: [], pendingCount: 0 }
+    if (missionsRes.ok) {
+      const missionsResult = await missionsRes.json()
+      const missionsList = missionsResult.data || missionsResult.records || missionsResult
+      const missionsArray = Array.isArray(missionsList) ? missionsList : []
+      const employeeMissions = missionsArray.filter((m: any) => m.employeeId === employeeId)
+      
+      missionsData = {
+        recent: employeeMissions.slice(0, 5),
+        pendingCount: employeeMissions.filter((m: any) => m.status === 'pending').length
+      }
+    }
+    
+    // 4. دریافت تاریخچه تردد
+    const historyRes = await fetch(`/api/attendance/history?employeeId=${employeeId}&days=7`)
+    let historyRecords: AttendanceRecord[] = []
+    if (historyRes.ok) {
+      const historyData = await historyRes.json()
+      historyRecords = historyData.records || historyData.data?.records || []
+    }
+    
+    setStats({
+      hasCheckedIn,
+      hasCheckedOut,
+      checkInTime,
+      checkOutTime,
+      totalWorkHours,
+      overtimeToday,
+      lateMinutes,
+      usedLeaveDays: usedDays,
+      remainingLeaveDays: remainingDays,
+      totalLeaveDays: totalLeaveDays,
+      attendanceRate: 0,
+      perfectDays: 0,
+      activeRequests: {
+        leaves: leavesPendingCount,
+        missions: missionsData.pendingCount,
+        overtime: 0,
+        corrections: 0
+      }
+    })
+    
+    setRecentLeaveRequests(recentLeaves)
+    setRecentMissions(missionsData.recent)
+    setAttendanceHistory(historyRecords)
+    
+  } catch (error) {
+    console.error('Error fetching employee data:', error)
+    toast.error('خطا در دریافت اطلاعات')
+  } finally {
+    setLoading(false)
+  }
+}, [employeeId])
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -619,17 +654,10 @@ function EmployeeDesktop({ employeeId, onNavigate, currentUser }: EmployeeDeskto
             </div>
           )}
             
-          {/* ========== Row 4: Action Center ========== */}
-          <div className="grid grid-cols-1 gap-4">
-            <ActionCenter
-              userRole={currentUser?.role as 'admin' | 'hr_manager' | 'department_manager' | 'employee' || 'employee'}
-              userId={currentUser?.employeeId}
-              onNavigate={onNavigate}
-            />
-          </div>
+  
 
           {/* ========== Row 5: DashboardMetrics - فقط در دسکتاپ ========== */}
-          {!isMobile && currentUser?.role === 'employee' && (
+          { currentUser?.role === 'employee' && (
             <DashboardMetrics
               userRole={currentUser.role}
               onNavigate={onNavigate}
