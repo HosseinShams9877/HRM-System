@@ -29,6 +29,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { PersianDatePicker } from '@/core/components/ui/persian-date-picker'
 import { toShamsi } from '@/core/lib/utils-fa'
 import {
@@ -215,6 +216,7 @@ export function EmployeeWizard({ employeeId, onSuccess, onCancel, startTab = 1 }
   const [addingPosition, setAddingPosition] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showPositionDropdown, setShowPositionDropdown] = useState(false)
+  const queryClient = useQueryClient()
 
   // Fetch departments
   useEffect(() => {
@@ -418,7 +420,6 @@ useEffect(() => {
       'phd': 'دکتری',
     }
     
-    // تابع تبدیل تاریخ ساده
     const dateToSimpleShamsi = (date: Date | null): string => {
       if (!date) return ''
       const year = date.getFullYear()
@@ -428,7 +429,6 @@ useEffect(() => {
     }
   
     try {
-      // 1. اطلاعات پایه کارمند (با تمام فیلدها)
       const employeeData: Record<string, any> = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -463,15 +463,12 @@ useEffect(() => {
         createUser: true,
       }
   
-      // حذف فیلدهای خالی (undefined, null, '')
       Object.keys(employeeData).forEach(key => {
         const value = employeeData[key]
         if (value === undefined || value === null || value === '') {
           delete employeeData[key]
         }
       })
-  
-      console.log('📤 Sending employee data:', employeeData)
   
       const response = await fetch('/api/employees', {
         method: 'POST',
@@ -483,7 +480,6 @@ useEffect(() => {
         const result = await response.json()
         const newEmployeeId = result.employee?.id || result.data?.id || result.id
         
-        // 2. ذخیره اطلاعات مالی (بعد از ایجاد کارمند)
         if (newEmployeeId) {
           const financialData: Record<string, any> = {
             bankAccountNo: formData.bankAccountNo || null,
@@ -499,7 +495,6 @@ useEffect(() => {
             otherAllowances: parseFloat(formData.otherAllowances) || 0,
           }
           
-          // حذف فیلدهای خالی در financialData
           Object.keys(financialData).forEach(key => {
             if (financialData[key] === undefined || financialData[key] === null) {
               delete financialData[key]
@@ -513,7 +508,6 @@ useEffect(() => {
           }).catch(err => console.warn('Financial data save error:', err))
         }
         
-        // 3. ذخیره مدارک (اگر وجود دارند)
         if (newEmployeeId && pendingFiles.length > 0) {
           for (const pendingFile of pendingFiles) {
             const formData = new FormData()
@@ -534,20 +528,22 @@ useEffect(() => {
           toast.info(`رمز عبور موقت: ${result.account.temporaryPassword || result.account.password}`)
           toast.warning('کارمند در اولین ورود رمز عبور را تغییر دهد')
         }
-       if (formData.departmentId && formData.position) {
-  // آپدیت دستی تعداد در UI
-  setPositions(prevPositions => 
-    prevPositions.map(pos => 
-      pos.id === formData.position 
-        ? { ...pos, currentCount: (pos.currentCount || 0) + 1 }
-        : pos
-    )
-  )
-  // برای اطمینان، بعد از 2 ثانیه دوباره از سرور بگیر
-  setTimeout(() => {
-    fetchPositions()
-  }, 2000)
-}
+        
+        // ✅ این خط رو اضافه کن (بعد از toast ها)
+        queryClient.invalidateQueries({ queryKey: ['employees'] })
+        
+        if (formData.departmentId && formData.position) {
+          setPositions(prevPositions => 
+            prevPositions.map(pos => 
+              pos.id === formData.position 
+                ? { ...pos, currentCount: (pos.currentCount || 0) + 1 }
+                : pos
+            )
+          )
+          setTimeout(() => {
+            fetchPositions()
+          }, 2000)
+        }
         onSuccess?.()
       } else {
         const error = await response.json()
@@ -580,7 +576,6 @@ const handleUpdateEmployee = async () => {
   }
 
   try {
-    // 1. به‌روزرسانی اطلاعات پایه کارمند
     const employeeData: Record<string, any> = {
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -613,7 +608,6 @@ const handleUpdateEmployee = async () => {
       status: 'active',
     }
 
-    // حذف فیلدهای خالی
     Object.keys(employeeData).forEach(key => {
       if (employeeData[key] === undefined || employeeData[key] === null || employeeData[key] === '') {
         delete employeeData[key]
@@ -632,7 +626,6 @@ const handleUpdateEmployee = async () => {
       throw new Error(error.error || 'خطا در بروزرسانی اطلاعات پایه')
     }
 
-    // 2. به‌روزرسانی اطلاعات مالی
     const financialData = {
       bankAccountNo: formData.bankAccountNo || null,
       insuranceNo: formData.insuranceNo || null,
@@ -657,7 +650,6 @@ const handleUpdateEmployee = async () => {
       console.warn('Financial data update failed:', await financialResponse.json())
     }
 
-    // 3. ذخیره مدارک جدید (pendingFiles) - فقط در حالت ویرایش
     if (pendingFiles.length > 0) {
       console.log(`📤 آپلود ${pendingFiles.length} مدرک برای کارمند ${employeeId}...`)
       
@@ -684,12 +676,15 @@ const handleUpdateEmployee = async () => {
         }
       }
       
-      // پاک کردن pendingFiles بعد از آپلود
       setPendingFiles([])
       console.log('✅ همه مدارک آپلود شدند')
     }
 
     toast.success('اطلاعات کارمند با موفقیت بروزرسانی شد')
+    
+    // ✅ این خط رو اضافه کن (بعد از toast.success)
+    queryClient.invalidateQueries({ queryKey: ['employees'] })
+    
     await fetchPositions()
     onSuccess?.()
   } catch (error: any) {

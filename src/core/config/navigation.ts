@@ -242,10 +242,5 @@ export const NAV_ITEMS: NavItem[] = [
     desktopOnly: true,
     allowedRoles: ['admin', 'hr_manager', 'department_manager', 'employee', 'intern'],
   },
-  {
-    id: 'employee-create',
-    label: 'ثبت کارمند جدید',
-    icon: 'UserPlus',
-    allowedRoles: ['admin', 'hr_manager'],
-  }
+
 ]

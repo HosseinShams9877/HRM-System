@@ -7,6 +7,7 @@ import { Badge } from '@/core/components/ui/badge'
 import { ScrollArea } from '@/core/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/core/components/ui/popover'
 import { toPersianDigits } from '../lib/utils-fa'
+import * as jalaali from 'jalaali-js'
 
 interface Notification {
   id: string
@@ -15,6 +16,72 @@ interface Notification {
   subtitle?: string
   time?: string
   read: boolean
+}
+
+// تابع تبدیل تاریخ میلادی به شمسی
+function toJalaliDate(dateStr: string): string {
+  if (!dateStr) return ''
+  
+  try {
+    // اگر تاریخ به صورت "2026-05-21" یا "2026/05/21" باشه
+    const parts = dateStr.split(/[-/]/)
+    if (parts.length !== 3) return dateStr
+    
+    const year = parseInt(parts[0])
+    const month = parseInt(parts[1])
+    const day = parseInt(parts[2])
+    
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr
+    
+    const { jy, jm, jd } = jalaali.toJalaali(year, month, day)
+    return `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')}`
+  } catch {
+    return dateStr
+  }
+}
+
+// تابع چک کردن اینکه تاریخ تولد امروز هست یا نه
+function isTodayBirthday(birthDate: string): boolean {
+  if (!birthDate) return false
+  
+  try {
+    const today = new Date()
+    const { jy: todayYear, jm: todayMonth, jd: todayDay } = jalaali.toJalaali(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      today.getDate()
+    )
+    
+    // اگر تاریخ به صورت میلادی "2026-05-21" هست
+    let birthParts = birthDate.split(/[-/]/)
+    if (birthParts.length === 3) {
+      const year = parseInt(birthParts[0])
+      const month = parseInt(birthParts[1])
+      const day = parseInt(birthParts[2])
+      
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const { jy, jm, jd } = jalaali.toJalaali(year, month, day)
+        // فقط روز و ماه رو مقایسه میکنیم، سال رو نادیده میگیریم
+        return jm === todayMonth && jd === todayDay
+      }
+    }
+    
+    // اگر تاریخ به صورت شمسی "1404/12/15" هست
+    if (birthDate.includes('/')) {
+      const parts = birthDate.split('/')
+      if (parts.length === 3) {
+        const month = parseInt(parts[1])
+        const day = parseInt(parts[2])
+        if (!isNaN(month) && !isNaN(day)) {
+          return month === todayMonth && day === todayDay
+        }
+      }
+    }
+    
+    return false
+  } catch {
+    return false
+  }
 }
 
 export function NotificationDropdown() {
@@ -34,11 +101,9 @@ export function NotificationDropdown() {
       const notifs: Notification[] = []
       
       // Pending leaves
-
-      
       if (data.pending?.leaves > 0) {
         notifs.push({
-          id: 'pending-leaves',
+          id: `leave-${Date.now()}`,
           type: 'leave',
           title: `${toPersianDigits(data.pending.leaves)} درخواست مرخصی`,
           subtitle: 'در انتظار بررسی',
@@ -49,7 +114,7 @@ export function NotificationDropdown() {
       // Pending missions
       if (data.pending?.missions > 0) {
         notifs.push({
-          id: 'pending-missions',
+          id: `mission-${Date.now()}`,
           type: 'mission',
           title: `${toPersianDigits(data.pending.missions)} درخواست ماموریت`,
           subtitle: 'در انتظار بررسی',
@@ -60,7 +125,7 @@ export function NotificationDropdown() {
       // Pending loans
       if (data.pending?.loans > 0) {
         notifs.push({
-          id: 'pending-loans',
+          id: `loan-${Date.now()}`,
           type: 'loan',
           title: `${toPersianDigits(data.pending.loans)} درخواست وام/مساعده`,
           subtitle: 'در انتظار بررسی',
@@ -68,10 +133,11 @@ export function NotificationDropdown() {
         })
       }
       
-      // Expiring contracts
-      data.alerts?.expiringContracts?.forEach((c: { id: string; title: string; employeeName: string }) => {
+      // Expiring contracts (حداکثر 5 تا)
+      const contracts = data.alerts?.expiringContracts || []
+      contracts.slice(0, 5).forEach((c: { id: string; title: string; employeeName: string }) => {
         notifs.push({
-          id: c.id,
+          id: `contract-${c.id}`,
           type: 'contract',
           title: `قرارداد در حال انقضا`,
           subtitle: `${c.employeeName} — ${c.title}`,
@@ -79,16 +145,23 @@ export function NotificationDropdown() {
         })
       })
       
-      // Birthdays
-      data.alerts?.birthdays?.forEach((b: { id: string; name: string; date?: string | null }) => {
-        notifs.push({
-          id: b.id,
-          type: 'birthday',
-          title: `تولد ${b.name}`,
-          subtitle: b.date || undefined,
-          read: true,
+      // Birthdays - فقط تولدهای امروز
+      const birthdays = data.alerts?.birthdays || []
+      birthdays
+        .filter((b: { id: string; name: string; date?: string | null }) => {
+          if (!b.date) return false
+          return isTodayBirthday(b.date)
         })
-      })
+        .forEach((b: { id: string; name: string; date?: string | null }) => {
+          const jalaliDate = b.date ? toJalaliDate(b.date) : ''
+          notifs.push({
+            id: `birthday-${b.id}`,
+            type: 'birthday',
+            title: `🎂 تولد ${b.name} مبارک!`,
+            subtitle: jalaliDate,
+            read: true,
+          })
+        })
       
       setNotifications(notifs)
     } catch {
@@ -96,6 +169,13 @@ export function NotificationDropdown() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // تابع علامت‌گذاری به عنوان خوانده شده
+  const markAsRead = (notificationId: string) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    )
   }
 
   const unreadCount = notifications.filter(n => !n.read).length
@@ -139,7 +219,7 @@ export function NotificationDropdown() {
             )}
           </div>
         </div>
-        <ScrollArea className="max-h-[300px]">
+        <ScrollArea className="max-h-[300px] overflow-y-auto">
           {notifications.length > 0 ? (
             <div className="divide-y">
               {notifications.map(notif => {
@@ -147,7 +227,10 @@ export function NotificationDropdown() {
                 return (
                   <div
                     key={notif.id}
-                    className={`p-3 hover:bg-muted/50 transition-colors ${!notif.read ? 'bg-muted/20' : ''}`}
+                    onClick={() => markAsRead(notif.id)}
+                    className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
+                      !notif.read ? 'bg-muted/20' : ''
+                    }`}
                   >
                     <div className="flex items-start gap-2.5">
                       <div className={`p-1.5 rounded-lg ${colorMap[notif.type] || 'text-gray-600 bg-gray-50'}`}>
