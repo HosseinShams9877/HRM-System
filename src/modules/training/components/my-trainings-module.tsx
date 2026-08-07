@@ -9,12 +9,11 @@ import {
   Clock,
   Calendar,
   Users,
-  ChevronRight,
+  ChevronLeft,
   Loader2,
   Award,
   MapPin,
   Search,
-  Filter,
   X
 } from 'lucide-react'
 import { toPersianDigits } from '@/core/lib/utils-fa'
@@ -28,6 +27,7 @@ import {
   SelectValue,
 } from '@/core/components/ui/select'
 import { useRouter } from 'next/navigation'
+import { STATUS_MAP, PARTICIPANT_STATUS_MAP, CATEGORY_MAP } from '../constants'
 
 interface Training {
   id: string
@@ -89,7 +89,6 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
 
       const data = await response.json()
       
-      // استخراج training از participants
       const trainingList = data.map((p: Participant) => ({
         ...p.training,
         participantStatus: p.status,
@@ -130,25 +129,21 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
   }
 
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' | 'info' }> = {
-      'planned': { label: 'برنامه‌ریزی شده', variant: 'info' },
-      'active': { label: 'در حال برگزاری', variant: 'success' },
-      'completed': { label: 'تکمیل شده', variant: 'default' },
-      'cancelled': { label: 'لغو شده', variant: 'destructive' },
-    }
-    const info = map[status] || { label: status, variant: 'default' }
-    return <Badge variant={info.variant}>{info.label}</Badge>
+    const info = STATUS_MAP[status]
+    if (!info) return <Badge variant="default">{status}</Badge>
+    return <Badge className={info.color}>{info.label}</Badge>
   }
 
   const getParticipantStatusBadge = (status: string) => {
-    const map: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' | 'info' }> = {
-      'registered': { label: 'ثبت‌نام شده', variant: 'info' },
-      'in_progress': { label: 'در حال یادگیری', variant: 'warning' },
-      'completed': { label: 'تکمیل شده', variant: 'success' },
-      'cancelled': { label: 'لغو شده', variant: 'destructive' },
-    }
-    const info = map[status] || { label: status, variant: 'default' }
-    return <Badge variant={info.variant}>{info.label}</Badge>
+    const info = PARTICIPANT_STATUS_MAP[status]
+    if (!info) return <Badge variant="default">{status}</Badge>
+    return <Badge className={info.color}>{info.label}</Badge>
+  }
+
+  const getCategoryLabel = (category: string | null) => {
+    if (!category) return null
+    const info = CATEGORY_MAP[category]
+    return info?.label || category
   }
 
   const getUniqueCategories = () => {
@@ -161,14 +156,6 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
       onNavigate('dashboard')
     } else {
       router.push('/dashboard')
-    }
-  }
-
-  const handleViewTraining = (trainingId: string) => {
-    if (onNavigate) {
-      onNavigate(`training-detail/${trainingId}`)
-    } else {
-      router.push(`/dashboard/training/${trainingId}`)
     }
   }
 
@@ -214,6 +201,7 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
           onClick={handleBack}
           className="gap-2"
         >
+          <ChevronLeft className="w-4 h-4" />
           بازگشت به داشبورد
         </Button>
       </div>
@@ -238,9 +226,10 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه وضعیت‌ها</SelectItem>
-            <SelectItem value="registered">ثبت‌نام شده</SelectItem>
-            <SelectItem value="in_progress">در حال یادگیری</SelectItem>
-            <SelectItem value="completed">تکمیل شده</SelectItem>
+            <SelectItem value="registered">ثبت‌نام</SelectItem>
+            <SelectItem value="attending">در حال شرکت</SelectItem>
+            <SelectItem value="completed">تکمیل</SelectItem>
+            <SelectItem value="absent">عدم حضور</SelectItem>
           </SelectContent>
         </Select>
 
@@ -251,11 +240,14 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همه دسته‌ها</SelectItem>
-              {getUniqueCategories().map((cat) => (
-                <SelectItem key={cat} value={cat!}>
-                  {cat}
-                </SelectItem>
-              ))}
+              {getUniqueCategories().map((cat) => {
+                const label = getCategoryLabel(cat)
+                return (
+                  <SelectItem key={cat} value={cat!}>
+                    {label || cat}
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
         )}
@@ -291,8 +283,7 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
           {filteredTrainings.map((training) => (
             <Card 
               key={training.id} 
-              className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden cursor-pointer"
-              onClick={() => handleViewTraining(training.id)}
+              className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden"
             >
               <CardHeader className="pb-2 pt-4 px-5">
                 <div className="flex items-start justify-between">
@@ -319,7 +310,7 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
                   {training.category && (
                     <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <BookOpen className="w-4 h-4" />
-                      <span>{training.category}</span>
+                      <span>{getCategoryLabel(training.category)}</span>
                     </div>
                   )}
                   {training.location && (
@@ -332,8 +323,8 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
                     <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Calendar className="w-4 h-4" />
                       <span>
-                        {new Date(training.startDate).toLocaleDateString('fa-IR')}
-                        {training.endDate && ` - ${new Date(training.endDate).toLocaleDateString('fa-IR')}`}
+                        {training.startDate}
+                        {training.endDate && ` - ${training.endDate}`}
                       </span>
                     </div>
                   )}
@@ -354,18 +345,6 @@ export function MyTrainingsModule({ onNavigate }: MyTrainingsModuleProps) {
                     )}
                   </div>
                 </div>
-
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-4 gap-2"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleViewTraining(training.id)
-                  }}
-                >
-                  مشاهده جزئیات
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
               </CardContent>
             </Card>
           ))}

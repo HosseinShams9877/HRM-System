@@ -349,7 +349,7 @@ export default function DashboardMetrics({ userRole, userId, onNavigate }: Dashb
       
       // محاسبه آمار
       const learning = data.filter((p: any) => 
-        p.status === 'registered' || p.status === 'in_progress'
+        p.status === 'registered' || p.status === 'attending'
       )
       const completed = data.filter((p: any) => 
         p.status === 'completed'

@@ -1,4 +1,5 @@
-﻿'use client'
+﻿// src/modules/performance/components/employee-performance-module/index.tsx
+'use client'
 
 import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
@@ -13,7 +14,8 @@ import {
   Loader2,
   BarChart3,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react'
 import { toPersianDigits } from '@/core/lib/utils-fa'
 import { Progress } from '@/core/components/ui/progress'
@@ -49,7 +51,7 @@ interface PerformanceData {
   }[]
   strengths: string[]
   areasForImprovement: string[]
-  departmentRanking?: string
+  departmentRanking: string
 }
 
 export function EmployeePerformanceModule({
@@ -71,7 +73,7 @@ export function EmployeePerformanceModule({
       setLoading(true)
       setError(null)
 
-      // استفاده از api/performance با فیلتر employeeId
+      // دریافت ارزیابی‌های کارمند از API
       const response = await fetch(`/api/performance?employeeId=${employeeId}`)
       
       if (!response.ok) {
@@ -83,13 +85,45 @@ export function EmployeePerformanceModule({
       
       // محاسبه آمار از داده‌های واقعی
       const total = performances.length
-      const completed = performances.filter((p: any) => p.status === 'completed').length
+      const completed = performances.filter((p: any) => p.status === 'completed' || p.status === 'reviewed').length
       const pending = performances.filter((p: any) => p.status === 'pending').length
       const inProgress = performances.filter((p: any) => p.status === 'in_progress').length
       
+      // محاسبه میانگین امتیاز
       const avgScore = total > 0 
         ? Math.round(performances.reduce((acc: number, p: any) => acc + p.score, 0) / total * 10) / 10
         : 0
+
+      // محاسبه رتبه در دپارتمان (از همه ارزیابی‌های دپارتمان)
+      let departmentRanking = 'بدون داده'
+      if (performances.length > 0 && performances[0]?.employee?.department) {
+        try {
+          const dept = performances[0].employee.department
+          const deptResponse = await fetch(`/api/performance?department=${dept}`)
+          if (deptResponse.ok) {
+            const deptResult = await deptResponse.json()
+            const deptPerformances = deptResult.data || []
+            // محاسبه میانگین امتیاز هر کارمند در دپارتمان
+            const deptScores: Record<string, number> = {}
+            deptPerformances.forEach((p: any) => {
+              if (!deptScores[p.employeeId]) deptScores[p.employeeId] = 0
+              deptScores[p.employeeId] += p.score
+            })
+            // محاسبه میانگین برای هر کارمند
+            const deptAverages = Object.keys(deptScores).map(id => ({
+              id,
+              avg: deptScores[id] / deptPerformances.filter((p: any) => p.employeeId === id).length
+            }))
+            deptAverages.sort((a, b) => b.avg - a.avg)
+            const rank = deptAverages.findIndex(d => d.id === employeeId) + 1
+            if (rank > 0) {
+              departmentRanking = `${toPersianDigits(rank)} از ${toPersianDigits(deptAverages.length)}`
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching department ranking:', e)
+        }
+      }
 
       // تبدیل داده‌های API به فرمت مورد نیاز کامپوننت
       setData({
@@ -105,98 +139,31 @@ export function EmployeePerformanceModule({
           date: p.createdAt ? new Date(p.createdAt).toLocaleDateString('fa-IR') : '',
           score: p.score,
           status: p.status,
-          evaluator: p.evaluator || p.employee?.firstName + ' ' + p.employee?.lastName || 'نامشخص'
+          evaluator: p.evaluator || 'سیستم'
         })),
         goals: performances.map((p: any) => ({
           id: p.id,
           title: p.period || 'هدف عملکردی',
-          status: p.status === 'completed' ? 'completed' : p.status === 'in_progress' ? 'in_progress' : 'not_started',
-          deadline: p.deadline || p.createdAt ? new Date(p.createdAt).toLocaleDateString('fa-IR') : '',
-          progress: p.score || 0,
+          status: p.status === 'completed' || p.status === 'reviewed' ? 'completed' : 
+                  p.status === 'in_progress' ? 'in_progress' : 'not_started',
+          deadline: p.createdAt ? new Date(p.createdAt).toLocaleDateString('fa-IR') : '',
+          progress: Math.round((p.score / p.target) * 100) || 0,
           priority: p.priority || 'medium'
         })),
-        strengths: ['کار تیمی', 'تعهد کاری'],
-        areasForImprovement: ['مهارت‌های ارتباطی'],
-        departmentRanking: `${Math.floor(Math.random() * 10) + 1} از ${Math.floor(Math.random() * 20) + 10}`
+        // این دو فیلد از دیتابیس نمیان، ولی می‌تونیم از comments استخراج کنیم
+        strengths: performances
+          .filter((p: any) => p.comments && p.score >= p.target)
+          .slice(0, 3)
+          .map((p: any) => p.comments?.substring(0, 20) || 'نقاط قوت'),
+        areasForImprovement: performances
+          .filter((p: any) => p.comments && p.score < p.target * 0.7)
+          .slice(0, 3)
+          .map((p: any) => p.comments?.substring(0, 20) || 'زمینه‌های بهبود'),
+        departmentRanking: departmentRanking
       })
     } catch (error) {
       console.error('Error fetching performance data:', error)
       setError('خطا در دریافت اطلاعات عملکرد')
-      
-      // داده‌های نمونه برای نمایش در صورت خطا
-      setData({
-        overallScore: 78,
-        totalGoals: 12,
-        completedGoals: 8,
-        inProgressGoals: 3,
-        pendingGoals: 1,
-        recentEvaluations: [
-          {
-            id: '1',
-            title: 'ارزیابی عملکرد سه‌ماهه اول',
-            type: 'فصلی',
-            date: '1404/02/15',
-            score: 82,
-            status: 'completed',
-            evaluator: 'علی رضایی'
-          },
-          {
-            id: '2',
-            title: 'ارزیابی پروژه جدید',
-            type: 'پروژه',
-            date: '1404/01/20',
-            score: 75,
-            status: 'completed',
-            evaluator: 'محمد حسینی'
-          },
-          {
-            id: '3',
-            title: 'ارزیابی عملکرد ماهانه',
-            type: 'ماهانه',
-            date: '1404/01/05',
-            score: 68,
-            status: 'in_progress',
-            evaluator: 'سارا کریمی'
-          }
-        ],
-        goals: [
-          {
-            id: '1',
-            title: 'تکمیل پروژه توسعه سیستم جدید',
-            status: 'in_progress',
-            deadline: '1404/03/20',
-            progress: 70,
-            priority: 'high'
-          },
-          {
-            id: '2',
-            title: 'افزایش رضایت مشتریان',
-            status: 'completed',
-            deadline: '1404/02/15',
-            progress: 100,
-            priority: 'high'
-          },
-          {
-            id: '3',
-            title: 'آموزش پرسنل جدید',
-            status: 'in_progress',
-            deadline: '1404/04/10',
-            progress: 40,
-            priority: 'medium'
-          },
-          {
-            id: '4',
-            title: 'بهبود فرایندهای داخلی',
-            status: 'not_started',
-            deadline: '1404/05/01',
-            progress: 0,
-            priority: 'low'
-          }
-        ],
-        strengths: ['مدیریت زمان', 'کار تیمی', 'حل مسئله'],
-        areasForImprovement: ['مهارت‌های ارتباطی', 'مدیریت پروژه'],
-        departmentRanking: '3 از 12'
-      })
     } finally {
       setLoading(false)
     }
@@ -205,8 +172,11 @@ export function EmployeePerformanceModule({
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' | 'info' }> = {
       'completed': { label: 'تکمیل شده', variant: 'success' },
+      'reviewed': { label: 'بررسی شده', variant: 'success' },
       'in_progress': { label: 'در حال انجام', variant: 'warning' },
-      'not_started': { label: 'شروع نشده', variant: 'default' }
+      'pending': { label: 'در انتظار', variant: 'warning' },
+      'not_started': { label: 'شروع نشده', variant: 'default' },
+      'cancelled': { label: 'لغو شده', variant: 'destructive' }
     }
     const info = map[status] || { label: status, variant: 'default' }
     return <Badge variant={info.variant}>{info.label}</Badge>
@@ -248,7 +218,7 @@ export function EmployeePerformanceModule({
     )
   }
 
-  if (!data) {
+  if (!data || data.totalGoals === 0) {
     return (
       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-8 text-center">
         <Award className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -274,7 +244,7 @@ export function EmployeePerformanceModule({
             خلاصه عملکرد و ارزیابی‌ها
           </p>
         </div>
-        {data.departmentRanking && (
+        {data.departmentRanking && data.departmentRanking !== 'بدون داده' && (
           <Badge variant="info" className="text-sm px-4 py-2">
             <Star className="w-4 h-4 ml-1" />
             رتبه در دپارتمان: {data.departmentRanking}
@@ -290,7 +260,7 @@ export function EmployeePerformanceModule({
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">امتیاز کلی</p>
                 <p className={`text-3xl font-bold ${getScoreColor(data.overallScore)}`}>
-                  {toPersianDigits(data.overallScore)}%
+                  {toPersianDigits(data.overallScore)}
                 </p>
               </div>
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl">
@@ -314,7 +284,7 @@ export function EmployeePerformanceModule({
               </div>
             </div>
             <div className="mt-2">
-              <Progress value={(data.completedGoals / data.totalGoals) * 100} className="h-2" />
+              <Progress value={data.totalGoals > 0 ? (data.completedGoals / data.totalGoals) * 100 : 0} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -362,13 +332,17 @@ export function EmployeePerformanceModule({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {data.strengths.map((item, index) => (
-                <Badge key={index} variant="success" className="text-sm px-3 py-1">
-                  {item}
-                </Badge>
-              ))}
-            </div>
+            {data.strengths.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {data.strengths.map((item, index) => (
+                  <Badge key={index} variant="success" className="text-sm px-3 py-1">
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">نقاط قوتی ثبت نشده است</p>
+            )}
           </CardContent>
         </Card>
 
@@ -380,13 +354,17 @@ export function EmployeePerformanceModule({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {data.areasForImprovement.map((item, index) => (
-                <Badge key={index} variant="warning" className="text-sm px-3 py-1">
-                  {item}
-                </Badge>
-              ))}
-            </div>
+            {data.areasForImprovement.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {data.areasForImprovement.map((item, index) => (
+                  <Badge key={index} variant="warning" className="text-sm px-3 py-1">
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">زمینه‌های بهبودی ثبت نشده است</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -401,7 +379,7 @@ export function EmployeePerformanceModule({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {data.goals.map((goal) => (
+            {data.goals.slice(0, 5).map((goal) => (
               <div key={goal.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -419,6 +397,11 @@ export function EmployeePerformanceModule({
                 </div>
               </div>
             ))}
+            {data.goals.length > 5 && (
+              <p className="text-xs text-gray-400 text-center">
+                و {toPersianDigits(data.goals.length - 5)} هدف دیگر ...
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -440,20 +423,16 @@ export function EmployeePerformanceModule({
                     {eval_.title}
                   </p>
                   <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>{eval_.type}</span>
-                    <span>•</span>
-                    <span>{eval_.date}</span>
+                    <span>تاریخ: {eval_.date}</span>
                     <span>•</span>
                     <span>ارزیاب: {eval_.evaluator}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-lg font-bold ${getScoreColor(eval_.score)}`}>
-                    {toPersianDigits(eval_.score)}%
+                    {toPersianDigits(eval_.score)}
                   </span>
-                  <Badge variant={eval_.status === 'completed' ? 'success' : 'warning'}>
-                    {eval_.status === 'completed' ? 'تکمیل شده' : 'در حال انجام'}
-                  </Badge>
+                  {getStatusBadge(eval_.status)}
                 </div>
               </div>
             ))}
