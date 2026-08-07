@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Separator } from '@/core/components/ui/separator'
 import { ScrollArea } from '@/core/components/ui/scroll-area'
 import { PersianDatePicker } from '@/core/components/ui/persian-date-picker'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface CandidateDialogProps {
   open: boolean
@@ -31,6 +32,8 @@ export function CandidateDialog({
   submitting = false,
   jobs = []
 }: CandidateDialogProps) {
+
+  const queryClient = useQueryClient()
   const isEdit = !!initialData
   const [form, setForm] = useState({
     firstName: '',
@@ -117,16 +120,25 @@ export function CandidateDialog({
     }
   }, [open, initialData])
 
-  const handleSubmit = () => {
-    onSubmit({
+ 
+
+  const handleSubmit = async () => {
+    const data = {
       ...form,
       birthDate: form.birthDate ? form.birthDate.toISOString() : null,
       experienceYears: parseInt(form.experienceYears) || 0,
       expectedSalary: parseFloat(form.expectedSalary) || null,
       jobId: form.jobId,
-      resumeUrl: form.resumeUrl || '',      // ← ارسال resumeUrl
-      coverLetter: form.coverLetter || '',  // ← ارسال coverLetter
-    })
+      resumeUrl: form.resumeUrl || '',
+      coverLetter: form.coverLetter || '',
+    }
+    
+    // ✅ منتظر بمون تا ثبت کامل بشه
+    await onSubmit(data)
+    
+    // ✅ بعد از ثبت موفق، کش رو باطل کن
+    queryClient.invalidateQueries({ queryKey: ['candidates'] })
+    queryClient.invalidateQueries({ queryKey: ['applications'] })
   }
 
   const activeJobs = jobs.filter(job => job.status === 'active' || job.status === 'open')

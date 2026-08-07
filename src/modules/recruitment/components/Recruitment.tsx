@@ -22,6 +22,7 @@ import { InterviewDialog } from './dialogs/interview-dialog'
 import { ReportsTab } from './tabs/reports-tab'
 import { ScoreDialog } from './dialogs/score-dialog'
 import { AssessmentDialog } from './dialogs/assessment-dialog'  
+import { useQueryClient } from '@tanstack/react-query'
 import { OfferDialog } from './dialogs/offer-dialog'
 import type { Candidate, JobPosting, JobApplication, Interview, Assessment, JobOffer, Department } from '../types/type'
 
@@ -34,7 +35,6 @@ export function Recruitment() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('dashboard')
-
   // Dialog states
   const [jobDialogOpen, setJobDialogOpen] = useState(false)
   const [candidateDialogOpen, setCandidateDialogOpen] = useState(false)
@@ -44,6 +44,7 @@ export function Recruitment() {
   const [submittingAssessment, setSubmittingAssessment] = useState(false)
   const [offerDialogOpen, setOfferDialogOpen] = useState(false)
 const [submittingOffer, setSubmittingOffer] = useState(false)
+const queryClient = useQueryClient()
  
 const [scoreDialogOpen, setScoreDialogOpen] = useState(false)        
 const [submittingInterview, setSubmittingInterview] = useState(false) 
@@ -322,6 +323,10 @@ const updateStatus = useUpdateCandidateStatus()
       })
       if (res.ok) {
         toast.success(`مرحله تغییر کرد`)
+        
+        // ✅ این خط رو اضافه کن
+        queryClient.invalidateQueries({ queryKey: ['candidates'] })
+        
         fetchData()
       } else {
         toast.error('خطا در تغییر مرحله')
@@ -338,6 +343,10 @@ const updateStatus = useUpdateCandidateStatus()
       })
       if (res.ok) {
         toast.success('درخواست رد شد')
+        
+        // ✅ این خط رو اضافه کن
+        queryClient.invalidateQueries({ queryKey: ['candidates'] })
+        
         fetchData()
       } else {
         toast.error('خطا در رد درخواست')
@@ -371,28 +380,7 @@ const handleCreateAssessment = async (data: any) => {
     setSubmittingAssessment(false)
   }
 }
-const handleCreateOffer = async (data: any) => {
-  setSubmittingOffer(true)
-  try {
-    const res = await fetch('/api/job-offers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (res.ok) {
-      toast.success('پیشنهاد شغلی با موفقیت ایجاد شد')
-      setOfferDialogOpen(false)
-      fetchData()
-    } else {
-      const error = await res.json()
-      toast.error(error.error || 'خطا در ایجاد پیشنهاد')
-    }
-  } catch {
-    toast.error('خطا در ارتباط با سرور')
-  } finally {
-    setSubmittingOffer(false)
-  }
-}
+
 const handleOpenOfferDialog = (application: JobApplication) => {
   setSelectedApplication(application)
   setOfferDialogOpen(true)
@@ -406,6 +394,7 @@ const handleOpenOfferDialog = (application: JobApplication) => {
       })
       if (res.ok) {
         toast.success('مصاحبه بروزرسانی شد')
+        queryClient.invalidateQueries({ queryKey: ['candidates'] })
         fetchData()
       } else {
         toast.error('خطا در بروزرسانی مصاحبه')
@@ -437,18 +426,58 @@ const handleCreateInterview = async (data: any) => {
 }
 
 
+// src/modules/recruitment/components/recruitment.tsx
+
 const handleSaveScore = async (data: any) => {
   setSubmittingScore(true)
   try {
+    // 1️⃣ اول نمره رو ذخیره کن
     const res = await fetch('/api/assessments', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
+    
     if (res.ok) {
       toast.success('نمره با موفقیت ثبت شد')
+      
+      // 2️⃣ اگر نمره قبول شده و assessment مربوط به testing هست
+      if (data.score && data.passScore && data.score >= data.passScore) {
+        try {
+          // assessment رو بگیر تا applicationId رو داشته باشیم
+          const assessmentRes = await fetch(`/api/assessments/${data.id}`)
+          if (assessmentRes.ok) {
+            const assessment = await assessmentRes.json()
+            const applicationId = assessment.applicationId
+            
+            if (applicationId) {
+              // 3️⃣ currentStage رو به 'offer' تغییر بده
+              const updateRes = await fetch('/api/job-applications', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  id: applicationId, 
+                  currentStage: 'offer',
+                  status: 'offer'
+                }),
+              })
+              
+              if (updateRes.ok) {
+                toast.success('کاندیدا به مرحله پیشنهاد انتقال یافت')
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error updating application stage:', error)
+        }
+      }
+      
       setScoreDialogOpen(false)
       setSelectedAssessment(null)
+      
+      // 4️⃣ کش رو باطل کن
+      queryClient.invalidateQueries({ queryKey: ['candidates'] })
+      
       fetchData()
     } else {
       const error = await res.json()
@@ -574,8 +603,6 @@ const handleSaveScore = async (data: any) => {
 
         <TabsContent value="pipeline">
           <PipelineTab
-            applications={applications}
-            loading={loading}
             onAdd={() => setJobDialogOpen(true)}
             onMoveStage={handleMoveStage}
             onReject={handleRejectApplication}
@@ -676,13 +703,7 @@ const handleSaveScore = async (data: any) => {
   applications={applications}
   submitting={submittingAssessment}
 />
-<OfferDialog
-  open={offerDialogOpen}
-  onClose={() => setOfferDialogOpen(false)}
-  onSubmit={handleCreateOffer}
-  applications={applications}
-  submitting={submittingOffer}
-/>
+
     </div>
   )
 }

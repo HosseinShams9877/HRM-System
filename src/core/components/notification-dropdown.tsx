@@ -45,40 +45,25 @@ function isTodayBirthday(birthDate: string): boolean {
   if (!birthDate) return false
   
   try {
+    // تاریخ امروز به میلادی
     const today = new Date()
-    const { jy: todayYear, jm: todayMonth, jd: todayDay } = jalaali.toJalaali(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      today.getDate()
-    )
+    const todayMonth = today.getMonth() + 1  // 1-12
+    const todayDay = today.getDate()         // 1-31
     
-    // اگر تاریخ به صورت میلادی "2026-05-21" هست
-    let birthParts = birthDate.split(/[-/]/)
-    if (birthParts.length === 3) {
-      const year = parseInt(birthParts[0])
-      const month = parseInt(birthParts[1])
-      const day = parseInt(birthParts[2])
-      
-      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-        const { jy, jm, jd } = jalaali.toJalaali(year, month, day)
-        // فقط روز و ماه رو مقایسه میکنیم، سال رو نادیده میگیریم
-        return jm === todayMonth && jd === todayDay
-      }
-    }
+    // پاک کردن تاریخ (تبدیل - به /)
+    const cleanDate = birthDate.replace(/-/g, '/')
+    const parts = cleanDate.split('/')
     
-    // اگر تاریخ به صورت شمسی "1404/12/15" هست
-    if (birthDate.includes('/')) {
-      const parts = birthDate.split('/')
-      if (parts.length === 3) {
-        const month = parseInt(parts[1])
-        const day = parseInt(parts[2])
-        if (!isNaN(month) && !isNaN(day)) {
-          return month === todayMonth && day === todayDay
-        }
-      }
-    }
+    if (parts.length !== 3) return false
     
-    return false
+    const month = parseInt(parts[1])  // ماه میلادی
+    const day = parseInt(parts[2])    // روز میلادی
+    
+    if (isNaN(month) || isNaN(day)) return false
+    
+    // فقط روز و ماه رو مقایسه کن (سال رو نادیده بگیر)
+    return month === todayMonth && day === todayDay
+    
   } catch {
     return false
   }

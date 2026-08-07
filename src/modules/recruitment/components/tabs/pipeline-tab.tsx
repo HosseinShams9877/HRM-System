@@ -11,10 +11,10 @@ import { PIPELINE_STAGES } from '../../constants'
 import { toPersianNumber, formatDate } from '../../helpers'
 import type { JobApplication } from '../../types/type'
 import { useState } from 'react'
+import { useCandidates } from '../../hooks/useCandidates'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface PipelineTabProps {
-  applications: JobApplication[]
-  loading: boolean
   onAdd: () => void
   onMoveStage: (id: string, stage: string) => void
   onReject: (id: string) => void
@@ -24,14 +24,36 @@ interface PipelineTabProps {
 const ITEMS_PER_PAGE = 3
 
 export function PipelineTab({ 
-  applications, 
-  loading, 
   onAdd, 
   onMoveStage, 
   onReject,
   onCreateOffer
 }: PipelineTabProps) {
-  const safeApplications = Array.isArray(applications) ? applications : []
+  const { data: candidates = [], isLoading } = useCandidates({})
+  const applications = candidates
+  .filter((candidate: any) => candidate.status === 'active') // ← شرط ۱
+  .flatMap((candidate: any) => {
+    if (candidate.applications && candidate.applications.length > 0) {
+      return candidate.applications
+        .filter((app: any) => {
+          // ← شرط ۲: currentStage باید در PIPELINE_STAGES باشه
+          return PIPELINE_STAGES.some(stage => stage.id === app.currentStage)
+        })
+        .map((app: any) => ({
+          id: app.id,
+          candidate: candidate,
+          job: app.jobPosting,
+          currentStage: app.currentStage || 'applied',
+          status: app.status || 'pending',
+          appliedAt: app.appliedAt || candidate.createdAt,
+          matchScore: app.matchScore || 0,
+        }))
+    }
+    return []
+  })
+
+const safeApplications = Array.isArray(applications) ? applications : []
+const loading = isLoading
 
   const reversedStages = [...PIPELINE_STAGES].reverse()
 
@@ -188,17 +210,6 @@ export function PipelineTab({
                                   >
                                     <ChevronRight className="h-3 w-3 mr-1" />
                                     مرحله بعد
-                                  </Button>
-                                )}
-
-                                {isOfferStage && !isRejected && (
-                                  <Button
-                                    size="sm"
-                                    className="h-7 text-xs flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={() => onCreateOffer?.(app)}
-                                  >
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    ایجاد پیشنهاد
                                   </Button>
                                 )}
 

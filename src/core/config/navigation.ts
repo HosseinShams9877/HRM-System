@@ -136,7 +136,6 @@ export const NAV_ITEMS: NavItem[] = [
     children: [
       { id: 'recruitment-jobs', label: 'جذب و استخدام',icon: 'Briefcase' },
       { id: 'onboarding', label: 'آنبوردینگ', icon: 'PlaneTakeoff' },
-      { id: 'recruitment-applications', label: 'سایت استخدام', icon: 'FileText' },
     ],
   },
   {
