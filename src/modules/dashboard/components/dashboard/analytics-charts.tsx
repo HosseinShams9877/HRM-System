@@ -17,6 +17,7 @@ import {
 import { toPersianDigits } from '@/core/lib/utils-fa';
 import { UserRole } from "@/core/lib/auth";
 import { useQuery } from '@tanstack/react-query';
+import moment from 'moment-jalaali';
 
 // ============================================
 // Types
@@ -73,21 +74,16 @@ const useIsDesktop = () => {
 // توابع تبدیل تاریخ
 // ============================================
 
-function convertShamsiToGregorian(shamsiDate: string): Date {
+function convertShamsiToGregorian(miladiDate: string): Date {
   try {
-    if (!shamsiDate) return new Date();
+    if (!miladiDate) return new Date();
     
-    const parts = shamsiDate.split('/').map(Number);
+    // hireDate به فرمت میلادی هست: "1997/07/08"
+    const parts = miladiDate.split('/').map(Number);
     if (parts.length !== 3) return new Date();
     
-    const year = parts[0];
-    const month = parts[1];
-    const day = parts[2];
-    
-    const gregorianYear = year - 621;
-    const gregorianMonth = month - 1;
-    
-    const date = new Date(gregorianYear, gregorianMonth, day);
+    const [year, month, day] = parts;
+    const date = new Date(year, month - 1, day);
     
     if (isNaN(date.getTime())) {
       return new Date();
@@ -95,28 +91,36 @@ function convertShamsiToGregorian(shamsiDate: string): Date {
     
     return date;
   } catch (error) {
-    console.error('Error converting date:', shamsiDate, error);
+    console.error('Error converting date:', miladiDate, error);
     return new Date();
   }
 }
 
 function getPeriodKey(date: Date, range: string): string {
+  // تبدیل میلادی به شمسی
+  const m = moment(date);
+  const jYear = m.jYear();
+  const jMonth = m.jMonth(); // 0-11
+  const jDay = m.jDate();
+  
   const monthNames = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 
                       'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
   switch (range) {
     case 'week': {
-      const weekNumber = Math.ceil((date.getDate() + 1) / 7);
-      return `هفته ${weekNumber}`;
+      const weekNumber = Math.ceil((jDay + 1) / 7);
+      return `هفته ${weekNumber} ${monthNames[jMonth]}`;
     }
     case 'month':
-      return monthNames[date.getMonth()];
-    case 'halfYear':
-      return date.getMonth() < 6 ? 'نیمه اول ۱۴۰۳' : 'نیمه دوم ۱۴۰۳';
+      return `${monthNames[jMonth]} ${jYear}`;
+    case 'halfYear': {
+      const half = jMonth < 6 ? 'نیمه اول' : 'نیمه دوم';
+      return `${half} ${jYear}`;
+    }
     case 'year':
-      return `سال ${date.getFullYear()}`;
+      return `سال ${toPersianDigits(String(jYear))}`;
     default:
-      return monthNames[date.getMonth()];
+      return `${monthNames[jMonth]} ${jYear}`;
   }
 }
 
@@ -168,7 +172,7 @@ function processTurnoverData(
   const now = new Date();
   const startDate = getStartDate(range);
 
-  // ✅ جذب: استفاده از hireDate
+  // ✅ جذب: hireDate میلادی هست (1997/07/08) - convertShamsiToGregorian اصلاح شده
   const hired = filtered.filter(emp => {
     if (!emp.hireDate) {
       console.log(`⚠️ ${emp.firstName} ${emp.lastName} فاقد hireDate`);
@@ -182,7 +186,7 @@ function processTurnoverData(
     return isInRange;
   });
 
-  // ✅ خروج: استفاده از status === 'inactive'
+  // ✅ خروج: updatedAt ISO هست (2026-07-12T13:06:22.384Z)
   const left = filtered.filter(emp => {
     if (emp.status !== 'inactive') return false;
     const updatedAt = new Date(emp.updatedAt);
@@ -202,7 +206,7 @@ function processTurnoverData(
   hired.forEach(emp => {
     if (!emp.hireDate) return;
     const hireDate = convertShamsiToGregorian(emp.hireDate);
-    const key = getPeriodKey(hireDate, range);
+    const key = getPeriodKey(hireDate, range); // getPeriodKey اصلاح شده
     if (!groups.has(key)) {
       groups.set(key, { period: key, hired: 0, left: 0 });
     }
@@ -210,7 +214,7 @@ function processTurnoverData(
   });
 
   left.forEach(emp => {
-    const key = getPeriodKey(new Date(emp.updatedAt), range);
+    const key = getPeriodKey(new Date(emp.updatedAt), range); // getPeriodKey اصلاح شده
     if (!groups.has(key)) {
       groups.set(key, { period: key, hired: 0, left: 0 });
     }
@@ -227,10 +231,11 @@ function processTurnoverData(
     }));
 
   if (trend.length === 0) {
-    const defaultPeriod = range === 'week' ? 'هفته جاری' 
-                        : range === 'month' ? 'ماه جاری'
-                        : range === 'halfYear' ? 'نیمسال جاری'
-                        : 'سال جاری';
+    const nowM = moment(now);
+    const defaultPeriod = range === 'week' ? `هفته جاری` 
+                        : range === 'month' ? `${['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'][nowM.jMonth()]} ${nowM.jYear()}`
+                        : range === 'halfYear' ? `${nowM.jMonth() < 6 ? 'نیمه اول' : 'نیمه دوم'} ${nowM.jYear()}`
+                        : `سال ${nowM.jYear()}`;
     trend.push({
       period: defaultPeriod,
       hired: 0,
@@ -275,7 +280,7 @@ function calculateRetentionRate(employees: Employee[], departmentId?: string) {
   const retainedSixMonths = filtered.filter(emp => {
     if (emp.status !== 'active') return false;
     if (!emp.hireDate) return false;
-    const hireDate = convertShamsiToGregorian(emp.hireDate);
+    const hireDate = convertShamsiToGregorian(emp.hireDate); // اصلاح شده
     return hireDate <= sixMonthsAgo;
   }).length;
 
@@ -289,7 +294,7 @@ function calculateRetentionRate(employees: Employee[], departmentId?: string) {
   const retainedOneYear = filtered.filter(emp => {
     if (emp.status !== 'active') return false;
     if (!emp.hireDate) return false;
-    const hireDate = convertShamsiToGregorian(emp.hireDate);
+    const hireDate = convertShamsiToGregorian(emp.hireDate); // اصلاح شده
     return hireDate <= oneYearAgo;
   }).length;
 
