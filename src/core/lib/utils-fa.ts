@@ -92,6 +92,28 @@ export function toPersianNumber(str: string | number): string {
   }
   return input.replace(/\d/g, (d) => map[d] || d)
 }
+
+export function convertShamsiToGregorian(miladiDate: string): Date {
+  try {
+    if (!miladiDate) return new Date();
+    
+    // hireDate به فرمت میلادی هست: "1997/07/08"
+    const parts = miladiDate.split('/').map(Number);
+    if (parts.length !== 3) return new Date();
+    
+    const [year, month, day] = parts;
+    const date = new Date(year, month - 1, day);
+    
+    if (isNaN(date.getTime())) {
+      return new Date();
+    }
+    
+    return date;
+  } catch (error) {
+    console.error('Error converting date:', miladiDate, error);
+    return new Date();
+  }
+}
 // ============================================
 // تبدیل عدد به حروف فارسی
 // ============================================

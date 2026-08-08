@@ -17,7 +17,7 @@ import { Separator } from '@/core/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/core/components/ui/avatar'
 import { useWorkHistory } from '../hooks/use-work-history'
 import {
-  toPersianDigits, formatCurrency, formatShamsi,convertToPersianDate
+  toPersianDigits, formatCurrency, formatShamsi,convertToPersianDate,convertShamsiToGregorian
 } from '@/core/lib/utils-fa'
 import { DocumentManager } from './document-manager'
 import { WorkHistoryList } from './work-history-list'
@@ -211,7 +211,7 @@ const { data: workHistory = [], isLoading: isLoadingHistory } = useWorkHistory(e
                   </span>
                 )}
                 {employee.hireDate && (
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatShamsi(employee.hireDate)}</span>
+                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {convertShamsiToGregorian(employee.hireDate).toLocaleDateString('fa-IR')}</span>
                 )}
               </div>
             </div>

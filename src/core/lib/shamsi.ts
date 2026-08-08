@@ -75,6 +75,8 @@ export function getShamsiDayOfWeek(shamsiDate: string): number {
   }
 }
 
+
+
 // تبدیل دقیق تاریخ شمسی به Julian Day Number
 // بر اساس الگوریتم تبدیل تقویم جلالی به میلادی
 export function shamsiToJDN(year: number, month: number, day: number): number {
