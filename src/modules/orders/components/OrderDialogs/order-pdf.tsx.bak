@@ -9,8 +9,8 @@ import {OrderRecord} from '../../types/index'
 // ===== تابع برای ثبت فونت با کلید جدید =====
 export const registerFonts = (key?: string) => {
   try {
-    const fontRegular = '/fonts/Vazirmatn-Regular.ttf'
-const fontBold = '/fonts/Vazirmatn-Bold.ttf'
+    const fontRegular = require('../../../../../public/fonts/Vazirmatn-Regular.ttf')
+    const fontBold = require('../../../../../public/fonts/Vazirmatn-Bold.ttf')
     
     const familyName = key ? `Vazirmatn-${key}` : 'Vazirmatn'
     

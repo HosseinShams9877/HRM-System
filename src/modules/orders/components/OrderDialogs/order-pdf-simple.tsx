@@ -3,21 +3,23 @@
 
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { OrderRecord } from '../../types'
 
-try {
-  const fontRegular = require('../../../../../public/fonts/Vazirmatn-Regular.ttf')
-  Font.register({
-    family: 'Vazirmatn',
-    src: fontRegular,
-    fontWeight: 400,
-  })
 
-  const fontBold = require('../../../../../public/fonts/Vazirmatn-Bold.ttf')
-  Font.register({
-    family: 'Vazirmatn',
-    src: fontBold,
-    fontWeight: 700,
-  })
+try {const fontRegular = '/fonts/Vazirmatn-Regular.ttf'
+const fontBold = '/fonts/Vazirmatn-Bold.ttf'
+
+Font.register({
+  family: 'Vazirmatn',
+  src: fontRegular,
+  fontWeight: 400,
+})
+
+Font.register({
+  family: 'Vazirmatn',
+  src: fontBold,
+  fontWeight: 700,
+})
 } catch (error) {
   console.error('Error loading fonts:', error)
 }

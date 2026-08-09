@@ -3,67 +3,29 @@
 
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
-import { convertMiladiToShamsi,toPersianDigits,convertToPersianDate  } from '@/core/lib/utils-fa'
-import {OrderRecord} from '../../types/index'
 
-// ===== تابع برای ثبت فونت با کلید جدید =====
-export const registerFonts = (key?: string) => {
-  try {
-    const fontRegular = '/fonts/Vazirmatn-Regular.ttf'
-const fontBold = '/fonts/Vazirmatn-Bold.ttf'
-    
-    const familyName = key ? `Vazirmatn-${key}` : 'Vazirmatn'
-    
-    Font.register({
-      family: familyName,
-      src: fontRegular,
-      fontWeight: 400,
-    })
+try {
+  const fontRegular = require('../../../../../public/fonts/Vazirmatn-Regular.ttf')
+  Font.register({
+    family: 'Vazirmatn',
+    src: fontRegular,
+    fontWeight: 400,
+  })
 
-    Font.register({
-      family: familyName,
-      src: fontBold,
-      fontWeight: 700,
-    })
-    
-    console.log('Fonts registered successfully with family:', familyName)
-    return familyName
-  } catch (error) {
-    console.error('Error registering fonts:', error)
-    return 'Vazirmatn'
-  }
-}
-const formatCurrency = (amount: number | undefined): string => {
-  if (!amount) return '—'
-  // ریال اول میاد، بعد عدد (برای RTL)
-  return  toPersianDigits(amount.toLocaleString())
-}
-const getContractTypeLabel = (type: string | undefined): string => {
-  if (!type) return '—'
-  const map: Record<string, string> = {
-    'official': 'رسمی',
-    'contractual': 'قراردادی',
-    'probation': 'آزمایشی',
-    'temporary': 'موقت',
-    'permanent': 'دائم',
-    'full_time': 'تمام وقت',
-    'part_time': 'پاره وقت',
-    'contract': 'قراردادی',
-    'freelance': 'آزاد',
-    'hourly': 'ساعتی',
-  }
-  return map[type] || type
+  const fontBold = require('../../../../../public/fonts/Vazirmatn-Bold.ttf')
+  Font.register({
+    family: 'Vazirmatn',
+    src: fontBold,
+    fontWeight: 700,
+  })
+} catch (error) {
+  console.error('Error loading fonts:', error)
 }
 
-
-// ===== ثبت اولیه فونت =====
-registerFonts()
-
-// ===== تابع ایجاد استایل با fontFamily پویا =====
-const getStyles = (fontFamily: string) => StyleSheet.create({
+const styles = StyleSheet.create({
   page: {
     padding: 20,
-    fontFamily: fontFamily,
+    fontFamily: 'Vazirmatn',
     direction: 'rtl',
   },
   header: {
@@ -181,7 +143,7 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     borderStyle: 'solid',
     padding: 2,
     borderRadius: 3,
-    width: '49.8%',
+    width: '49%',
     flexDirection: 'column',
     alignItems: 'flex-end',
   },
@@ -264,21 +226,6 @@ const getStyles = (fontFamily: string) => StyleSheet.create({
     textAlign: 'right',
     direction: 'rtl',
   },
-  currencyContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 2,
-  },
-  currencyValue: {
-    fontSize: 7.5,
-    fontWeight: 600,
-    color: '#111827',
-  },
-  currencyLabel: {
-    fontSize: 6,
-    color: '#6b7280',
-  },
 })
 
 interface OrderPDFProps {
@@ -289,12 +236,11 @@ interface OrderPDFProps {
   hasSalaryChange: boolean
   orderTypeLabels: Record<string, string>
   formatShamsi: (date: string) => string
-  fontKey?: string
-  newPositionName?: string   
-  newDepartmentName?: string 
+  formatCurrency: (amount: number) => string
+  toPersianDigits: (num: string) => string
 }
 
-export function OrderPDF({
+export function OrderPDFSimple({
   order,
   employee,
   displayOrder,
@@ -302,13 +248,9 @@ export function OrderPDF({
   hasSalaryChange,
   orderTypeLabels,
   formatShamsi,
-  fontKey,
-  newPositionName,
-  newDepartmentName
+  formatCurrency,
+  toPersianDigits,
 }: OrderPDFProps) {
-  const fontFamily = fontKey ? `Vazirmatn-${fontKey}` : 'Vazirmatn'
-  const styles = getStyles(fontFamily)
-  
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -345,12 +287,12 @@ export function OrderPDF({
           <View style={styles.sectionBody}>
             <View style={styles.grid2}>
               <View style={styles.gridItem}>
-                <Text style={styles.label}>کد پرسنلی</Text>
-                <Text style={styles.value}>{toPersianDigits(employee.personnelCode)}</Text>
-              </View>
-              <View style={styles.gridItem}>
                 <Text style={styles.label}>نام و نام خانوادگی</Text>
                 <Text style={styles.value}>{employee.firstName} {employee.lastName}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.label}>کد پرسنلی</Text>
+                <Text style={styles.value}>{toPersianDigits(employee.personnelCode)}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>کد ملی</Text>
@@ -362,7 +304,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ تولد</Text>
-                <Text style={styles.value}>{convertToPersianDate(employee.birthDate || '')}</Text>
+                <Text style={styles.value}>{formatShamsi(employee.birthDate || '')}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>شماره موبایل</Text>
@@ -374,7 +316,7 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>تاریخ شروع همکاری</Text>
-                <Text style={styles.value}>{convertToPersianDate(employee.hireDate || '')}</Text>
+                <Text style={styles.value}>{formatShamsi(employee.hireDate || '')}</Text>
               </View>
             </View>
           </View>
@@ -389,11 +331,11 @@ export function OrderPDF({
             <View style={styles.grid2}>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>سمت</Text>
-                <Text style={styles.value}>{ employee.positionName || employee.position || '—'}</Text>
+                <Text style={styles.value}>{employee.positionName || employee.position || '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>واحد سازمانی</Text>
-                <Text style={styles.value}>{ employee.departmentName || employee.department || '—'}</Text>
+                <Text style={styles.value}>{employee.departmentName || employee.department || '—'}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>نوع حکم</Text>
@@ -401,20 +343,20 @@ export function OrderPDF({
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>نوع قرارداد</Text>
-                <Text style={styles.value}>    {getContractTypeLabel(employee.contractType)}</Text>
+                <Text style={styles.value}>{employee.contractType || '—'}</Text>
               </View>
               {hasPositionChange && (
                 <>
                   <View style={styles.changeBox}>
                     <Text style={styles.changeLabel}>سمت جدید</Text>
                     <Text style={styles.changeValue}>
-                    {newPositionName || displayOrder.newPositionName || displayOrder.newPosition || '—'}
+                      {displayOrder.newPositionName || displayOrder.newPosition || '—'}
                     </Text>
                   </View>
                   <View style={styles.changeBox}>
                     <Text style={styles.changeLabel}>واحد جدید</Text>
                     <Text style={styles.changeValue}>
-                    {newDepartmentName || displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
+                      {displayOrder.newDepartmentName || displayOrder.newDepartment || '—'}
                     </Text>
                   </View>
                 </>
@@ -435,95 +377,75 @@ export function OrderPDF({
           </View>
           <View style={styles.sectionBody}>
             <View style={styles.grid2}>
-            <View style={styles.gridItem}>
-  <Text style={styles.label}>پایه سنوات</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.yearsOfServiceBase ? (
-      `${formatCurrency(displayOrder.yearsOfServiceBase)} `
-    ) : (
-      formatCurrency(employee.yearsOfServiceBase)
-    )}
-  </Text>
-  <Text style={styles.currencyLabel}>ریال</Text>
-</View>
-              
               <View style={styles.gridItem}>
                 <Text style={styles.label}>حقوق پایه</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.baseSalary ? (
-                    `${formatCurrency(displayOrder.baseSalary)}`
+                    `${formatCurrency(displayOrder.baseSalary)} (جدید)`
                   ) : (
                     formatCurrency(employee.baseSalary)
                   )}
                 </Text>
-                <Text style={styles.currencyLabel}>ریال</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.label}>حق مسکن</Text>
+                <Text style={styles.value}>
+                  {hasSalaryChange && displayOrder.housingAllowance ? (
+                    `${formatCurrency(displayOrder.housingAllowance)} (جدید)`
+                  ) : (
+                    formatCurrency(employee.housingAllowance)
+                  )}
+                </Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>بن کارگری</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.foodAllowance ? (
-                    `${formatCurrency(displayOrder.foodAllowance)} `
+                    `${formatCurrency(displayOrder.foodAllowance)} (جدید)`
                   ) : (
                     formatCurrency(employee.foodAllowance || employee.workAllowance)
                   )}
                 </Text>
-                <Text style={styles.currencyLabel}>ریال</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.label}>حق جذب</Text>
+                <Text style={styles.value}>
+                  {hasSalaryChange && displayOrder.attractionAllowance ? (
+                    `${formatCurrency(displayOrder.attractionAllowance)} (جدید)`
+                  ) : (
+                    formatCurrency(employee.attractionAllowance || employee.responsibilityAllowance)
+                  )}
+                </Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.label}>حق مسئولیت</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.responsibilityAllowance ? (
-                    `${formatCurrency(displayOrder.responsibilityAllowance)} `
+                    `${formatCurrency(displayOrder.responsibilityAllowance)} (جدید)`
                   ) : (
                     formatCurrency(employee.responsibilityAllowance)
                   )}
                 </Text>
-                <Text style={styles.currencyLabel}>ریال</Text>
               </View>
-              <View style={styles.gridItem}>
-  <Text style={styles.label}>حق تاهل</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.spouseAllowance ? (
-      `${formatCurrency(displayOrder.spouseAllowance)} `
-    ) : (
-      formatCurrency(employee.spouseAllowance)
-    )}
-  </Text>
-  <Text style={styles.currencyLabel}>ریال</Text>
-</View>
-<View style={styles.gridItem}>
-  <Text style={styles.label}>حق اولاد</Text>
-  <Text style={styles.value}>
-    {hasSalaryChange && displayOrder.childAllowance ? (
-      `${formatCurrency(displayOrder.childAllowance)} (جدید)`
-    ) : (
-      formatCurrency(employee.childAllowance)
-    )}
-  </Text>
-  <Text style={styles.currencyLabel}>ریال</Text>
-</View>
-<View style={styles.gridItem}>
-                <Text style={styles.label}>حق مسکن</Text>
-                <Text style={styles.value}>
-                  {hasSalaryChange && displayOrder.housingAllowance ? (
-                    `${formatCurrency(displayOrder.housingAllowance)} `
-                  ) : (
-                    formatCurrency(employee.housingAllowance)
-                  )}
-                </Text>
-                <Text style={styles.currencyLabel}>ریال</Text>
-              </View>
-
               <View style={styles.gridItem}>
                 <Text style={styles.label}>سایر مزایا</Text>
                 <Text style={styles.value}>
                   {hasSalaryChange && displayOrder.otherAllowances ? (
-                    `${formatCurrency(displayOrder.otherAllowances)} `
+                    `${formatCurrency(displayOrder.otherAllowances)} (جدید)`
                   ) : (
                     formatCurrency(employee.otherAllowances)
                   )}
                 </Text>
-                <Text style={styles.currencyLabel}>ریال</Text>
+              </View>
+              <View style={[styles.gridItem, { width: '100%' }]}>
+                <Text style={styles.label}>کسورات ثابت</Text>
+                <Text style={styles.value}>
+                  {hasSalaryChange && displayOrder.fixedDeductions ? (
+                    `${formatCurrency(displayOrder.fixedDeductions)} (جدید)`
+                  ) : (
+                    formatCurrency(employee.fixedDeductions)
+                  )}
+                </Text>
               </View>
             </View>
           </View>
