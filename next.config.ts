@@ -18,6 +18,17 @@ const nextConfig: NextConfig = {
     },
   },
 
+  // ✅ ریدایرکت از ریشه به /dashboard
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/dashboard',
+        permanent: true,
+      },
+    ]
+  },
+
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
