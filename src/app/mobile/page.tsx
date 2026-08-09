@@ -189,7 +189,7 @@ function usePullToRefresh(onRefresh: () => Promise<void>) {
     }
   }, [isRefreshing])
 
-  const handleTouchEnd = useCallback(async () => {
+  const handleTouchEnd = useCallback(async (e?: React.TouchEvent) => {
     if (isPulling && pullDistance > 40 && !isRefreshing) {
       setIsRefreshing(true)
       try {
