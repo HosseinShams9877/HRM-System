@@ -8,9 +8,11 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   serverExternalPackages: ["@prisma/client"],
+   turbopack: {},
+  /*
   experimental: {
     esmExternals: 'loose'},
-
+*/
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
