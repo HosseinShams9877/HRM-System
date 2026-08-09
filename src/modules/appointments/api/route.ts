@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(appointment      s)
+    return NextResponse.json(appointments)
   } catch (error) {
-    console.error('Get appointment      s error:', error)
+    console.error('Get appointments error:', error)
     return NextResponse.json({ error: 'خطا در دریافت لیست انتصابات' }, { status: 500 })
   }
 }

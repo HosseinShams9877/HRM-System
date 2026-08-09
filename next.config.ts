@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   serverExternalPackages: ["@prisma/client"],
   
-  // ✅ این رو جایگزین `turbopack: {}` کن
+  // ✅ تنظیمات Turbopack برای فایل‌های فونت
   turbopack: {
     rules: {
       '*.ttf': {
@@ -17,11 +17,6 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  
-  /*
-  experimental: {
-    esmExternals: 'loose'},
-  */
 
   webpack: (config) => {
     config.resolve.alias = {

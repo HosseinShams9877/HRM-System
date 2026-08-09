@@ -9,7 +9,7 @@ import {
   Sparkles, Activity, ShieldCheck, Award
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
-import { Button } from '@/core/components/ui/Button'
+import { Button } from '@/core/components/ui/button'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Area, AreaChart
