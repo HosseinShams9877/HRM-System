@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/core/lib/db'
-import { validateWithZod, appointment   ,   CreateSchema } from '@/core/lib/validators'
+import { validateWithZod, appointmentCreateSchema } from '@/core/lib/validators'
+
 
 // GET /api/appointment      s — لیست انتصابات
 export async function GET(req: NextRequest) {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    const validation = validateWithZod(appointment      CreateSchema, body)
+const validation = validateWithZod(appointmentCreateSchema, body)
     if (!validation.success) {
       return NextResponse.json({ error: 'داده‌های ورودی نامعتبر است', details: validation.errors }, { status: 400 })
     }
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     const position = await db.position.findUnique({
       where: { id: body.positionId },
       include: {
-        appointment        s: { where: { status: 'active' } },
+        appointments: { where: { status: 'active' } },
       },
     })
 
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'پست سازمانی یافت نشد' }, { status: 404 })
     }
 
-    if (position.appointment        s.length >= position.headcount) {
+    if (position.appointments.length >= position.headcount) {
       return NextResponse.json(
         { error: 'ظرفیت این پست سازمانی تکمیل شده است' },
         { status: 400 }
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // اگر انتصاب اصلی است، انتصاب فعال قبلی را پایان بده
     if (body.type === 'اصلی' || body.type === 'سرپرست') {
-      await db.appointment      .updateMany({
+      await db.appointment.updateMany({
         where: {
           employeeId: body.employeeId,
           status: 'active',
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const appointment       = await db.appointment      .create({
+    const appointment   = await db.appointment.create({
       data: {
         employeeId: body.employeeId,
         positionId: body.positionId,
@@ -115,9 +116,9 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(appointment      , { status: 201 })
+    return NextResponse.json(appointment, { status: 201 })
   } catch (error) {
-    console.error('Create appointment       error:', error)
+   console.error('Create appointment error:', error)
     return NextResponse.json({ error: 'خطا در ثبت انتصاب' }, { status: 500 })
   }
 }
