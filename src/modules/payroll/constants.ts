@@ -694,7 +694,14 @@ export function calculateProgressiveTax(
   let remaining = taxableYearlyToman
 
   // مرتب کردن پله‌ها بر اساس orderNum
-  const sortedBrackets = [...taxBrackets].sort((a, b) => a.orderNum - b.orderNum)
+  // خط 697 رو به این شکل اصلاح کن
+const sortedBrackets = [...taxBrackets].sort((a, b) => {
+  // اگه orderNum نداره، از index استفاده کن
+  const aOrder = (a as any).orderNum ?? 0
+  const bOrder = (b as any).orderNum ?? 0
+  return aOrder - bOrder
+})
+
 
   for (const bracket of sortedBrackets) {
     if (remaining <= 0) break
