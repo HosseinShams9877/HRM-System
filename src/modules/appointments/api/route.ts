@@ -89,7 +89,7 @@ const validation = validateWithZod(appointmentCreateSchema, body)
       })
     }
 
-    const appointment   = await db.appointment.create({
+    const appointment = await db.appointment.create({
       data: {
         employeeId: body.employeeId,
         positionId: body.positionId,
