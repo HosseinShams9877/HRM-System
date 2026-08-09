@@ -29,13 +29,13 @@ import RegulationsList from '@/modules/mobile/components/regulations-list'
 import Notifications from '@/modules/mobile/components/notifications'
 import Profile from '@/modules/mobile/components/profile'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card'
+import { Button } from '@/core/components/ui/button'
 import { Badge } from '@/core/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { Separator } from '@/core/components/ui/separator'
 import {
   toPersianDigits, formatCurrency, getTodayFormatted
-} from '@/lib/utils-fa'
+} from '@/core/lib/utils-fa'
 
 /** Map icon name strings → Lucide components for mobile sidebar */
 const ICON_MAP: Record<string, LucideIcon> = {

@@ -16,7 +16,7 @@ import {
 
 import { MobileBottomNav } from '@/core/components/ui/mobile-bottom'
 import { NavChild, NAV_ITEMS } from '@/core/config/navigation'
-import { Button } from '@/core/components/ui/Button'
+import { Button } from '@/core/components/ui/button'
 import {
   toPersianDigits, getTodayFormatted,
 } from '@/core/lib/utils-fa'

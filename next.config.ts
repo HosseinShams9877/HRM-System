@@ -8,11 +8,21 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   serverExternalPackages: ["@prisma/client"],
-   turbopack: {},
+  
+  // ✅ این رو جایگزین `turbopack: {}` کن
+  turbopack: {
+    rules: {
+      '*.ttf': {
+        loaders: ['file-loader'],
+      },
+    },
+  },
+  
   /*
   experimental: {
     esmExternals: 'loose'},
-*/
+  */
+
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
@@ -35,9 +45,6 @@ const nextConfig: NextConfig = {
     }
     return config
   },
-  
-  
-  
 };
 
 export default nextConfig;

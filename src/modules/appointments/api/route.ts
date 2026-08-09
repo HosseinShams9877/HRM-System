@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       ]
     }
 
-    const appointment      s = await db.appointment      .findMany({
+    const appointments = await db.appointment.findMany({
       where,
       include: {
         employee: { select: { id: true, firstName: true, lastName: true, personnelCode: true, avatar: true, department: true } },
