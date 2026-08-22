@@ -234,12 +234,13 @@ const resolveNavItems = () =>
     
           <aside 
             className={`
-              fixed top-2 bottom-2 right-0 h-screen z-40 flex flex-col
+              fixed top-0 md:top-2 + bottom-[160px] md:bottom-2 right-0 h-screen z-40 flex flex-col
               bg-white dark:bg-gray-950
               shadow-xl transition-all duration-300
               ${collapsed ? 'md:w-[72px]' : 'md:w-[280px]'}
               w-[280px]
               ${isMobileOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+              pb-[160px] md:pb-0
             `}
           >
             {/* Header */}
